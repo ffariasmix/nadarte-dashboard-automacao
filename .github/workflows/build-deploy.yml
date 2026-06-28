@@ -61,6 +61,14 @@ jobs:
             exit 1
           fi
 
+      - name: Gerar insights (IA, opcional / Caminho B)
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/gen_insights.py data/freq_multi.json || echo "[insights] passo de IA falhou; seguindo sem insights"
+          python -c "import json;d=json.load(open('data/freq_multi.json'));print('[insights] total:',len(d.get('insights',[])))"
+
       - name: Calcular versao, selo e carimbo
         id: meta
         run: |
