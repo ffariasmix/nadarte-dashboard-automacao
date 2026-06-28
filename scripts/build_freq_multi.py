@@ -48,12 +48,14 @@ def norm_doc(v):
     return re.sub(r"\D","", str(v if v is not None else ""))
 def norm_nome(v):
     return up(v)
+NAME2CPF = {}  # (unit, nome_normalizado) -> cpf  (ponte: resolve linhas/meses sem CPF)
 def skey(unit, doc_val, nome_val):
-    # chave estavel do aluno: CPF (Documento) quando valido, senao Nome. Sempre por unidade.
-    cpf = norm_doc(doc_val)
+    # chave canonica: CPF quando conhecido (na linha OU via ponte por nome); senao Nome. Sempre por unidade.
+    cpf = norm_doc(doc_val); n = norm_nome(nome_val)
+    if len(cpf) < 11 and n:
+        cpf = NAME2CPF.get((unit, n), "")
     if len(cpf) >= 11:
         return f"{unit}|C|{cpf}"
-    n = norm_nome(nome_val)
     return f"{unit}|N|{n}" if n else ""
 
 TOK_ORDER = ["agua","fit","lutas"]  # prioridade por token: agua > fit > lutas > outros
@@ -157,6 +159,25 @@ base_pos = POS[base_key]
 by_, bm_ = base_key
 BAND_REF = datetime.date(by_, bm_, calendar.monthrange(by_, bm_)[1])  # ultimo dia do mes-base
 print(f"[info] meses={MESES} base={MESES[base_pos]} bandref={BAND_REF}", file=sys.stderr)
+
+# ---- pre-pass: ponte nome->CPF (alguns meses/unidades vem sem a coluna CPF) ----
+for mk, path in alunos_files.items():
+    wb = load_wb(path)
+    for sn in wb.sheetnames:
+        unit = SHEET_TO_UNIT.get(sn.strip())
+        if not unit: continue
+        rows = [r for r in wb[sn].iter_rows(values_only=True)]
+        hidx, colmap = detect_header(rows, ["MATRICULA","DOCUMENTO","NASCIMENTO"])
+        if hidx is None: continue
+        cD=find_col(colmap,"DOCUMENTO","CPF"); cN=find_col(colmap,"NOME")
+        if cD is None or cN is None: continue
+        for r in rows[hidx+1:]:
+            if r is None: continue
+            cpf = norm_doc(r[cD]) if cD<len(r) else ""
+            nome = norm_nome(r[cN]) if (cN<len(r) and r[cN] is not None) else ""
+            if len(cpf)>=11 and nome:
+                NAME2CPF.setdefault((unit,nome), cpf)
+print(f"[info] ponte nome->CPF: {len(NAME2CPF)} nomes mapeados", file=sys.stderr)
 
 # ---- parse alunos: active[(pos,unit)] = set(mat); attrs[pos][(unit,mat)] ----
 active = defaultdict(set); attrs = defaultdict(dict)
@@ -295,7 +316,7 @@ def all_active(m):
     s=set()
     for unit in UNIT_KEYS: s |= active[(m,unit)]
     return s
-MIN_ACTIVE=500; MIN_OVERLAP=0.50; MIN_ACC=500
+MIN_ACTIVE=500; MIN_OVERLAP=0.60; MIN_ACC=500
 month_active=[all_active(m) for m in range(NMONTHS)]
 errs=[]
 for m in range(NMONTHS):
@@ -305,7 +326,14 @@ for m in range(NMONTHS-1):
     A,B=month_active[m],month_active[m+1]
     ratio=len(A&B)/(min(len(A),len(B)) or 1)
     if ratio<MIN_OVERLAP:
-        errs.append(f"overlap {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - chave de juncao suspeita")
+        errs.append(f"overlap REDE {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - chave suspeita")
+for unit in UNIT_KEYS:
+    for m in range(NMONTHS-1):
+        A=active[(m,unit)]; B=active[(m+1,unit)]
+        if not A or not B: continue
+        ratio=len(A&B)/(min(len(A),len(B)) or 1)
+        if ratio<MIN_OVERLAP:
+            errs.append(f"overlap {unit} {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - juncao suspeita na unidade")
 for m in range(NMONTHS):
     tot=sum(sum(acc[(unit,m)].values()) for unit in UNIT_KEYS)
     if tot<MIN_ACC:
