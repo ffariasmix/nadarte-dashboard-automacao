@@ -241,6 +241,34 @@ print("[info] catraca anchor:", {u:anchor[u] for u in UNIT_KEYS}, file=sys.stder
 JUN_MAX = max_base_date.strftime("%d/%m/%Y") if max_base_date else ""
 print(f"[info] junMax(ult. data mes-base) = {JUN_MAX}", file=sys.stderr)
 
+# ---- ledger de identidade (perpetuo) + first-seen por aluno: regra de 'novo' SEMPRE pelo historico completo, nunca pela janela filtrada ----
+def ym_of(pos):
+    yr,mn = ORDERED[pos]; return f"{yr:04d}-{mn:02d}"
+YM2POS = {ym_of(i):i for i in range(NMONTHS)}
+first_seen_ym = {}
+for (pos,unit), keys in active.items():
+    slabel = ym_of(pos)
+    for k in keys:
+        if k not in first_seen_ym or slabel < first_seen_ym[k]:
+            first_seen_ym[k] = slabel
+# ledger persistente fora de data/ (LEDGER_PATH) para perpetuar entre execucoes; mantem a 1a aparicao mais antiga
+LEDGER_PATH = os.environ.get("LEDGER_PATH", os.path.join(DATA_DIR,"ledger.json"))
+ledger = {}
+try: ledger = json.load(open(LEDGER_PATH))
+except Exception: ledger = {}
+for k, slabel in first_seen_ym.items():
+    if k not in ledger or slabel < ledger[k]:
+        ledger[k] = slabel
+try:
+    with open(LEDGER_PATH,"w") as f: json.dump(ledger,f,ensure_ascii=False,separators=(",",":"))
+except Exception as e:
+    print(f"[WARN] nao salvou ledger: {e}", file=sys.stderr)
+def fs_index(key):
+    ym = ledger.get(key)
+    if not ym: return base_pos
+    return YM2POS.get(ym, -1)  # -1 = 1a aparicao ANTES da janela (base arquivada): nunca 'novo'
+print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)", file=sys.stderr)
+
 # ---- montar students (apenas ativos do mes-base) ----
 students=[]
 for (pos,unit),keys in active.items():
@@ -253,7 +281,7 @@ for (pos,unit),keys in active.items():
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Fitness"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
-            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,
+            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
@@ -311,29 +339,7 @@ for unit in ["REDE"]+UNIT_KEYS:
             warns.append(f"{unit} {tr[i]['de']}->{tr[i]['para']}: {exp}!={tr[i+1]['base']}")
 print(("[WARN] consistencia churn:\n  "+"\n  ".join(warns)) if warns else "[ok] consistencia churn fecha", file=sys.stderr)
 
-# ---- Fundacao v2: ledger de identidade (perpetuo) + fluxos retido/saiu/novo/voltou ----
-def ym_of(pos):
-    yr,mn = ORDERED[pos]; return f"{yr:04d}-{mn:02d}"
-first_seen_ym = {}
-for (pos,unit), keys in active.items():
-    slabel = ym_of(pos)
-    for k in keys:
-        if k not in first_seen_ym or slabel < first_seen_ym[k]:
-            first_seen_ym[k] = slabel
-# ledger persistente: fora de data/ (LEDGER_PATH) para perpetuar entre execucoes; mantem a 1a aparicao mais antiga
-LEDGER_PATH = os.environ.get("LEDGER_PATH", os.path.join(DATA_DIR,"ledger.json"))
-ledger = {}
-try: ledger = json.load(open(LEDGER_PATH))
-except Exception: ledger = {}
-for k, slabel in first_seen_ym.items():
-    if k not in ledger or slabel < ledger[k]:
-        ledger[k] = slabel
-try:
-    with open(LEDGER_PATH,"w") as f: json.dump(ledger,f,ensure_ascii=False,separators=(",",":"))
-except Exception as e:
-    print(f"[WARN] nao salvou ledger: {e}", file=sys.stderr)
-print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)", file=sys.stderr)
-
+# ---- Fundacao v2: fluxos retido/saiu/novo/voltou (usa ledger/ym_of definidos acima) ----
 def flows_for(scope):
     units = UNIT_KEYS if scope=="REDE" else [scope]
     rows=[]
