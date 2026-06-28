@@ -81,15 +81,63 @@ def build_metrics(data):
     }
 
 
+OUTPUT_TOOL = {
+    "name": "registrar_insights",
+    "description": "Registra os insights estrategicos finais em formato estruturado.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "insights": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "titulo": {"type": "string"},
+                        "hipotese": {"type": "string"},
+                        "contexto": {"type": "string"},
+                        "acao": {"type": "string"},
+                        "fontes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "titulo": {"type": "string"},
+                                    "url": {"type": "string"},
+                                },
+                                "required": ["titulo", "url"],
+                            },
+                        },
+                    },
+                    "required": ["titulo", "hipotese", "contexto", "acao", "fontes"],
+                },
+            }
+        },
+        "required": ["insights"],
+    },
+}
+
+
 def extract_json(text):
-    text = text.strip()
-    # remove cercas de codigo se houver
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.M)
+    """Fallback: extrai o primeiro objeto JSON via brace-matching string-aware."""
+    text = re.sub(r"```(?:json)?", "", text or "")
     a = text.find("{")
-    b = text.rfind("}")
-    if a == -1 or b == -1 or b <= a:
+    if a == -1:
         raise ValueError("sem objeto JSON na resposta")
-    return json.loads(text[a:b + 1])
+    depth = 0; in_str = False; esc = False
+    for i in range(a, len(text)):
+        c = text[i]
+        if in_str:
+            if esc: esc = False
+            elif c == "\\": esc = True
+            elif c == '"': in_str = False
+        else:
+            if c == '"': in_str = True
+            elif c == "{": depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return json.loads(text[a:i + 1])
+    raise ValueError("objeto JSON nao fechado")
 
 
 def main():
@@ -112,9 +160,8 @@ def main():
         "3. Use a BUSCA NA WEB para embasar o contexto e CITE FONTES REAIS e verificaveis (titulo + URL). Nao invente fontes.\n"
         "4. Inclua uma ACAO sugerida, concreta, por insight.\n"
         "5. Portugues do Brasil, tom executivo e direto.\n"
-        "Responda APENAS com JSON valido, sem texto fora do JSON, no formato:\n"
-        '{"insights":[{"titulo":"...","hipotese":"...","contexto":"...","acao":"...",'
-        '"fontes":[{"titulo":"...","url":"https://..."}]}]}\n\n'
+        "Pesquise na web para embasar o contexto e, AO FINAL, chame OBRIGATORIAMENTE a ferramenta "
+        "'registrar_insights' com 3 a 5 insights estruturados.\n\n"
         "NUMEROS INTERNOS:\n" + json.dumps(metrics, ensure_ascii=False, indent=2)
     )
 
@@ -122,13 +169,24 @@ def main():
         client = anthropic.Anthropic(api_key=KEY)
         resp = client.messages.create(
             model=MODEL,
-            max_tokens=4000,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}],
+            max_tokens=4500,
+            tools=[
+                {"type": "web_search_20250305", "name": "web_search", "max_uses": 6},
+                OUTPUT_TOOL,
+            ],
             messages=[{"role": "user", "content": prompt}],
         )
-        text = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text")
-        parsed = extract_json(text)
-        insights = parsed.get("insights", [])
+        # 1) caminho robusto: ler o tool_use 'registrar_insights' (JSON validado pela API)
+        insights = None
+        for b in resp.content:
+            if getattr(b, "type", None) == "tool_use" and getattr(b, "name", "") == "registrar_insights":
+                inp = getattr(b, "input", {}) or {}
+                insights = inp.get("insights", [])
+                break
+        # 2) fallback: parsear JSON do texto
+        if insights is None:
+            text = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text")
+            insights = extract_json(text).get("insights", [])
         # saneamento basico: manter apenas campos esperados e URLs http(s)
         clean = []
         for x in insights[:6]:
