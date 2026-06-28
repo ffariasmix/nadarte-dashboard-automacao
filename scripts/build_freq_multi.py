@@ -311,6 +311,45 @@ for unit in ["REDE"]+UNIT_KEYS:
             warns.append(f"{unit} {tr[i]['de']}->{tr[i]['para']}: {exp}!={tr[i+1]['base']}")
 print(("[WARN] consistencia churn:\n  "+"\n  ".join(warns)) if warns else "[ok] consistencia churn fecha", file=sys.stderr)
 
+# ---- Fundacao v2: ledger de identidade (perpetuo) + fluxos retido/saiu/novo/voltou ----
+def ym_of(pos):
+    yr,mn = ORDERED[pos]; return f"{yr:04d}-{mn:02d}"
+first_seen_ym = {}
+for (pos,unit), keys in active.items():
+    slabel = ym_of(pos)
+    for k in keys:
+        if k not in first_seen_ym or slabel < first_seen_ym[k]:
+            first_seen_ym[k] = slabel
+# ledger persistente: fora de data/ (LEDGER_PATH) para perpetuar entre execucoes; mantem a 1a aparicao mais antiga
+LEDGER_PATH = os.environ.get("LEDGER_PATH", os.path.join(DATA_DIR,"ledger.json"))
+ledger = {}
+try: ledger = json.load(open(LEDGER_PATH))
+except Exception: ledger = {}
+for k, slabel in first_seen_ym.items():
+    if k not in ledger or slabel < ledger[k]:
+        ledger[k] = slabel
+try:
+    with open(LEDGER_PATH,"w") as f: json.dump(ledger,f,ensure_ascii=False,separators=(",",":"))
+except Exception as e:
+    print(f"[WARN] nao salvou ledger: {e}", file=sys.stderr)
+print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)", file=sys.stderr)
+
+def flows_for(scope):
+    units = UNIT_KEYS if scope=="REDE" else [scope]
+    rows=[]
+    for a,b in trans_pairs:
+        ymb=ym_of(b); A=set(); B=set()
+        for u in units: A|=active[(a,u)]; B|=active[(b,u)]
+        saiu=A-B; entrou=B-A; retido=A&B
+        novo=sum(1 for k in entrou if ledger.get(k,ymb)>=ymb)   # 1a aparicao no proprio mes b
+        voltou=sum(1 for k in entrou if ledger.get(k,ymb)<ymb)  # ja existia antes (retornante)
+        rows.append({"de":MESES[a],"para":MESES[b],"base":len(A),
+                     "retido":len(retido),"saiu":len(saiu),"novo":novo,"voltou":voltou,
+                     "churnPct":round(100*len(saiu)/len(A),1) if A else 0,
+                     "retPct":round(100*len(retido)/len(A),1) if A else 0})
+    return rows
+flow={u:flows_for(u) for u in UNIT_KEYS}; flow["REDE"]=flows_for("REDE")
+
 # ---- GATE DE VALIDACAO DE DADOS (premissa: nunca publicar dado quebrado) ----
 def all_active(m):
     s=set()
@@ -349,7 +388,7 @@ except Exception: pass
 
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
        "churn":churn,"tickets":TICKETS,"ticketNatal":TICKET_NATAL,
-       "baseMonth":MESES[base_pos],"junMax":JUN_MAX,
+       "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,
        "baseUpdated":meta.get("baseUpdated",""),
        "baseUpdatedBy":meta.get("baseUpdatedBy","") or meta.get("baseUpdatedByName","")}
 with open(os.path.join(DATA_DIR,"freq_multi.json"),"w") as f:
