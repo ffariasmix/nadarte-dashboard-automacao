@@ -67,7 +67,7 @@ setTimeout(() => {
   line(tabs === 9, `9 abas presentes (achei ${tabs})`);
   line(baseRendered !== null, `KPI "Base de alunos" renderizada (${baseRendered})`);
   if (expectedBase !== null) line(baseRendered === expectedBase, `Base = ${expectedBase} (renderizou ${baseRendered})`);
-  line(/dados até/.test(foot) && /v\d/.test(foot), `rodape com carimbo: "${foot}"`);
+  line(foot.trim()==='', 'rodape sem carimbo (removido a pedido): ok');
   line(/v\d/.test(verbadge), `selo de versao: "${verbadge}"`);
 
   if (errors.length) { console.log('--- ERROS ---'); errors.slice(0,20).forEach(e=>console.log('  '+e)); }
