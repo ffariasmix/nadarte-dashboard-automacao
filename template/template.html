@@ -232,7 +232,7 @@ header.top{position:static!important}
 .section.singlewarn .needmulti{display:none}
 .section.singlewarn .multiwarn{display:block}
 
-.verbadge{display:inline-block;margin-left:10px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;vertical-align:middle}
+.verbadge{display:none;margin-left:10px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;vertical-align:middle}
 
 /* fix overflow horizontal na Visão Geral: itens de grid precisam poder encolher para o canvas do Chart.js não estourar a largura */
 .grid>*,.kpis>*,.units>*,.insights>*,.catboxes>*,.cmp>*,.alertcards>*{min-width:0}
@@ -1019,7 +1019,7 @@ function downloadCSV(){
  const b2=document.getElementById('dlBtn2');
  if(XLSXB64){if(b2)b2.href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+XLSXB64;}
  else if(b2){b2.outerHTML='<p class="cap" style="margin:0">A planilha é entregue como <b>arquivo separado</b> (consolidado das bases), junto com este dashboard.</p>';}
- function setFoot(){document.getElementById('footMeta').textContent='Fonte: acessos catraca · '+uLabel()+' · Jan–Jun/2026 (dados até 16/06) · base junho · v5.9';}
+ function setFoot(){var fm=document.getElementById('footMeta');if(fm)fm.textContent='';}
  setFoot();
  document.getElementById('uHead').textContent=uLabel();
  document.getElementById('fSel').onchange=e=>{const v=e.target.value;if(v==='all'){state.cat='Total';state.mod='Todas';}else if(v.indexOf('cat:')===0){state.cat=v.slice(4);state.mod='Todas';}else{state.mod=v.slice(4);state.cat='Total';}render();};
@@ -1044,4 +1044,4 @@ function downloadCSV(){
  var bCsv=document.getElementById('btnCsv');if(bCsv)bCsv.onclick=downloadCSV;
  render();
 })();
-</script><script>document.addEventListener("DOMContentLoaded",function(){try{var rp=document.getElementById("riskPanel"),cb=document.getElementById("critBody");if(rp&&cb&&cb.parentNode){cb.parentNode.insertBefore(rp,cb.nextSibling);}}catch(e){}try{var d=(typeof DATA!=="undefined")?DATA:{};var el=document.getElementById("baseRefDate");if(el&&d.baseUpdated)el.textContent=d.baseUpdated;var by=document.getElementById("baseRefBy");if(by&&d.baseUpdatedBy)by.textContent="· por "+d.baseUpdatedBy;}catch(e){}});</script></body></html>
+</script><script>document.addEventListener("DOMContentLoaded",function(){try{var rp=document.getElementById("riskPanel"),cb=document.getElementById("critBody");if(rp&&cb&&cb.parentNode){cb.parentNode.insertBefore(rp,cb.nextSibling);}}catch(e){}try{var d=(typeof DATA!=="undefined")?DATA:{};var el=document.getElementById("baseRefDate");if(el&&d.baseUpdated)el.textContent=d.baseUpdated;var by=document.getElementById("baseRefBy");if(by)by.textContent="· por Nad'Arte (Catracas e Ativos)";}catch(e){}});</script></body></html>
