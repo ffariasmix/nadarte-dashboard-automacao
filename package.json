@@ -1,0 +1,9 @@
+{
+  "name": "nadarte-dashboard-automacao",
+  "private": true,
+  "description": "Validacao headless (jsdom) do dashboard Nad'Arte de Frequencia & Retencao",
+  "version": "1.0.0",
+  "dependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

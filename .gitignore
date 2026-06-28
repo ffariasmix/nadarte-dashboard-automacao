@@ -1,0 +1,5 @@
+data/
+public/
+node_modules/
+*.bin
+sa_key.json
