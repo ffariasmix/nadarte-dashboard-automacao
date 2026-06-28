@@ -44,6 +44,17 @@ def up(s):
 def norm_mat(v):
     d = re.sub(r"\D","", str(v if v is not None else "")); d = d.lstrip("0")
     return d if d else ("0" if re.search(r"\d", str(v or "")) else "")
+def norm_doc(v):
+    return re.sub(r"\D","", str(v if v is not None else ""))
+def norm_nome(v):
+    return up(v)
+def skey(unit, doc_val, nome_val):
+    # chave estavel do aluno: CPF (Documento) quando valido, senao Nome. Sempre por unidade.
+    cpf = norm_doc(doc_val)
+    if len(cpf) >= 11:
+        return f"{unit}|C|{cpf}"
+    n = norm_nome(nome_val)
+    return f"{unit}|N|{n}" if n else ""
 
 TOK_ORDER = ["agua","fit","lutas"]  # prioridade por token: agua > fit > lutas > outros
 def tok_cat(T):
@@ -158,17 +169,21 @@ for mk, path in alunos_files.items():
         hidx, colmap = detect_header(rows, ["MATRICULA","DOCUMENTO","NASCIMENTO"])
         if hidx is None: continue
         c_mat=find_col(colmap,"MATRICULA"); c_nome=find_col(colmap,"NOME")
+        c_doc=find_col(colmap,"DOCUMENTO","CPF")
         c_nasc=find_col(colmap,"NASCIMENTO"); c_sexo=find_col(colmap,"SEXO"); c_mod=find_col(colmap,"MODALIDADE")
         for r in rows[hidx+1:]:
-            if r is None or c_mat is None or c_mat>=len(r): continue
-            mat = norm_mat(r[c_mat])
-            if not mat: continue
-            active[(pos,unit)].add(mat)
+            if r is None: continue
+            nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
+            doc_v = r[c_doc] if (c_doc is not None and c_doc<len(r)) else None
+            key = skey(unit, doc_v, nome_v)
+            if not key: continue
+            mat = norm_mat(r[c_mat]) if (c_mat is not None and c_mat<len(r)) else ""
+            active[(pos,unit)].add(key)
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
             mod = r[c_mod] if (c_mod is not None and c_mod<len(r)) else ""
-            attrs[pos][(unit,mat)] = {
-                "nome": str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else "",
+            attrs[pos][(unit,key)] = {
+                "nome": nome_v, "mat": mat,
                 "grupo": classify_grupo(mod), "mod": str(mod or "").strip(),
                 "sexo": sexo_of(r[c_sexo]) if (c_sexo is not None and c_sexo<len(r)) else "N/D",
                 "band": band_of(BAND_REF,by,bm,bd), "bm":bm,"bd":bd,"by":by,
@@ -188,15 +203,15 @@ for unit, path in catraca_files.items():
         rows = [r for r in wb[sn].iter_rows(values_only=True)]
         hidx, colmap = detect_header(rows, ["MAT. CLIENTE","CPF","DATA ENTRADA"])
         if hidx is None: continue
-        c_mat=find_col(colmap,"MAT. CLIENTE","MAT CLIENTE"); c_dt=find_col(colmap,"DATA ENTRADA")
-        if c_mat is None: continue
+        c_cpf=find_col(colmap,"CPF"); c_nome=find_col(colmap,"NOME"); c_dt=find_col(colmap,"DATA ENTRADA")
+        if c_cpf is None and c_nome is None: continue
         for r in rows[hidx+1:]:
-            if r is None or c_mat>=len(r): continue
-            v=r[c_mat]
-            if v is None or str(v).strip()=="": continue
-            mat=norm_mat(v)
-            if not mat: continue
-            acc[(unit,pos)][mat]+=1; total+=1; people.add(mat)
+            if r is None: continue
+            cpf_v = r[c_cpf] if (c_cpf is not None and c_cpf<len(r)) else None
+            nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
+            key = skey(unit, cpf_v, nome_v)
+            if not key: continue
+            acc[(unit,pos)][key]+=1; total+=1; people.add(key)
             if pos==base_pos and c_dt is not None and c_dt<len(r):
                 d=parse_dt(r[c_dt])
                 if d and (max_base_date is None or d>max_base_date): max_base_date=d
@@ -207,19 +222,19 @@ print(f"[info] junMax(ult. data mes-base) = {JUN_MAX}", file=sys.stderr)
 
 # ---- montar students (apenas ativos do mes-base) ----
 students=[]
-for (pos,unit),mats in active.items():
+for (pos,unit),keys in active.items():
     if pos!=base_pos: continue
-    for mat in mats:
-        a = attrs[base_pos].get((unit,mat),{})
-        ac = [acc[(unit,mm)].get(mat,0) for mm in range(NMONTHS)]
-        act= [1 if mat in active[(mm,unit)] else 0 for mm in range(NMONTHS)]
+    for key in keys:
+        a = attrs[base_pos].get((unit,key),{})
+        ac = [acc[(unit,mm)].get(key,0) for mm in range(NMONTHS)]
+        act= [1 if key in active[(mm,unit)] else 0 for mm in range(NMONTHS)]
         students.append({
-            "u":unit,"mat":mat,"nome":a.get("nome",""),
+            "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Fitness"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
             "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,
         })
-students.sort(key=lambda s:(s["u"],int(s["mat"]) if s["mat"].isdigit() else 0))
+students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
 # ---- churn set-based (secao 8) ----
 def profile(mats, pos, unit):
@@ -275,9 +290,40 @@ for unit in ["REDE"]+UNIT_KEYS:
             warns.append(f"{unit} {tr[i]['de']}->{tr[i]['para']}: {exp}!={tr[i+1]['base']}")
 print(("[WARN] consistencia churn:\n  "+"\n  ".join(warns)) if warns else "[ok] consistencia churn fecha", file=sys.stderr)
 
+# ---- GATE DE VALIDACAO DE DADOS (premissa: nunca publicar dado quebrado) ----
+def all_active(m):
+    s=set()
+    for unit in UNIT_KEYS: s |= active[(m,unit)]
+    return s
+MIN_ACTIVE=500; MIN_OVERLAP=0.50; MIN_ACC=500
+month_active=[all_active(m) for m in range(NMONTHS)]
+errs=[]
+for m in range(NMONTHS):
+    if len(month_active[m])<MIN_ACTIVE:
+        errs.append(f"mes {MESES[m]}: {len(month_active[m])} alunos ativos (<{MIN_ACTIVE}) - falha de leitura/juncao")
+for m in range(NMONTHS-1):
+    A,B=month_active[m],month_active[m+1]
+    ratio=len(A&B)/(min(len(A),len(B)) or 1)
+    if ratio<MIN_OVERLAP:
+        errs.append(f"overlap {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - chave de juncao suspeita")
+for m in range(NMONTHS):
+    tot=sum(sum(acc[(unit,m)].values()) for unit in UNIT_KEYS)
+    if tot<MIN_ACC:
+        errs.append(f"acessos {MESES[m]}: {tot} (<{MIN_ACC}) - catraca vazia/nao juntou")
+if errs:
+    print("[ERRO VALIDACAO] dados nao confiaveis, NAO publicando:\n  "+"\n  ".join(errs), file=sys.stderr)
+    sys.exit(1)
+print("[ok] gate de validacao passou (overlaps e volumes plausiveis)", file=sys.stderr)
+
+meta={}
+try: meta=json.load(open(os.path.join(DATA_DIR,"meta.json")))
+except Exception: pass
+
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
        "churn":churn,"tickets":TICKETS,"ticketNatal":TICKET_NATAL,
-       "baseMonth":MESES[base_pos],"junMax":JUN_MAX}
+       "baseMonth":MESES[base_pos],"junMax":JUN_MAX,
+       "baseUpdated":meta.get("baseUpdated",""),
+       "baseUpdatedBy":meta.get("baseUpdatedBy","") or meta.get("baseUpdatedByName","")}
 with open(os.path.join(DATA_DIR,"freq_multi.json"),"w") as f:
     json.dump(out,f,ensure_ascii=False,separators=(", ",": "))
 print(f"[ok] freq_multi.json: {len(students)} students; baseMonth={MESES[base_pos]}; junMax={JUN_MAX}", file=sys.stderr)
