@@ -403,7 +403,7 @@ header.top{position:static!important}
 <section class="section" id="tab-perdas">
 <h2 class="title">Perdas (churn) <span style="font-size:13px;font-weight:600;color:var(--muted)">· quem deixou de ser ativo na rede</span></h2>
 <p class="sub">Perda = aluno que sai de <b>todas</b> as bases de ativos no mês seguinte. Trocar de unidade conta como <b>transferência</b>, não como perda. Responde aos filtros de <b>Unidade</b> e <b>Período</b> — a janela mostra as viradas de mês <b>dentro</b> do intervalo selecionado (precisa de 2+ meses; junho é parcial).</p>
-<div style="margin:14px 0;padding:14px 16px;border:1px solid var(--line,#e3e3e3);border-radius:12px;background:var(--card,#fff)"><h3 style="margin:0 0 4px;font-size:15px">Acompanhamento da Meta de Churn</h3><p class="sub" style="margin:0 0 10px">Faixas de churn <b>mensal</b>: <b style="color:#2E7D4F">Ouro ≤2,5%</b> · <b style="color:#5BAD6F">Prata ≤3,5%</b> · <b style="color:#E0A93B">Bronze ≤4,0%</b> · <b style="color:#E8821A">Básico ≤4,5%</b> · <b style="color:#D64545">acima = Fora da meta</b>. Cada célula = média mensal de churn no período (mês corrente parcial excluído). Meta: chegar ao <b>resultado médio anual</b> dentro da faixa, com acompanhamento mensal.</p><div id="metaChurnTbl"></div><p class="sub" id="metaChurnNote" style="margin-top:10px"></p></div>
+<div style="margin:14px 0;padding:14px 16px;border:1px solid var(--line,#e3e3e3);border-radius:12px;background:var(--card,#fff)"><h3 style="margin:0 0 4px;font-size:15px">Acompanhamento da Meta de Churn</h3><p class="sub" style="margin:0 0 10px">Faixas de churn <b>mensal</b>: <b style="color:#2E7D4F">Ouro ≤2,5%</b> · <b style="color:#5BAD6F">Prata ≤3,5%</b> · <b style="color:#E0A93B">Bronze ≤4,0%</b> · <b style="color:#E8821A">Básico ≤4,5%</b> · <b style="color:#D64545">acima = Fora da meta</b>. Cada célula = média mensal de churn no período (mês corrente parcial excluído). Meta: chegar ao <b>resultado médio anual</b> dentro da faixa, com acompanhamento mensal.</p><div id="metaChurnTbl"></div><p class="sub" id="metaChurnNote" style="margin-top:10px"></p><div id="metaChurnRank" style="margin-top:14px;border-top:1px solid var(--line,#eee);padding-top:12px"></div></div>
 <div id="perdasKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
 <p class="cap" id="perdasCmpCap" style="margin:-6px 0 14px"></p>
 <div id="perdaMoney" style="margin-bottom:18px"></div>
@@ -902,6 +902,49 @@ function renderMetaChurn(){
    var msg='<b>Ano:</b> avaliado só no fechamento (hoje temos Jan–Jun) — acompanhe pelo Mês/Trimestre/Semestre. ';
    if(nextT&&baseLast){var redu=Math.ceil((rr-nextT[1])*baseLast);msg+='<b>Movimento necessário:</b> a rede está em <b style="color:'+(COL[band]||'#888')+'">'+band+'</b>; para chegar a <b>'+nextT[0]+'</b> seria preciso ~<b>'+redu+' saídas/mês</b> a menos, movendo alunos de <i>Em evasão/Em declínio</i> para <i>Regular/Fiel</i>.';}
    note.innerHTML=msg;
+  }
+ }
+
+ var rk=document.getElementById('metaChurnRank');
+ if(rk){
+  function ustat(u){
+   var tr=(((DATA.churn[u]||{}).trans)||[]).filter(function(t){return sM.indexOf(t.para)>=0&&t.para!==partial&&t.base;});
+   if(!tr.length)return null;
+   var rs=tr.map(function(t){return t.perdas/t.base;}),pp=rs.reduce(function(a,b){return a+b;},0)/rs.length;
+   var NN=tr.reduce(function(a,t){return a+t.base;},0)/tr.length;
+   var mg=1.96*Math.sqrt(Math.max(pp*(1-pp),0)/Math.max(NN,1));
+   var comp=(((DATA.churn[u]||{}).trans)||[]).filter(function(t){return t.para!==partial&&t.base;}),trd='—';
+   if(comp.length>=2){var x=comp[comp.length-2],y=comp[comp.length-1],dd=y.perdas/y.base-x.perdas/x.base;trd=dd<-0.003?'melhorando':dd>0.003?'piorando':'estável';}
+   return {p:pp,N:NN,mg:mg,lo:pp-mg,hi:pp+mg,trend:trd};
+  }
+  var arr=DATA.unidades.filter(function(u){return u.key!=='REDE';}).map(function(u){var st=ustat(u.key);return st?Object.assign({label:u.label},st):null;}).filter(Boolean).sort(function(a,b){return a.p-b.p;});
+  if(!arr.length){rk.innerHTML='';}
+  else{
+   var tiers=[];arr.forEach(function(r){var t=tiers[tiers.length-1];if(t&&r.lo<=Math.max.apply(null,t.map(function(x){return x.hi;})))t.push(r);else tiers.push([r]);});
+   var Dmin=Math.min.apply(null,arr.map(function(r){return r.lo;})),Dmax=Math.max.apply(null,arr.map(function(r){return r.hi;})),span=(Dmax-Dmin)||1;
+   function posx(v){return (v-Dmin)/span*100;}
+   var TC={'melhorando':'#2E7D4F','piorando':'#D64545','estável':'#8A8A8A','—':'#8A8A8A'};
+   var TA={'melhorando':'▼ melhorando','piorando':'▲ piorando','estável':'■ estável','—':'—'};
+   var allTied=tiers.length===1;
+   var h='<h4 style="margin:0 0 4px;font-size:14px">Ranking de unidades — churn do semestre (S'+H+'), com banda de incerteza</h4>';
+   h+='<p class="sub" style="margin:0 0 10px">Menor churn = melhor. A <b>banda</b> é a margem de erro (~95%, erro amostral). Unidades com bandas sobrepostas estão em <b>empate técnico</b> (agrupadas) — a diferença não é estatisticamente significativa; nesse caso o sinal acionável é a <b>tendência</b> (mês recente vs anterior).</p>';
+   if(allTied){h+='<p class="sub" style="margin:0 0 10px;color:#8C6D1F"><b>Empate técnico entre todas as unidades</b> neste semestre: as diferenças de nível estão dentro da margem de erro. Priorize a <b>tendência</b>.</p>';}
+   tiers.forEach(function(t,idx){
+    if(!allTied){h+='<div style="font-weight:700;margin:8px 0 2px">'+(idx+1)+'º lugar'+(t.length>1?' (empate)':'')+'</div>';}
+    t.forEach(function(r){
+     var c=TC[r.trend];
+     h+='<div style="display:flex;align-items:center;gap:10px;margin:5px 0;font-size:13px">'
+      +'<div style="width:90px;font-weight:600">'+r.label+'</div>'
+      +'<div style="width:120px"><b>'+(100*r.p).toFixed(1)+'%</b> <span style="color:var(--muted)">±'+(100*r.mg).toFixed(1)+'pp</span></div>'
+      +'<div style="flex:1;position:relative;height:14px;background:rgba(0,0,0,.06);border-radius:7px;min-width:120px">'
+        +'<div style="position:absolute;left:'+posx(r.lo).toFixed(1)+'%;width:'+(posx(r.hi)-posx(r.lo)).toFixed(1)+'%;top:3px;height:8px;background:rgba(62,109,170,.35);border-radius:4px"></div>'
+        +'<div style="position:absolute;left:'+posx(r.p).toFixed(1)+'%;top:1px;width:2px;height:12px;background:#3E6DAA"></div>'
+      +'</div>'
+      +'<div style="width:108px;text-align:right;font-weight:700;color:'+c+'">'+TA[r.trend]+'</div>'
+     +'</div>';
+    });
+   });
+   rk.innerHTML=h;
   }
  }
 }
