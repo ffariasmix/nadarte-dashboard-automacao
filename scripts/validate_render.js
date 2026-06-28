@@ -53,6 +53,9 @@ setTimeout(() => {
   const doc = dom.window.document;
   const win = dom.window;
   const tabs = doc.querySelectorAll('[data-tab]').length;
+  const btnCrit = doc.getElementById('btnCrit');
+  const critSec = doc.getElementById('tab-crit');
+  const metaChurn = ((doc.getElementById('metaChurnTbl') || {}).innerHTML) || '';
   const foot = (doc.getElementById('footMeta') || {}).textContent || '';
   const verbadge = (doc.querySelector('.verbadge') || {}).textContent || '';
   // KPI "Base de alunos" renderizada no DOM dos kpis (ex "Base de alunos4469...")
@@ -64,7 +67,10 @@ setTimeout(() => {
   const line = (cond, msg) => { if (!cond) ok = false; console.log((cond ? 'PASS ' : 'FALL ') + msg); };
 
   line(errors.length === 0, `zero erros de console/jsdom (achei ${errors.length})`);
-  line(tabs === 9, `9 abas presentes (achei ${tabs})`);
+  line(tabs === 8, `8 abas na nav, Criterios movido p/ rodape (achei ${tabs})`);
+  line(!!btnCrit, 'botao "Criterios" no rodape presente');
+  line(!!critSec, 'secao tab-crit presente (acessivel pelo rodape)');
+  line(metaChurn.length > 200 && /Fora da meta|Ouro|Prata|Bronze|Básico/.test(metaChurn), `painel meta de churn (Perdas) renderizado (${metaChurn.length} chars)`);
   line(baseRendered !== null, `KPI "Base de alunos" renderizada (${baseRendered})`);
   if (expectedBase !== null) line(baseRendered === expectedBase, `Base = ${expectedBase} (renderizou ${baseRendered})`);
   line(foot.trim()==='', 'rodape sem carimbo (removido a pedido): ok');
