@@ -1,0 +1,129 @@
+name: Build & Deploy Dashboard Nad'Arte
+
+on:
+  schedule:
+    # Quinta-feira 11:00 UTC = 08:00 America/Sao_Paulo (ajuste o cron se precisar)
+    - cron: '0 11 * * 4'
+  workflow_dispatch: {}   # botao "Run workflow" para rodar manualmente
+
+permissions:
+  contents: write   # para regravar version.txt apos uma rodada bem-sucedida
+
+concurrency:
+  group: build-deploy
+  cancel-in-progress: false
+
+env:
+  CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'nadarte-frequencia' }}
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install
+
+      - name: Conferir template congelado
+        run: |
+          if [ ! -s template/template.html ]; then
+            echo "::error::template/template.html ausente. Coloque o HTML congelado do dashboard nessa pasta."
+            exit 1
+          fi
+
+      - name: Baixar bases do Google Drive
+        env:
+          GOOGLE_SA_KEY: ${{ secrets.GOOGLE_SA_KEY }}
+        run: python scripts/drive_download.py data
+
+      - name: Construir freq_multi.json (com checagem de consistencia)
+        run: |
+          set -o pipefail
+          python scripts/build_freq_multi.py data 2>build.log | cat
+          cat build.log
+          if grep -q '\[WARN\]' build.log; then
+            echo "::error::Inconsistencia de churn detectada (ver build.log). Abortando sem publicar."
+            exit 1
+          fi
+
+      - name: Calcular versao, selo e carimbo
+        id: meta
+        run: |
+          OLD_VER=$(tr -d ' \n\r' < version.txt)
+          NEW_VER=$(python -c "v='$OLD_VER'.lstrip('v'); print('v%.1f' % (float(v)+0.1))")
+          BADGE_DATE=$(TZ=America/Sao_Paulo date +%d/%m)
+          N=$(python -c "import json;print(len(json.load(open('data/freq_multi.json'))['students']))")
+          JUNMAX=$(python -c "import json;print(json.load(open('data/freq_multi.json'))['junMax'])")
+          FOOT_DAY=$(python -c "print('$JUNMAX'.rsplit('/',1)[0] if '$JUNMAX' else '')")
+          BASEM=$(python -c "import json;print(json.load(open('data/freq_multi.json'))['baseMonth'])")
+          echo "old_ver=$OLD_VER"     >> "$GITHUB_OUTPUT"
+          echo "new_ver=$NEW_VER"     >> "$GITHUB_OUTPUT"
+          echo "badge_date=$BADGE_DATE">> "$GITHUB_OUTPUT"
+          echo "foot_day=$FOOT_DAY"   >> "$GITHUB_OUTPUT"
+          echo "n=$N"                 >> "$GITHUB_OUTPUT"
+          echo "basem=$BASEM"         >> "$GITHUB_OUTPUT"
+          echo "junmax=$JUNMAX"       >> "$GITHUB_OUTPUT"
+          echo "Versao $OLD_VER -> $NEW_VER | base $BASEM | $N alunos | dados ate $JUNMAX | selo $BADGE_DATE"
+
+      - name: Injetar dados no template
+        run: |
+          mkdir -p public
+          python scripts/inject_into_template.py \
+            template/template.html data/freq_multi.json public/index.html \
+            "${{ steps.meta.outputs.new_ver }}" \
+            "${{ steps.meta.outputs.badge_date }}" \
+            "${{ steps.meta.outputs.foot_day }}"
+
+      - name: Validar render (jsdom)
+        run: |
+          node scripts/validate_render.js public/index.html "${{ steps.meta.outputs.n }}" | tee validate.log
+          grep -q 'RESULTADO: VALIDACAO OK' validate.log
+
+      - name: Garantir projeto Pages (cria se nao existir)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@3 pages project create "$CF_PAGES_PROJECT" --production-branch=main || true
+
+      - name: Publicar no Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@3 pages deploy public \
+            --project-name "$CF_PAGES_PROJECT" \
+            --branch main --commit-dirty=true
+
+      - name: Atualizar version.txt no repo
+        run: |
+          echo "${{ steps.meta.outputs.new_ver }}" > version.txt
+          if ! git diff --quiet version.txt; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add version.txt
+            git commit -m "chore: bump versao para ${{ steps.meta.outputs.new_ver }} [skip ci]"
+            git push
+          fi
+
+      - name: Resumo
+        run: |
+          echo "### Dashboard atualizado :white_check_mark:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Base: ${{ steps.meta.outputs.basem }}"        >> "$GITHUB_STEP_SUMMARY"
+          echo "- Alunos: ${{ steps.meta.outputs.n }}"          >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dados ate: ${{ steps.meta.outputs.junmax }}"  >> "$GITHUB_STEP_SUMMARY"
+          echo "- Versao: ${{ steps.meta.outputs.new_ver }}"    >> "$GITHUB_STEP_SUMMARY"
