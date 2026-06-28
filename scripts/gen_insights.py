@@ -151,45 +151,71 @@ def main():
         finish(data, [], f"pacote anthropic indisponivel ({e}).")
 
     metrics = build_metrics(data)
-    prompt = (
+    metrics_str = json.dumps(metrics, ensure_ascii=False, indent=2)
+    regras = (
         "Voce e analista senior de retencao de uma rede de academias (Nad'Arte, Brasilia/DF).\n"
-        "Com base nos NUMEROS INTERNOS abaixo, gere de 3 a 5 INSIGHTS ESTRATEGICOS para a gestao.\n"
-        "Regras:\n"
-        "1. Cada insight e uma HIPOTESE ACIONAVEL — nao um resumo do dado. Conecte o numero interno a uma possivel causa.\n"
-        "2. Traga CONTEXTO DE MERCADO atual: tendencias do setor fitness brasileiro, sazonalidade (estamos em meados de 2026), concorrencia, comportamento do consumidor.\n"
-        "3. Use a BUSCA NA WEB para embasar o contexto e CITE FONTES REAIS e verificaveis (titulo + URL). Nao invente fontes.\n"
-        "4. Inclua uma ACAO sugerida, concreta, por insight.\n"
+        "Regras dos insights:\n"
+        "1. Cada insight e uma HIPOTESE ACIONAVEL — nao um resumo do dado. Conecte o numero a uma possivel causa.\n"
+        "2. Traga CONTEXTO DE MERCADO: setor fitness brasileiro, sazonalidade (meados de 2026), concorrencia, consumidor.\n"
+        "3. Cite FONTES REAIS e verificaveis (titulo + URL). Nao invente fontes.\n"
+        "4. Inclua uma ACAO concreta por insight.\n"
         "5. Portugues do Brasil, tom executivo e direto.\n"
-        "Pesquise na web para embasar o contexto e, AO FINAL, chame OBRIGATORIAMENTE a ferramenta "
-        "'registrar_insights' com 3 a 5 insights estruturados.\n\n"
-        "NUMEROS INTERNOS:\n" + json.dumps(metrics, ensure_ascii=False, indent=2)
     )
+
+    def call(client, messages, tools, max_tokens, tool_choice=None):
+        kwargs = dict(model=MODEL, max_tokens=max_tokens, tools=tools, messages=list(messages))
+        if tool_choice:
+            kwargs["tool_choice"] = tool_choice
+        last = None
+        for _ in range(8):  # continuacao para pause_turn (busca web longa)
+            last = client.messages.create(**kwargs)
+            if getattr(last, "stop_reason", None) == "pause_turn":
+                kwargs["messages"] = kwargs["messages"] + [{"role": "assistant", "content": last.content}]
+                continue
+            break
+        return last
 
     try:
         client = anthropic.Anthropic(api_key=KEY)
-        resp = client.messages.create(
-            model=MODEL,
-            max_tokens=4500,
-            tools=[
-                {"type": "web_search_20250305", "name": "web_search", "max_uses": 6},
-                OUTPUT_TOOL,
-            ],
-            messages=[{"role": "user", "content": prompt}],
+
+        # Etapa 1 — pesquisa de mercado com busca na web
+        prompt_pesq = (
+            regras +
+            "\nPesquise na web e escreva um BRIEFING curto (com URLs das fontes) sobre o cenario do setor fitness "
+            "brasileiro relevante para os numeros abaixo (retencao, sazonalidade, concorrencia em Brasilia/DF).\n\n"
+            "NUMEROS INTERNOS:\n" + metrics_str
         )
-        # 1) caminho robusto: ler o tool_use 'registrar_insights' (JSON validado pela API)
+        r1 = call(client, [{"role": "user", "content": prompt_pesq}],
+                  [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}], 5000)
+        briefing = "".join(getattr(b, "text", "") for b in r1.content if getattr(b, "type", None) == "text")
+        print(f"[insights] etapa1 stop={getattr(r1,'stop_reason',None)} brief_len={len(briefing)}", file=sys.stderr)
+
+        # Etapa 2 — estruturacao com tool_choice forcado (garante saida valida)
+        prompt_estr = (
+            regras +
+            "\nUse o BRIEFING e os NUMEROS para gerar de 3 a 5 insights e chame a ferramenta registrar_insights "
+            "(cite as URLs do briefing nas fontes).\n\n"
+            "NUMEROS INTERNOS:\n" + metrics_str +
+            "\n\nBRIEFING DE MERCADO:\n" + (briefing or "(sem briefing — use conhecimento do setor e cite fontes conhecidas)")
+        )
+        r2 = call(client, [{"role": "user", "content": prompt_estr}],
+                  [OUTPUT_TOOL], 5000, tool_choice={"type": "tool", "name": "registrar_insights"})
         insights = None
-        for b in resp.content:
+        for b in r2.content:
             if getattr(b, "type", None) == "tool_use" and getattr(b, "name", "") == "registrar_insights":
-                inp = getattr(b, "input", {}) or {}
-                insights = inp.get("insights", [])
+                insights = (getattr(b, "input", {}) or {}).get("insights", [])
                 break
-        # 2) fallback: parsear JSON do texto
         if insights is None:
-            text = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text")
-            insights = extract_json(text).get("insights", [])
+            text = "".join(getattr(b, "text", "") for b in r2.content if getattr(b, "type", None) == "text")
+            try:
+                insights = extract_json(text).get("insights", [])
+            except Exception:
+                insights = []
+        print(f"[insights] etapa2 stop={getattr(r2,'stop_reason',None)} n_raw={len(insights or [])}", file=sys.stderr)
+
         # saneamento basico: manter apenas campos esperados e URLs http(s)
         clean = []
-        for x in insights[:6]:
+        for x in (insights or [])[:6]:
             if not isinstance(x, dict):
                 continue
             fontes = []
