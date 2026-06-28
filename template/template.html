@@ -313,6 +313,7 @@ header.top{position:static!important}
 <p class="sub">Cumprimento da meta de frequência (medida por categoria) — comparações de período.</p>
 <div class="cmp" id="cmp"></div>
 <p class="cap" id="cmpCap"></p>
+<h2 class="title">Hipóteses &amp; contexto de mercado <span style="font-size:12px;font-weight:700;color:#6B5BAD;border:1px solid #6B5BAD;border-radius:6px;padding:1px 7px;vertical-align:middle">IA · com fontes</span></h2><p class="sub">Hipóteses estratégicas que cruzam nossos números com o cenário do setor fitness — atualizadas semanalmente, com fontes reais citadas.</p><div id="aiInsights" style="margin-bottom:18px"></div>
 <h2 class="title">Top 10 Insights</h2>
 <p class="sub">Respostas automáticas às perguntas-chave da operação · recalcula com os filtros.</p>
 <div class="insights" id="insights"></div>
@@ -949,6 +950,24 @@ function renderMetaChurn(){
  }
 }
 
+function renderAIInsights(){
+ var box=document.getElementById('aiInsights'); if(!box)return;
+ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+ function safeUrl(u){u=String(u||'');return /^https?:\/\//i.test(u)?u:'#';}
+ var ins=(DATA.insights)||[];
+ if(!ins.length){box.innerHTML='<div class="sub" style="padding:8px 0">As hipóteses com contexto de mercado e fontes citadas serão geradas na próxima execução semanal.</div>';return;}
+ box.innerHTML=ins.map(function(x){
+  var fontes=(x.fontes||[]).map(function(f){return '<a href="'+safeUrl(f.url)+'" target="_blank" rel="noopener noreferrer" style="color:#3E6DAA">'+esc(f.titulo||f.url)+'</a>';}).join(' · ');
+  return '<div class="ins" style="border-left-color:#6B5BAD;margin-bottom:10px"><div class="body">'
+   +'<div class="h" style="font-weight:700;font-size:15px">'+esc(x.titulo)+'</div>'
+   +(x.hipotese?'<div class="t" style="margin-top:3px"><b>Hipótese:</b> '+esc(x.hipotese)+'</div>':'')
+   +(x.contexto?'<div class="t" style="margin-top:3px"><b>Contexto de mercado:</b> '+esc(x.contexto)+'</div>':'')
+   +(x.acao?'<div class="t" style="margin-top:3px"><b>Ação sugerida:</b> '+esc(x.acao)+'</div>':'')
+   +(fontes?'<div class="t" style="margin-top:5px;font-size:12px;color:var(--muted)"><b>Fontes:</b> '+fontes+'</div>':'')
+   +'</div></div>';
+ }).join('');
+}
+
 function renderPerdas(L){
  const ch=(DATA.churn&&(DATA.churn[state.unit]||DATA.churn.REDE))||{trans:[],pre:{}};
  const Tall=ch.trans||[];
@@ -1065,7 +1084,7 @@ function render(){const L=withM(filtered());const A=agg(L);
  if(single){const m='<b>Selecione 2+ meses para esta análise.</b> Comportamento, ciclo de vida e risco são calculados pela <b>trajetória</b> do aluno (comparando meses). Com um único mês ('+MES[state.from-1]+') não há trajetória — todos cairiam em \"Novo\" ou \"Sem acesso\", o que não reflete a realidade. Use <b>Período → Meses fechados</b> ou um intervalo. Para um mês isolado, <b>Visão Geral</b> (frequência) e <b>Meta Atingida</b> seguem válidas.';['warnComp','warnRisco','warnEng'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=m;});}
  renderScore(L,A);renderKPIs(L,A);renderRiskMoney(L);renderCatBoxes(L,A);renderCmp(L,A);renderInsights(L,A);renderCharts(L,A);
  renderClusters(L,A);renderFlow(L);renderMud(L);renderMod(L);
- pgR=1;renderRisco(L);pgM=1;renderMeta(L);pgE=1;renderEng(L);renderPerdas(L);renderMetaChurn();renderAniv(L);renderCrit();}
+ pgR=1;renderRisco(L);pgM=1;renderMeta(L);pgE=1;renderEng(L);renderPerdas(L);renderMetaChurn();renderAIInsights();renderAniv(L);renderCrit();}
 
 function _br(v){return Number(v).toFixed(2).replace('.',',');}
 function downloadCSV(){
