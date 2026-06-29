@@ -710,7 +710,7 @@ function renderMud(L){
  else rows.sort((a,b)=>Math.abs(b.b.d)-Math.abs(a.b.d));
  const total=rows.length;rows=rows.slice(0,50);
  document.getElementById('tmudb').innerHTML=rows.map((s,i)=>{const dn=s.b.change<0,col=dn?C.red:C.green,arr=dn?'▼':'▲';
-   return '<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600">'+s.nome+'</td><td>'+s.grupo+'</td><td>'+spark(s.m.rng,state.from)+'</td>'
+   return '<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.grupo+'</td><td>'+spark(s.m.rng,state.from)+'</td>'
    +'<td style="white-space:nowrap"><b>'+s.b.e.toFixed(1)+'</b> → <b>'+s.b.l.toFixed(1)+'</b></td>'
    +'<td style="font-weight:700;color:'+col+';white-space:nowrap">'+arr+' '+(s.b.d>=0?'+':'')+s.b.d.toFixed(1)+'</td>'
    +'<td style="font-weight:700;color:'+col+'">'+sig(s.b.change)+'</td>'
@@ -746,6 +746,76 @@ let anivToday=false;
 function alertCards(id,arr){document.getElementById(id).innerHTML=arr.map(a=>'<div class="alert"><div class="ico" style="background:'+tint(a.c)+';color:'+a.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+a.ico+'</svg></div><div><div class="v" style="color:'+a.c+'">'+a.v+'</div><div class="l">'+a.l+'</div></div></div>').join('');}
 const IC_AL='<path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/>',IC_OK='<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',IC_HE='<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/>';
 
+// ===== Drawer de aluno: perfil + abordagem personalizada (reutilizavel em todas as abas) =====
+function akey(s){return (s.u||'')+'|'+(s.mat||'')+'|'+(s.nome||'');}
+function aname(s){return '<span class="arow" data-k="'+akey(s).replace(/"/g,'&quot;')+'" title="Ver perfil e abordagem">'+escD(s.nome)+'</span>';}
+function findAluno(k){var p=String(k).split('|'),u=p[0],mat=p[1],nome=p.slice(2).join('|');
+  return (DATA.students||[]).find(function(s){return s.u===u&&String(s.mat)===String(mat)&&s.nome===nome;});}
+function escD(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function safeU(u){u=String(u||'');return /^https?:\/\//i.test(u)?u:'#';}
+function abordagem(s,c,tenure){
+  var fiel=(c.cluster==='Fiel'||c.cluster==='Regular'||c.cluster==='Em ascensão');
+  var alto=(c.risco==='Alto'||c.cluster==='Em evasão'||c.cluster==='Sem acesso');
+  var medio=(c.cluster==='Em declínio'||c.risco==='Médio'||c.cluster==='Esporádico');
+  var longo=(tenure!=null&&tenure>=4);
+  if(c.cluster==='Novo')
+    return {obj:'Onboarding',cor:'#3E6DAA',leitura:'Aluno novo — ainda criando hábito. A janela das primeiras semanas decide a permanência.',
+      roteiro:['Dar boas-vindas e perguntar como foi a primeira experiência.','Garantir que sabe horários, turmas e como usar a estrutura.','Marcar um retorno em 2 semanas para acompanhar.'],oferta:'Aula experimental guiada / avaliação inicial gratuita.'};
+  if(c.cluster==='Retorno')
+    return {obj:'Boas-vindas de volta',cor:'#6B5BAD',leitura:'Reativado — voltou após ausência. Momento frágil: reforçar o vínculo para não sair de novo.',
+      roteiro:['Reconhecer o retorno de forma positiva (sem cobrança).','Entender o que motivou a volta e o objetivo atual.','Sugerir uma rotina leve para reconstruir o hábito.'],oferta:'Plano de retomada / reavaliação de objetivos.'};
+  if(alto&&longo)
+    return {obj:'Resgate prioritário (fiel)',cor:'#D64545',leitura:'Cliente de longa data ('+tenure+' meses) que parou de forma abrupta — padrão típico de fator externo (mudança, lesão, agenda), não de desgaste. Alta chance de recuperação com toque pessoal.',
+      roteiro:['Ligação da coordenação, tom de cuidado — "sentimos sua falta", sem venda dura.','Perguntar abertamente o que aconteceu e REGISTRAR o motivo real.','Oferecer solução para o motivo (congelamento, troca de horário/modalidade).'],oferta:'Flexibilização (pausa/horário) + retorno facilitado.'};
+  if(alto)
+    return {obj:'Resgate ativo',cor:'#D64545',leitura:'Sem acessos no período' + (tenure!=null?(' e pouco tempo de casa ('+tenure+' meses)'):'') + ' — provável hábito nunca consolidado. Foco em reverter antes do cancelamento.',
+      roteiro:['Ligação da coordenação + oferta de reativação.','Mapear e REGISTRAR o motivo da parada.','Propor recomeço com meta pequena e acompanhamento próximo.'],oferta:'Reativação + acompanhamento nas 2 primeiras semanas.'};
+  if(medio)
+    return {obj:'Retenção (sinal de alerta)',cor:'#E8821A',leitura:'Frequência em queda / irregular — ainda dá tempo de reverter antes de virar evasão.',
+      roteiro:['Contato leve: "notamos que você apareceu menos, está tudo bem?".','Identificar barreira (horário, motivação, rotina) e REGISTRAR.','Repactuar uma meta realista e um próximo passo.'],oferta:'Ajuste de horário/modalidade ou novo desafio.'};
+  if(fiel)
+    return {obj:'Reconhecimento & fidelização',cor:'#2E7D4F',leitura:'Aluno engajado'+(longo?(' e fiel de longa data ('+tenure+' meses)'):'')+'. Vale reconhecer e transformar em promotor.',
+      roteiro:['Reconhecer a constância (mensagem/parabéns pela frequência).','Pedir INDICAÇÃO de amigos/familiares (programa member-get-member).','Oferecer próximo nível: novo objetivo, modalidade extra ou avaliação.'],oferta:'Programa de indicação + upgrade/cross-sell de modalidade.'};
+  return {obj:'Acompanhamento',cor:'#5BAD6F',leitura:'Perfil estável. Manter relacionamento e atenção a mudanças de padrão.',
+    roteiro:['Contato de relacionamento e check de satisfação.','Estimular constância e novos objetivos.'],oferta:'Check-in de satisfação.'};
+}
+function alunoDetail(s){
+  var c=cluster(s.ac,state.from,state.to,s.fs);
+  var unitLabel=(((DATA.unidades||[]).find(function(u){return u.key===s.u;}))||{}).label||s.u;
+  var nm=MES.length;
+  var tenure=(typeof s.fs==='number'&&s.fs>=0)?(nm-s.fs):null;
+  var firstSeen=(typeof s.fs==='number'&&s.fs>=0&&s.fs<nm)?MES[s.fs]:'base anterior';
+  var ai=[];for(var i=0;i<s.ac.length;i++)if(s.ac[i]>0)ai.push(i);
+  var lastAcc=ai.length?MES[ai[ai.length-1]]:'sem registro';
+  var maxv=Math.max.apply(null,s.ac.concat([1]));
+  var bars=s.ac.map(function(v,i){var h=Math.round(5+(v/maxv)*36),inWin=(i>=state.from-1&&i<=state.to-1);
+    return '<div style="flex:1;text-align:center"><div style="height:42px;display:flex;align-items:flex-end;justify-content:center"><div style="width:62%;height:'+h+'px;background:'+(v>0?(inWin?'#3E6DAA':'#9bb3d4'):'#e6e6e6')+';border-radius:3px"></div></div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+MES[i].split('.')[0]+'</div><div style="font-size:11px;font-weight:700">'+v+'</div></div>';}).join('');
+  var ab=abordagem(s,c,tenure);
+  var roteiro=ab.roteiro.map(function(l){return '<li style="margin:3px 0">'+escD(l)+'</li>';}).join('');
+  var hook=(DATA.hooks&&DATA.hooks[s.grupo])||null;
+  var hookHtml=hook?('<div class="adsec"><div class="adlab">Gancho de mercado — '+escD(s.grupo)+'</div><div>'+escD(hook.gancho)+'</div>'+(hook.fonte&&hook.fonte.url?('<div style="font-size:12px;margin-top:4px;color:var(--muted)">Fonte: <a href="'+safeU(hook.fonte.url)+'" target="_blank" rel="noopener noreferrer" style="color:#3E6DAA">'+escD(hook.fonte.titulo||hook.fonte.url)+'</a></div>'):'')+'</div>'):'';
+  var bday='';
+  if(s.bm){var curM=state.to; if(s.bm===curM||s.bm===(curM%12)+1){bday='<div class="adsec" style="border-left-color:#E0A93B"><div class="adlab">🎂 Aniversário próximo</div>Aniversariante de '+escD(MES[(s.bm-1)%nm]?MES[(s.bm-1)%nm].split(".")[0]:s.bm)+(s.bd?(' (dia '+s.bd+')'):'')+' — ótimo gancho de relacionamento para o contato.</div>';}}
+  return ''
+   +'<div class="adname">'+escD(s.nome)+'</div>'
+   +'<div class="adtags"><span class="adtag" style="background:'+(ab.cor)+'">'+escD(c.cluster)+'</span>'
+     +'<span class="adtag2">'+escD(s.grupo)+(s.mod?(' · '+escD(s.mod)):'')+'</span>'
+     +'<span class="adtag2">'+escD(unitLabel)+'</span>'
+     +(s.band?'<span class="adtag2">'+escD(s.band)+'</span>':'')
+     +(tenure!=null?'<span class="adtag2">'+tenure+' meses de casa</span>':'')+'</div>'
+   +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">1ª aparição: <b>'+escD(firstSeen)+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
+   +'<div class="adsec"><div class="adlab">Diagnóstico</div>'+escD(c.motivo||'')+'</div>'
+   +'<div class="adsec" style="border-left-color:'+ab.cor+'"><div class="adlab" style="color:'+ab.cor+'">Abordagem recomendada · '+escD(ab.obj)+'</div>'
+     +'<div style="margin-bottom:6px">'+escD(ab.leitura)+'</div>'
+     +'<div style="font-weight:600;margin-bottom:2px">Roteiro:</div><ol style="margin:0 0 6px 18px;padding:0">'+roteiro+'</ol>'
+     +'<div><b>Oferta:</b> '+escD(ab.oferta)+'</div></div>'
+   +bday
+   +hookHtml
+   +'<div style="font-size:12px;color:var(--muted);margin-top:10px">Dica: confirme e registre o <b>motivo real</b> na conversa — isso melhora as recomendações futuras.</div>';
+}
+function openAluno(k){var s=findAluno(k);if(!s)return;var b=document.getElementById('alunoDrawerBody');if(b)b.innerHTML=alunoDetail(s);var d=document.getElementById('alunoDrawer'),o=document.getElementById('alunoOverlay');if(d)d.classList.add('open');if(o)o.classList.add('open');}
+function closeAluno(){var d=document.getElementById('alunoDrawer'),o=document.getElementById('alunoOverlay');if(d)d.classList.remove('open');if(o)o.classList.remove('open');}
+
 function renderRisco(L){if(state.from===state.to){document.getElementById('alerts').innerHTML='';document.getElementById('triscob').innerHTML='';document.getElementById('riscoPager').innerHTML='';return;}const A=agg(L);
  const lastM=MES[state.to-1];
  const cur=winAgg(L,state.from,state.to);
@@ -762,7 +832,7 @@ function renderRisco(L){if(state.from===state.to){document.getElementById('alert
  document.getElementById('alerts').innerHTML=rboxes.map(b=>{const r=_rs(b.pred);const cmpHtml=cmpRow(fval(cur,b.f),fval(mom,b.f),fval(qoq,b.f),false,true);return '<div class="alert" style="border-left:4px solid '+b.c+'"><div class="ico" style="background:'+tint(b.c)+';color:'+b.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+b.ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+b.c+'">'+r.c+'</div><div class="l">'+b.l+'</div>'+cmpHtml+'<div style="font-size:15px;font-weight:800;color:'+b.c+';margin-top:6px">'+BRL(r.v)+'<span style="font-size:11px;font-weight:600;color:var(--muted)"> em risco/mês</span></div><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+b.d+'</div></div></div>';}).join('');
  const wm=withM(L);let rows=wm.filter(s=>rf==='AM'?s.m.risco!=='Baixo':rf==='all'?true:s.m.risco===rf);
  rows.sort((a,b)=>({Alto:0,'Médio':1,Baixo:2}[a.m.risco]-{Alto:0,'Médio':1,Baixo:2}[b.m.risco])||(b.m.inativo-a.m.inativo)||(a.m.metaPct-b.m.metaPct));cR=rows;drawR();}
-function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+s.nome+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
+function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
 
 function winAgg(L,a,b){const lastM=MES[b-1];const risk={Alto:0,'Médio':0,Baixo:0},clu={};
  let fiel=0,eng=0,asc=0,meta=0,both=0,quase=0,sumiram=0,evas=0,mpS=0,nf=0;const base=L.length;
@@ -797,7 +867,7 @@ function renderMeta(L){const wm=withM(L);const single=state.from===state.to;
  document.getElementById('metaCmpCap').innerHTML='<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 1 trimestre antes (−3 meses) · <span style="color:'+C.green+'">▲ verde melhorou</span> · <span style="color:'+C.red+'">▼ vermelho piorou</span>. <b>YoY suprimido</b> (sem base de 2025). Aparece "—" quando não há período anterior suficiente (ex.: a janela começa em janeiro).';
  let rows=wm.filter(s=>mf==='sim'?s.m.atingiu:mf==='quase'?(!s.m.atingiu&&s.m.metaPct>=0.7):(s.m.metaPct<0.7));
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cM=rows;drawM();}
-function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+s.nome+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situMeta(s)+'</td><td style="font-weight:700;color:'+(s.m.atingiu?C.green:C.muted)+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoMeta(s.m)+'</td></tr>','tmetab','metaPager',p=>{pgM=p;drawM();},pgM,30);}
+function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situMeta(s)+'</td><td style="font-weight:700;color:'+(s.m.atingiu?C.green:C.muted)+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoMeta(s.m)+'</td></tr>','tmetab','metaPager',p=>{pgM=p;drawM();},pgM,30);}
 
 function renderEng(L){if(state.from===state.to){document.getElementById('alertsE').innerHTML='';document.getElementById('tengb').innerHTML='';document.getElementById('engPager').innerHTML='';return;}
  const cur=winAgg(L,state.from,state.to);
@@ -811,7 +881,7 @@ function renderEng(L){if(state.from===state.to){document.getElementById('alertsE
  document.getElementById('alertsE').innerHTML=html;
  const wm=withM(L);let rows=wm.filter(s=>ef==='cons'?(s.m.cluster==='Fiel'||s.m.cluster==='Regular'):ef==='Fiel'?s.m.cluster==='Fiel':s.m.cluster==='Em ascensão');
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cE=rows;drawE();}
-function drawE(){paginate(cE,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+s.nome+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situEng(s.m)+'</td><td style="font-weight:700;color:'+C.green+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoEng(s.m)+'</td></tr>','tengb','engPager',p=>{pgE=p;drawE();},pgE,30);}
+function drawE(){paginate(cE,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situEng(s.m)+'</td><td style="font-weight:700;color:'+C.green+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoEng(s.m)+'</td></tr>','tengb','engPager',p=>{pgE=p;drawE();},pgE,30);}
 
 const MESNOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function renderAniv(L){
@@ -830,7 +900,7 @@ function renderAniv(L){
  const tlbl=anivToday?'Aniversariantes hoje ('+tdmm+')':'Aniversariantes em '+MESNOME[mes-1];
  document.getElementById('anivKpis').innerHTML=kc(total,tlbl,C.orange)+kc(risco,'Em risco (A+M) — resgate na data',C.red)+kc(eng,'Engajados (Fiel/Regular)',C.green);
  document.getElementById('tanivb').innerHTML=rows.length?rows.map(s=>{const dd=('0'+s.bd).slice(-2),mm=('0'+mes).slice(-2),faz=s.by?(2026-s.by)+' anos':'—';
-   return '<tr><td style="font-weight:700;white-space:nowrap">'+dd+'/'+mm+'</td><td style="font-weight:600">'+s.nome+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="white-space:nowrap">'+faz+'</td><td>'+s.mod+'</td><td>'+(ulab[s.u]||s.u)+'</td><td>'+clChip(s.m.cluster)+'</td></tr>';}).join('')
+   return '<tr><td style="font-weight:700;white-space:nowrap">'+dd+'/'+mm+'</td><td style="font-weight:600">'+aname(s)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="white-space:nowrap">'+faz+'</td><td>'+s.mod+'</td><td>'+(ulab[s.u]||s.u)+'</td><td>'+clChip(s.m.cluster)+'</td></tr>';}).join('')
    :'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px">'+(anivToday?'Nenhum aniversariante hoje ('+tdmm+') neste filtro.':'Nenhum aniversariante neste filtro.')+'</td></tr>';
  document.getElementById('anivCap').innerHTML='<b>'+total+'</b> aniversariante(s) '+(anivToday?'<b>hoje</b> ('+tdmm+')':'em '+MESNOME[mes-1])+(state.unit!=='REDE'?' · '+uLabel():' · rede')+(clu!=='all'?' · '+clu:'')+'. <b>Faz</b> = idade que completa em 2026 · ordenado por dia · o <b>Comportamento</b> usa a janela de Período atual.';
 }
@@ -1150,6 +1220,8 @@ function downloadCSV(){
  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('tab-'+t.dataset.tab).classList.add('active');});
  var bCsv=document.getElementById('btnCsv');if(bCsv)bCsv.onclick=downloadCSV;
  var bCrit=document.getElementById('btnCrit');if(bCrit)bCrit.onclick=function(){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));var c=document.getElementById('tab-crit');if(c)c.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});};
+ (function(){var ov=document.createElement('div');ov.id='alunoOverlay';var dr=document.createElement('div');dr.id='alunoDrawer';dr.innerHTML='<div class="adrhead"><b>Perfil &amp; abordagem do aluno</b><button id="alunoClose" aria-label="Fechar">\u2715</button></div><div id="alunoDrawerBody"></div>';document.body.appendChild(ov);document.body.appendChild(dr);ov.onclick=closeAluno;var bc=document.getElementById('alunoClose');if(bc)bc.onclick=closeAluno;document.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('.arow'):null;if(t&&t.dataset&&t.dataset.k){openAluno(t.dataset.k);}});})();
  render();
 })();
-</script><script>document.addEventListener("DOMContentLoaded",function(){try{var rp=document.getElementById("riskPanel"),cb=document.getElementById("critBody");if(rp&&cb&&cb.parentNode){cb.parentNode.insertBefore(rp,cb.nextSibling);}}catch(e){}try{var d=(typeof DATA!=="undefined")?DATA:{};var el=document.getElementById("baseRefDate");if(el&&d.baseUpdated)el.textContent=d.baseUpdated;var by=document.getElementById("baseRefBy");if(by)by.textContent="· por Nad'Arte (Catracas e Ativos)";}catch(e){}});</script></body></html>
+</script><script>document.addEventListener("DOMContentLoaded",function(){try{var rp=document.getElementById("riskPanel"),cb=document.getElementById("critBody");if(rp&&cb&&cb.parentNode){cb.parentNode.insertBefore(rp,cb.nextSibling);}}catch(e){}try{var d=(typeof DATA!=="undefined")?DATA:{};var el=document.getElementById("baseRefDate");if(el&&d.baseUpdated)el.textContent=d.baseUpdated;var by=document.getElementById("baseRefBy");if(by)by.textContent="· por Nad'Arte (Catracas e Ativos)";}catch(e){}});</script><style>.arow{color:#3E6DAA;cursor:pointer;border-bottom:1px dashed rgba(62,109,170,.5)}.arow:hover{color:#27496f}#alunoOverlay{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .18s;z-index:998}#alunoOverlay.open{opacity:1;pointer-events:auto}#alunoDrawer{position:fixed;top:0;right:0;height:100%;width:430px;max-width:92vw;background:var(--card,#fff);box-shadow:-6px 0 24px rgba(0,0,0,.18);transform:translateX(100%);transition:transform .2s;z-index:999;overflow-y:auto}#alunoDrawer.open{transform:translateX(0)}.adrhead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line,#eee);position:sticky;top:0;background:var(--card,#fff)}.adrhead button{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}#alunoDrawerBody{padding:16px}.adname{font-size:18px;font-weight:700;margin-bottom:8px}.adtags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.adtag{color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}.adtag2{background:rgba(0,0,0,.06);font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}.adsec{border-left:3px solid var(--line,#ddd);padding:6px 0 6px 12px;margin:10px 0}.adlab{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:3px}</style>
+</body></html>
