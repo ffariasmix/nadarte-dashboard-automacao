@@ -779,6 +779,17 @@ function abordagem(s,c,tenure){
   return {obj:'Acompanhamento',cor:'#5BAD6F',leitura:'Perfil estável. Manter relacionamento e atenção a mudanças de padrão.',
     roteiro:['Contato de relacionamento e check de satisfação.','Estimular constância e novos objetivos.'],oferta:'Check-in de satisfação.'};
 }
+var __avgStart=null;
+function parseRefDate(){var b=DATA.baseUpdated||'';var m=String(b).match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):new Date();}
+function enrollRef(s){var MN={Jan:0,Fev:1,Mar:2,Abr:3,Mai:4,Jun:5,Jul:6,Ago:7,Set:8,Out:9,Nov:10,Dez:11};var fs=(typeof s.fs==='number'&&s.fs>=0&&s.fs<MES.length)?s.fs:0;var p=MES[fs].split('.');return new Date(2000+(parseInt(p[1],10)||0),(MN[p[0]]||0),1);}
+function daysBetween(a,b){return Math.round((b-a)/86400000);}
+function avgStartDays(){if(__avgStart!==null)return __avgStart;var arr=[];(DATA.students||[]).forEach(function(s){if(!s.fa)return;var fa=new Date(s.fa);if(isNaN(fa.getTime()))return;var d=daysBetween(enrollRef(s),fa);if(d>=0&&d<=400)arr.push(d);});__avgStart=arr.length?Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length):-1;return __avgStart;}
+function onboardingPlan(s){var avg=avgStartDays(),ref=(avg>0?avg:21),elapsed=Math.max(0,daysBetween(enrollRef(s),parseRefDate())),avgT=(avg>0?('~'+avg+' dias'):'indisponível');
+ if(elapsed<=ref)return{obj:'Onboarding — incentivar início',cor:'#3E6DAA',leitura:'Entrou há '+elapsed+' dias e ainda não fez o 1º acesso — dentro do tempo médio de início da rede ('+avgT+'). Momento de ativar.',roteiro:['Boas-vindas e parabéns pela escolha.','Ajudar a marcar a 1ª aula/horário agora.','Explicar a estrutura e tirar dúvidas iniciais.'],oferta:'Agendamento da 1ª aula + acompanhamento na 1ª semana.',onboarding:true};
+ if(elapsed<=ref*2)return{obj:'Onboarding — confirmar intenção',cor:'#E8821A',leitura:'Entrou há '+elapsed+' dias sem 1º acesso — um pouco acima da média ('+avgT+'). Confirmar se há algo previsto ou se está se programando.',roteiro:['Perguntar se já tem dia/horário planejado para começar.','Remover barreiras (horário, orientação, receio inicial).','Marcar uma data concreta de início e registrar.'],oferta:'Definir data de início + lembrete.',onboarding:true};
+ return{obj:'Acionar escritório — verificar cadastro',cor:'#D64545',leitura:'Entrou há '+elapsed+' dias e NUNCA acessou — muito acima da média ('+avgT+'). Antes de qualquer abordagem, validar o cadastro.',roteiro:['Acionar o escritório: o contrato está realmente ativo? há cobrança rodando?','Checar se foi venda sem início, cortesia ou erro cadastral.','Só após confirmar ativo + intenção de treinar, seguir para ativação.'],oferta:'Verificação cadastral/contratual com o escritório.',onboarding:true};
+}
+
 function alunoDetail(s){
   var c=cluster(s.ac,state.from,state.to,s.fs);
   var unitLabel=(((DATA.unidades||[]).find(function(u){return u.key===s.u;}))||{}).label||s.u;
@@ -788,9 +799,8 @@ function alunoDetail(s){
   var ai=[];for(var i=0;i<s.ac.length;i++)if(s.ac[i]>0)ai.push(i);
   var lastAcc=ai.length?MES[ai[ai.length-1]]:'sem registro';
   var maxv=Math.max.apply(null,s.ac.concat([1]));
-  var bars=s.ac.map(function(v,i){var h=Math.round(5+(v/maxv)*36),inWin=(i>=state.from-1&&i<=state.to-1);
-    return '<div style="flex:1;text-align:center"><div style="height:42px;display:flex;align-items:flex-end;justify-content:center"><div style="width:62%;height:'+h+'px;background:'+(v>0?(inWin?'#3E6DAA':'#9bb3d4'):'#e6e6e6')+';border-radius:3px"></div></div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+MES[i].split('.')[0]+'</div><div style="font-size:11px;font-weight:700">'+v+'</div></div>';}).join('');
-  var ab=abordagem(s,c,tenure);
+  var bars=s.ac.map(function(v,i){var enrolled=(s.active&&s.active[i])?1:0,inWin=(i>=state.from-1&&i<=state.to-1);var col,h;if(!enrolled){col='#ececec';h=6;}else if(v>0){col=inWin?'#3E6DAA':'#9bb3d4';h=Math.round(8+(v/maxv)*32);}else{col='#E8A0A0';h=8;}return '<div style="flex:1;text-align:center"><div style="height:42px;display:flex;align-items:flex-end;justify-content:center"><div style="width:62%;height:'+h+'px;background:'+col+';border-radius:3px"></div></div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+MES[i].split('.')[0]+'</div><div style="font-size:11px;font-weight:700;color:'+(enrolled?'inherit':'#bbb')+'">'+(enrolled?v:'\u00b7')+'</div></div>';}).join('');
+  var ab=(!s.fa)?onboardingPlan(s):abordagem(s,c,tenure);
   var roteiro=ab.roteiro.map(function(l){return '<li style="margin:3px 0">'+escD(l)+'</li>';}).join('');
   var hook=(DATA.hooks&&DATA.hooks[s.grupo])||null;
   var hookHtml=hook?('<div class="adsec"><div class="adlab">Gancho de mercado — '+escD(s.grupo)+'</div><div>'+escD(hook.gancho)+'</div>'+(hook.fonte&&hook.fonte.url?('<div style="font-size:12px;margin-top:4px;color:var(--muted)">Fonte: <a href="'+safeU(hook.fonte.url)+'" target="_blank" rel="noopener noreferrer" style="color:#3E6DAA">'+escD(hook.fonte.titulo||hook.fonte.url)+'</a></div>'):'')+'</div>'):'';
@@ -803,7 +813,7 @@ function alunoDetail(s){
      +'<span class="adtag2">'+escD(unitLabel)+'</span>'
      +(s.band?'<span class="adtag2">'+escD(s.band)+'</span>':'')
      +(tenure!=null?'<span class="adtag2">'+tenure+' meses de casa</span>':'')+'</div>'
-   +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">1ª aparição: <b>'+escD(firstSeen)+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
+   +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px"><span style="color:#3E6DAA">■</span> acessou · <span style="color:#E8A0A0">■</span> matriculado s/ acesso · <span style="color:#cfcfcf">■</span> não matriculado</div><div style="font-size:12px;color:var(--muted);margin-top:6px">1ª aparição: <b>'+escD(firstSeen)+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
    +'<div class="adsec"><div class="adlab">Diagnóstico</div>'+escD(c.motivo||'')+'</div>'
    +'<div class="adsec" style="border-left-color:'+ab.cor+'"><div class="adlab" style="color:'+ab.cor+'">Abordagem recomendada · '+escD(ab.obj)+'</div>'
      +'<div style="margin-bottom:6px">'+escD(ab.leitura)+'</div>'
