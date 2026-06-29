@@ -375,7 +375,7 @@ header.top{position:static!important}
 <div class="alertcards" id="alerts"></div>
 <div class="subtab" id="riscoFilter">
 <button class="stbtn active" data-rf="AM">Alto + Médio</button><button class="stbtn" data-rf="Alto">Só Alto</button><button class="stbtn" data-rf="Médio">Só Médio</button><button class="stbtn" data-rf="all">Todos</button></div>
-<div class="panel"><div style="overflow-x:auto"><table id="trisco"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Situação (motivo do risco)</th><th>% Meta</th><th>Risco</th><th>Ação para este aluno</th></tr></thead><tbody id="triscob"></tbody></table></div><div class="pager" id="riscoPager"></div></div>
+<div class="panel"><div style="overflow-x:auto"><table id="trisco"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (motivo do risco)</th><th>% Meta</th><th>Risco</th><th>Ação para este aluno</th></tr></thead><tbody id="triscob"></tbody></table></div><div class="pager" id="riscoPager"></div></div>
 </div>
 </section>
 
@@ -386,7 +386,7 @@ header.top{position:static!important}
 <p class="cap" id="metaCmpCap" style="margin:-8px 0 18px"></p>
 <div class="subtab" id="metaFilter">
 <button class="stbtn active" data-mf="sim">Atingiram a meta</button><button class="stbtn" data-mf="quase">Quase lá (70–90%)</button><button class="stbtn" data-mf="nao">Abaixo da meta</button></div>
-<div class="panel"><div style="overflow-x:auto"><table id="tmeta"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Situação (frequência)</th><th>% Meta</th><th>Ação para este aluno</th></tr></thead><tbody id="tmetab"></tbody></table></div><div class="pager" id="metaPager"></div></div>
+<div class="panel"><div style="overflow-x:auto"><table id="tmeta"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (frequência)</th><th>% Meta</th><th>Ação para este aluno</th></tr></thead><tbody id="tmetab"></tbody></table></div><div class="pager" id="metaPager"></div></div>
 </section>
 
 <section class="section" id="tab-eng">
@@ -397,7 +397,7 @@ header.top{position:static!important}
 <div class="alertcards" id="alertsE"></div>
 <div class="subtab" id="engFilter">
 <button class="stbtn active" data-ef="cons">Consistentes (Fiel+Regular)</button><button class="stbtn" data-ef="Fiel">Só Fiéis</button><button class="stbtn" data-ef="asc">Em ascensão</button></div>
-<div class="panel"><div style="overflow-x:auto"><table id="teng"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Situação (comportamento)</th><th>% Meta</th><th>Ação para este aluno</th></tr></thead><tbody id="tengb"></tbody></table></div><div class="pager" id="engPager"></div></div>
+<div class="panel"><div style="overflow-x:auto"><table id="teng"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (comportamento)</th><th>% Meta</th><th>Ação para este aluno</th></tr></thead><tbody id="tengb"></tbody></table></div><div class="pager" id="engPager"></div></div>
 </div>
 </section>
 
@@ -748,6 +748,7 @@ const IC_AL='<path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/>',IC_OK='<circle 
 
 // ===== Drawer de aluno: perfil + abordagem personalizada (reutilizavel em todas as abas) =====
 function akey(s){return (s.u||'')+'|'+(s.mat||'')+'|'+(s.nome||'');}
+function ulabel(k){var u=(DATA.unidades||[]).find(function(x){return x.key===k;});return u?u.label:(k||'');}
 function aname(s){return '<span class="arow" data-k="'+akey(s).replace(/"/g,'&quot;')+'" title="Ver perfil e abordagem">'+escD(s.nome)+'</span>';}
 function findAluno(k){var p=String(k).split('|'),u=p[0],mat=p[1],nome=p.slice(2).join('|');
   return (DATA.students||[]).find(function(s){return s.u===u&&String(s.mat)===String(mat)&&s.nome===nome;});}
@@ -842,7 +843,7 @@ function renderRisco(L){if(state.from===state.to){document.getElementById('alert
  document.getElementById('alerts').innerHTML=rboxes.map(b=>{const r=_rs(b.pred);const cmpHtml=cmpRow(fval(cur,b.f),fval(mom,b.f),fval(qoq,b.f),false,true);return '<div class="alert" style="border-left:4px solid '+b.c+'"><div class="ico" style="background:'+tint(b.c)+';color:'+b.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+b.ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+b.c+'">'+r.c+'</div><div class="l">'+b.l+'</div>'+cmpHtml+'<div style="font-size:15px;font-weight:800;color:'+b.c+';margin-top:6px">'+BRL(r.v)+'<span style="font-size:11px;font-weight:600;color:var(--muted)"> em risco/mês</span></div><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+b.d+'</div></div></div>';}).join('');
  const wm=withM(L);let rows=wm.filter(s=>rf==='AM'?s.m.risco!=='Baixo':rf==='all'?true:s.m.risco===rf);
  rows.sort((a,b)=>({Alto:0,'Médio':1,Baixo:2}[a.m.risco]-{Alto:0,'Médio':1,Baixo:2}[b.m.risco])||(b.m.inativo-a.m.inativo)||(a.m.metaPct-b.m.metaPct));cR=rows;drawR();}
-function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
+function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
 
 function winAgg(L,a,b){const lastM=MES[b-1];const risk={Alto:0,'Médio':0,Baixo:0},clu={};
  let fiel=0,eng=0,asc=0,meta=0,both=0,quase=0,sumiram=0,evas=0,mpS=0,nf=0;const base=L.length;
@@ -877,7 +878,7 @@ function renderMeta(L){const wm=withM(L);const single=state.from===state.to;
  document.getElementById('metaCmpCap').innerHTML='<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 1 trimestre antes (−3 meses) · <span style="color:'+C.green+'">▲ verde melhorou</span> · <span style="color:'+C.red+'">▼ vermelho piorou</span>. <b>YoY suprimido</b> (sem base de 2025). Aparece "—" quando não há período anterior suficiente (ex.: a janela começa em janeiro).';
  let rows=wm.filter(s=>mf==='sim'?s.m.atingiu:mf==='quase'?(!s.m.atingiu&&s.m.metaPct>=0.7):(s.m.metaPct<0.7));
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cM=rows;drawM();}
-function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situMeta(s)+'</td><td style="font-weight:700;color:'+(s.m.atingiu?C.green:C.muted)+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoMeta(s.m)+'</td></tr>','tmetab','metaPager',p=>{pgM=p;drawM();},pgM,30);}
+function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+situMeta(s)+'</td><td style="font-weight:700;color:'+(s.m.atingiu?C.green:C.muted)+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoMeta(s.m)+'</td></tr>','tmetab','metaPager',p=>{pgM=p;drawM();},pgM,30);}
 
 function renderEng(L){if(state.from===state.to){document.getElementById('alertsE').innerHTML='';document.getElementById('tengb').innerHTML='';document.getElementById('engPager').innerHTML='';return;}
  const cur=winAgg(L,state.from,state.to);
@@ -891,7 +892,7 @@ function renderEng(L){if(state.from===state.to){document.getElementById('alertsE
  document.getElementById('alertsE').innerHTML=html;
  const wm=withM(L);let rows=wm.filter(s=>ef==='cons'?(s.m.cluster==='Fiel'||s.m.cluster==='Regular'):ef==='Fiel'?s.m.cluster==='Fiel':s.m.cluster==='Em ascensão');
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cE=rows;drawE();}
-function drawE(){paginate(cE,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td style="font-size:12px">'+situEng(s.m)+'</td><td style="font-weight:700;color:'+C.green+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoEng(s.m)+'</td></tr>','tengb','engPager',p=>{pgE=p;drawE();},pgE,30);}
+function drawE(){paginate(cE,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+situEng(s.m)+'</td><td style="font-weight:700;color:'+C.green+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoEng(s.m)+'</td></tr>','tengb','engPager',p=>{pgE=p;drawE();},pgE,30);}
 
 const MESNOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function renderAniv(L){
