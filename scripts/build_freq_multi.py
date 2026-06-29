@@ -212,6 +212,7 @@ for mk, path in alunos_files.items():
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----
 acc = defaultdict(lambda: defaultdict(int)); anchor = {}; max_base_date=None
+first_acc = {}  # key -> 1a data de acesso (catraca) de todos os tempos na janela
 for unit, path in catraca_files.items():
     wb = load_wb(path); total=0; people=set()
     for sn in wb.sheetnames:
@@ -233,9 +234,11 @@ for unit, path in catraca_files.items():
             key = skey(unit, cpf_v, nome_v)
             if not key: continue
             acc[(unit,pos)][key]+=1; total+=1; people.add(key)
-            if pos==base_pos and c_dt is not None and c_dt<len(r):
+            if c_dt is not None and c_dt<len(r):
                 d=parse_dt(r[c_dt])
-                if d and (max_base_date is None or d>max_base_date): max_base_date=d
+                if d:
+                    if pos==base_pos and (max_base_date is None or d>max_base_date): max_base_date=d
+                    if key not in first_acc or d<first_acc[key]: first_acc[key]=d
     anchor[unit]=(total,len(people))
 print("[info] catraca anchor:", {u:anchor[u] for u in UNIT_KEYS}, file=sys.stderr)
 JUN_MAX = max_base_date.strftime("%d/%m/%Y") if max_base_date else ""
@@ -281,7 +284,7 @@ for (pos,unit),keys in active.items():
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Fitness"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
-            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),
+            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
