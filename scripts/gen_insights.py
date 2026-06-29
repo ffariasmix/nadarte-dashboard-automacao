@@ -110,7 +110,24 @@ OUTPUT_TOOL = {
                     },
                     "required": ["titulo", "hipotese", "contexto", "acao", "fontes"],
                 },
-            }
+            },
+            "hooks": {
+                "type": "array",
+                "description": "Ganchos de mercado por grupo de modalidade, para usar no contato com o aluno.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "grupo": {"type": "string", "description": "Um de: Fitness, Água, Ambos, Lutas e Outros"},
+                        "gancho": {"type": "string", "description": "Frase/argumento de mercado para usar na abordagem desse grupo"},
+                        "fonte": {
+                            "type": "object",
+                            "properties": {"titulo": {"type": "string"}, "url": {"type": "string"}},
+                            "required": ["titulo", "url"],
+                        },
+                    },
+                    "required": ["grupo", "gancho"],
+                },
+            },
         },
         "required": ["insights"],
     },
@@ -193,25 +210,45 @@ def main():
         # Etapa 2 — estruturacao com tool_choice forcado (garante saida valida)
         prompt_estr = (
             regras +
-            "\nUse o BRIEFING e os NUMEROS para gerar de 3 a 5 insights e chame a ferramenta registrar_insights "
-            "(cite as URLs do briefing nas fontes).\n\n"
+            "\nUse o BRIEFING e os NUMEROS para chamar a ferramenta registrar_insights com:\n"
+            "(a) de 3 a 5 INSIGHTS estrategicos da rede; e\n"
+            "(b) HOOKS de mercado por grupo de modalidade (Fitness, Agua, Ambos, Lutas e Outros): para cada grupo, uma frase/argumento "
+            "que o atendente possa usar na ligacao com um aluno daquele grupo (ex.: tendencia, beneficio, sazonalidade), com 1 fonte real.\n"
+            "Cite as URLs do briefing nas fontes.\n\n"
             "NUMEROS INTERNOS:\n" + metrics_str +
             "\n\nBRIEFING DE MERCADO:\n" + (briefing or "(sem briefing — use conhecimento do setor e cite fontes conhecidas)")
         )
         r2 = call(client, [{"role": "user", "content": prompt_estr}],
                   [OUTPUT_TOOL], 5000, tool_choice={"type": "tool", "name": "registrar_insights"})
-        insights = None
+        tool_input = None
         for b in r2.content:
             if getattr(b, "type", None) == "tool_use" and getattr(b, "name", "") == "registrar_insights":
-                insights = (getattr(b, "input", {}) or {}).get("insights", [])
+                tool_input = getattr(b, "input", {}) or {}
                 break
-        if insights is None:
+        if tool_input is None:
             text = "".join(getattr(b, "text", "") for b in r2.content if getattr(b, "type", None) == "text")
             try:
-                insights = extract_json(text).get("insights", [])
+                tool_input = extract_json(text)
             except Exception:
-                insights = []
-        print(f"[insights] etapa2 stop={getattr(r2,'stop_reason',None)} n_raw={len(insights or [])}", file=sys.stderr)
+                tool_input = {}
+        insights = tool_input.get("insights", []) or []
+        # hooks de mercado por grupo -> {grupo: {gancho, fonte}}
+        GRUPOS = {"fitness": "Fitness", "agua": "Água", "água": "Água", "ambos": "Ambos",
+                  "lutas e outros": "Lutas e Outros", "lutas": "Lutas e Outros"}
+        hooks_map = {}
+        for h in (tool_input.get("hooks", []) or [])[:8]:
+            if not isinstance(h, dict):
+                continue
+            g = GRUPOS.get(str(h.get("grupo", "")).strip().lower())
+            if not g or not h.get("gancho"):
+                continue
+            fonte = None
+            f = h.get("fonte") or {}
+            if isinstance(f, dict) and re.match(r"^https?://", str(f.get("url", ""))):
+                fonte = {"titulo": str(f.get("titulo", f.get("url")))[:160], "url": str(f.get("url"))}
+            hooks_map[g] = {"gancho": str(h.get("gancho", ""))[:500], "fonte": fonte}
+        data["hooks"] = hooks_map
+        print(f"[insights] etapa2 stop={getattr(r2,'stop_reason',None)} n_raw={len(insights or [])} hooks={len(hooks_map)}", file=sys.stderr)
 
         # saneamento basico: manter apenas campos esperados e URLs http(s)
         clean = []
