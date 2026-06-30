@@ -1,19 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PROBE PACTO — busca endpoint de CADASTRO COMPLETO (CPF, nascimento, sexo, modalidade, matricula).
-NAO imprime dados pessoais (so nomes de campos). Uso: python scripts/pacto_fetch.py --probe
-Env: PACTO_API_KEY (Bearer), PACTO_UNIT
+Coletor PACTO -> Dashboard Frequencia & Retencao (Nad'Arte).
+
+Modos:
+  --collect  : pagina o roster (/clientes/simples) e agrega acessos por mes
+               (/acessos-cliente/by-pessoa) para uma AMOSTRA de clientes, e
+               imprime um resumo PII-safe (contagens, situacao, cobertura de meses).
+  --probe    : descoberta de schema (sem dados pessoais).
+
+Env:
+  PACTO_API_KEY   ApiKey (Bearer) de UMA unidade (GitHub Secret)
+  PACTO_UNIT      rotulo (ex.: 716NORTE)
+  SAMPLE          qtd de clientes para amostrar acessos (default 25)
+  ROSTER_MAXPAGES limite de paginas do roster (default 60)
 """
-import os, sys, re, json, datetime
+import os, sys, re, json
 import urllib.request, urllib.error
+from collections import Counter, defaultdict
 
 BASE = "https://apigw.pactosolucoes.com.br"
-DATE_HINT = ("data", "date", "dt", "nasc", "matric", "cadastr", "venc", "inicio", "fim")
-DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}")
 
 
-def http_get(path, key, timeout=45):
+def http_get(path, key, timeout=50):
     req = urllib.request.Request(BASE + path, method="GET")
     req.add_header("Authorization", "Bearer " + key)
     req.add_header("Accept", "application/json")
@@ -27,76 +36,115 @@ def http_get(path, key, timeout=45):
         return -1, "", "EXC: " + str(e)
 
 
-def parse_date(v):
-    if not isinstance(v, str):
-        return None
-    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", v) or re.search(r"(\d{2})/(\d{2})/(\d{4})", v)
-    return v if m else None
+def get_json(path, key):
+    st, ct, body = http_get(path, key)
+    if st == 200 and "json" in ct.lower():
+        try:
+            return json.loads(body)
+        except Exception:
+            return None
+    return None
 
 
-def describe(obj):
-    rows = obj if isinstance(obj, list) else None
-    page = None
+def rows_of(obj):
+    if isinstance(obj, list):
+        return obj, {}
     if isinstance(obj, dict):
-        page = {k: obj[k] for k in ("totalElements", "totalPages", "size", "number") if k in obj}
+        page = {k: obj.get(k) for k in ("totalElements", "totalPages", "number", "size", "last") if k in obj}
         for k in ("content", "data", "rows", "list", "items", "registros", "dados", "result", "results"):
             if isinstance(obj.get(k), list):
-                rows = obj[k]; break
-        if rows is None:
-            print(f"    objeto chaves: {sorted(obj.keys())}"); return
-    if page:
-        print(f"    paginacao: {json.dumps(page, ensure_ascii=False)}")
-    print(f"    itens: {len(rows)}")
-    if rows and isinstance(rows[0], dict):
-        first = rows[0]
-        print(f"    campos ({len(first)}): {sorted(first.keys())}")
-        print(f"    tipos: {json.dumps({k: type(v).__name__ for k,v in first.items()}, ensure_ascii=False)}")
-        df = {}
-        for k in first:
-            if any(h in k.lower() for h in DATE_HINT):
-                vals = [r.get(k) for r in rows if isinstance(r, dict) and parse_date(r.get(k))]
-                if vals:
-                    df[k] = f"ex: {vals[0]}"
-        if df:
-            print(f"    campos-data (exemplo): {json.dumps(df, ensure_ascii=False)}")
+                return obj[k], page
+        return [], page
+    return [], {}
 
 
-def try_json(label, path, key):
-    print(f"\n=== {label}  GET {path} ===")
-    status, ctype, body = http_get(path, key)
-    print(f"  HTTP {status} {ctype.split(';')[0]}")
-    if status == 200 and "json" in ctype.lower():
-        try:
-            describe(json.loads(body))
-        except Exception as e:
-            print(f"  (JSON invalido: {e})")
-    else:
-        print(f"  corpo(140c): {body[:140].replace(chr(10),' ')}")
+def paginate(path_base, key, size=200, max_pages=60):
+    """Itera paginas ?page=&size= ate acabar. Retorna (rows, paginas_lidas, total_declarado)."""
+    sep = "&" if "?" in path_base else "?"
+    all_rows, total = [], None
+    for pg in range(max_pages):
+        obj = get_json(f"{path_base}{sep}page={pg}&size={size}", key)
+        if obj is None:
+            break
+        rows, page = rows_of(obj)
+        if total is None and page.get("totalElements") is not None:
+            total = page["totalElements"]
+        all_rows.extend(rows)
+        if page.get("last") is True or len(rows) < size or not rows:
+            return all_rows, pg + 1, total
+    return all_rows, max_pages, total
+
+
+def ym(s):
+    if not isinstance(s, str):
+        return None
+    m = re.search(r"(\d{4})-(\d{2})", s) or re.search(r"(\d{2})/(\d{2})/(\d{4})", s)
+    if not m:
+        return None
+    g = m.groups()
+    return f"{g[0]}-{g[1]}" if len(g[0]) == 4 else f"{g[2]}-{g[1]}"
+
+
+def collect():
+    key = os.environ.get("PACTO_API_KEY", "").strip()
+    unit = os.environ.get("PACTO_UNIT", "?")
+    sample = int(os.environ.get("SAMPLE", "25"))
+    roster_max = int(os.environ.get("ROSTER_MAXPAGES", "60"))
+    if not key:
+        print("[collect] ERRO: PACTO_API_KEY ausente."); sys.exit(1)
+    print(f"[collect] unidade={unit} (ApiKey len={len(key)}) sample={sample}")
+
+    # 1) ROSTER completo
+    roster, pages, total = paginate("/clientes/simples", key, size=200, max_pages=roster_max)
+    print(f"[roster] paginas lidas={pages} | total declarado={total} | linhas obtidas={len(roster)}")
+    sit = Counter((r.get("situacao") or "?") for r in roster if isinstance(r, dict))
+    print(f"[roster] distribuicao por situacao: {json.dumps(dict(sit), ensure_ascii=False)}")
+    cods = [r.get("codigoCliente") for r in roster if isinstance(r, dict) and r.get("codigoCliente")]
+    print(f"[roster] clientes com codigoCliente: {len(cods)}")
+
+    # 2) ACESSOS agregados por mes (amostra)
+    glob_month = Counter()
+    depth_min, depth_max = None, None
+    tot_acc = 0
+    sampled = 0
+    for cod in cods[:sample]:
+        rows, pgs, t = paginate(f"/acessos-cliente/by-pessoa/{cod}", key, size=200, max_pages=40)
+        sampled += 1
+        for a in rows:
+            d = ym(a.get("dtHrEntrada")) if isinstance(a, dict) else None
+            if d:
+                glob_month[d] += 1
+                tot_acc += 1
+                depth_min = d if depth_min is None or d < depth_min else depth_min
+                depth_max = d if depth_max is None or d > depth_max else depth_max
+    print(f"[acessos] clientes amostrados={sampled} | acessos somados={tot_acc}")
+    print(f"[acessos] cobertura de meses: {depth_min} .. {depth_max}")
+    # histograma mensal (amostra) — ultimos 18 meses
+    meses = sorted(glob_month.keys())
+    tail = meses[-18:] if len(meses) > 18 else meses
+    print("[acessos] acessos/mes (amostra, ult. meses):")
+    for m in tail:
+        print(f"    {m}: {glob_month[m]}")
+    print(f"[acessos] meses distintos na amostra: {len(meses)}")
+    print("\n[collect] fim.")
 
 
 def probe():
     key = os.environ.get("PACTO_API_KEY", "").strip()
-    if not key:
-        print("[probe] ERRO: PACTO_API_KEY ausente."); sys.exit(1)
-    print(f"[probe] unidade={os.environ.get('PACTO_UNIT','?')} (ApiKey len={len(key)})")
-    qs = "?page=0&size=3"
-    for label, p in [
-        ("clientes_geral",            "/clientes/geral" + qs),
-        ("clientes_geral_de_clientes","/clientes/geral-de-clientes" + qs),
-        ("clientes_relatorio",        "/clientes/relatorio" + qs),
-        ("clientes_aniversariantes",  "/clientes/aniversariantes" + qs),
-        ("clientes_cancelados",       "/clientes/cancelados" + qs),
-        ("clientes_trancados",        "/clientes/trancados" + qs),
-        ("clientes_bare",             "/clientes" + qs),
-        ("clientes_completo",         "/clientes/completo" + qs),
-        ("clientes_detalhado",        "/clientes/detalhado" + qs),
-    ]:
-        try_json(label, p, key)
-    print("\n[probe] fim.")
+    print(f"[probe] ApiKey len={len(key)}")
+    for label, p in [("clientes_simples", "/clientes/simples?page=0&size=3"),
+                     ("ultimos_meses_amostra", None)]:
+        if p:
+            obj = get_json(p, key)
+            rows, page = rows_of(obj or {})
+            print(label, "->", len(rows), "linhas;", (sorted(rows[0].keys()) if rows and isinstance(rows[0], dict) else ""))
+    print("[probe] fim.")
 
 
 if __name__ == "__main__":
-    if "--probe" in sys.argv:
+    if "--collect" in sys.argv:
+        collect()
+    elif "--probe" in sys.argv:
         probe()
     else:
-        print("Use --probe.")
+        print("Use --collect ou --probe.")
