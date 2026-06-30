@@ -126,9 +126,15 @@ def parse_dt(v):
         return datetime.date(v.year,v.month,v.day)
     s=str(v or "").strip()
     m=re.search(r"(\d{4})-(\d{1,2})-(\d{1,2})", s)
-    if m: return datetime.date(int(m.group(1)),int(m.group(2)),int(m.group(3)))
+    if m:
+        try: return datetime.date(int(m.group(1)),int(m.group(2)),int(m.group(3)))
+        except ValueError: pass
     m=re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", s)
-    if m: return datetime.date(int(m.group(3)),int(m.group(2)),int(m.group(1)))
+    if m:
+        d,mo,y = int(m.group(1)),int(m.group(2)),int(m.group(3))
+        if mo>12 and d<=12: d,mo = mo,d      # tolera MM/DD/AAAA invertido
+        try: return datetime.date(y,mo,d)
+        except ValueError: pass
     return None
 
 # ---- carregar manifest e classificar arquivos ----
