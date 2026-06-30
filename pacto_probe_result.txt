@@ -1,10 +1,13 @@
-[probe] unidade=716NORTE (ApiKey len=74)
-[probe] codigoCliente: nao
-[probe] codPessoa: nao (valor oculto)
-
-=== v1_pessoa_lista  GET /v1/pessoa?page=0&size=3 ===
-  HTTP 200 application/json
-    campos (5): ['codigo', 'cpf', 'datanasc', 'nome', 'sexo']
-    >> tem cadastro? campos sensiveis presentes: ['cpf', 'datanasc', 'nome', 'sexo']
+[probe] unidade=716NORTE (len=74)
+[clientes_simples] HTTP 200 | linhas 10 | campos ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
+[clientes_simples] codigoCliente exemplo capturado: sim
+[v1_pessoa_lista] HTTP 200 | campos ['codigo', 'cpf', 'datanasc', 'nome', 'sexo'] | tipo_topo dict
+[v1_pessoa_lista] chaves_topo ['content', 'meta']
+[acesso.cliente] chaves ['codigo', 'codigoMatricula', 'empresa', 'matricula', 'pessoa', 'situacao']
+[join] cliente.pessoa capturado: sim
+[v1_pessoa/codPessoa] HTTP -1 | campos None | sensiveis []
+[pessoas/codPessoa] HTTP -1 | campos None | sensiveis []
+[v1_pessoa/codigoCliente] HTTP 200 | campos ['content', 'meta'] | sensiveis []
+[pessoas/codigoCliente] HTTP 200 | campos ['content'] | sensiveis []
 
 [probe] fim.
