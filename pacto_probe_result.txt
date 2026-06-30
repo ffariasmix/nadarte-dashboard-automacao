@@ -1,1 +1,10 @@
-Use --probe.
+[probe] unidade=716NORTE (ApiKey len=74)
+[probe] codigoCliente: nao
+[probe] codPessoa: nao (valor oculto)
+
+=== v1_pessoa_lista  GET /v1/pessoa?page=0&size=3 ===
+  HTTP 200 application/json
+    campos (5): ['codigo', 'cpf', 'datanasc', 'nome', 'sexo']
+    >> tem cadastro? campos sensiveis presentes: ['cpf', 'datanasc', 'nome', 'sexo']
+
+[probe] fim.
