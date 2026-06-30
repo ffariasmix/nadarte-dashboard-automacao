@@ -1,0 +1,45 @@
+[probe] unidade=716NORTE base=https://apigw.pactosolucoes.com.br (ApiKey len=74, valor NAO impresso)
+
+=== clientes_simples  GET /clientes/simples?page=0&size=5 ===
+  HTTP 200 application/json;charset=UTF-8
+    itens: 5
+    campos (12): ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
+    tipos: {"nome": "str", "matricula": "str", "urlFoto": "NoneType", "categoria": "NoneType", "inicioContrato": "NoneType", "fimContrato": "NoneType", "codigoCliente": "int", "empresa": "str", "situacao": "str", "situacaoContrato": "NoneType", "telefone": "str", "email": "NoneType"}
+
+[probe] codigoCliente capturado: sim | matricula capturada: sim (valores ocultos)
+
+=== acessos_by_pessoa  GET /acessos-cliente/by-pessoa/9649 ===
+  HTTP 200 application/json;charset=UTF-8
+    paginacao: {"totalElements": 529, "totalPages": 52, "number": 0, "size": 10, "last": false, "first": true}
+    itens: 10
+    campos (25): ['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
+    tipos: {"codigo": "int", "cliente": "dict", "sentido": "str", "situacao": "str", "localAcesso": "dict", "coletor": "dict", "usuario": "NoneType", "dtHrEntrada": "str", "dtHrEntradaDate": "int", "dtHrSaida": "NoneType", "dtHrSaidaDate": "NoneType", "meioIdentificacaoEntrada": "int", "meioIdentificacaoSaida": "NoneType", "dataRegistro": "int", "pessoa": "NoneType", "matricula": "NoneType", "dataDeAcesso": "list", "dataSaida": "NoneType", "horaEntradaRegistroAcesso": "str", "horaSaidaRegistroAcesso": "NoneType", "registrarSaida": "bool", "ticket": "NoneType", "liberacaoAcesso": "NoneType", "periodoAcessoCliente": "NoneType", "meioIdentificacaoEntradaApresentar": "str"}
+    datas (intervalo na amostra): {"dtHrEntrada": "2020-02-06..2020-03-14 (n=10)"}
+
+=== acessos_ultimosmeses  GET /acessos-cliente/9649/ultimos-meses ===
+  HTTP 200 application/json;charset=UTF-8
+    itens: 4
+
+=== acessos_info  GET /acessos-cliente/9649/info-acessos ===
+  HTTP 200 application/json;charset=UTF-8
+    objeto chaves: ['content']
+
+=== periodo_acesso  GET /clientes/9649/periodo-acesso ===
+  HTTP 200 application/json;charset=UTF-8
+    paginacao: {"totalElements": 12, "totalPages": 1, "number": 0, "size": 10, "last": false, "first": true}
+    itens: 12
+    campos (18): ['aulaAvulsaDiaria', 'codigo', 'contrato', 'dataAcesso', 'dataFinalAcesso', 'dataInicioAcesso', 'dataLancamento', 'legenda', 'pessoa', 'produto', 'responsavel', 'tipoAcesso', 'tipoAcessoApresentar', 'tipototalpass', 'token', 'tokenGogood', 'tokenGymPass', 'valor']
+    tipos: {"codigo": "int", "dataAcesso": "int", "token": "str", "tokenGymPass": "str", "legenda": "bool", "valor": "float", "tipoAcesso": "str", "pessoa": "NoneType", "contrato": "int", "dataInicioAcesso": "int", "dataFinalAcesso": "int", "responsavel": "NoneType", "dataLancamento": "NoneType", "tipototalpass": "bool", "tokenGogood": "NoneType", "produto": "NoneType", "aulaAvulsaDiaria": "NoneType", "tipoAcessoApresentar": "str"}
+
+=== registro_acesso_matricula  GET /clientes/listar-registro-de-acesso/009644 ===
+  HTTP 400 application/json;charset=UTF-8
+    corpo(160c): {"timestamp":1782848365826,"status":400,"error":"Bad Request","path":"/adm-core-ms/clientes/listar-registro-de-acesso/009644"}
+
+=== bulk lista-rapida-acessos (variacoes de data) ===
+  ?dataInicial=2026-06-01&dataFinal=2026-06-30 -> HTTP 400 text/html
+  ?dataInicio=2026-06-01&dataFim=2026-06-30 -> HTTP 400 text/html
+  ?inicio=2026-06-01&fim=2026-06-30 -> HTTP 400 text/html
+  ?dataInicial=01/06/2026&dataFinal=30/06/2026 -> HTTP 400 text/html
+  ?filters=%7B%22dataInicial%22%3A%20%222026-06-01%22%2C%20%22dataFinal% -> HTTP 400 text/html
+
+[probe] fim.
