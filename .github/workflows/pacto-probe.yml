@@ -7,6 +7,9 @@ on:
       - 'scripts/pacto_fetch.py'
       - '.github/workflows/pacto-probe.yml'
 
+permissions:
+  contents: write
+
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -19,9 +22,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Probe (apenas schema; sem dados pessoais no log)
+      - name: Probe (apenas schema; sem dados pessoais)
         env:
           PACTO_API_KEY: ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_UNIT: '716NORTE'
         run: |
-          python scripts/pacto_fetch.py --probe
+          python scripts/pacto_fetch.py --probe | tee pacto_probe_result.txt
+
+      - name: Commitar resultado (para leitura)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pacto_probe_result.txt
+          git commit -m "probe: resultado do schema [skip ci]" || echo "sem mudanca"
+          git push
