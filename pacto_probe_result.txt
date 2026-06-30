@@ -1,28 +1,41 @@
 [probe] unidade=716NORTE (ApiKey len=74)
 
-### gateway  /v3/api-docs -> HTTP 200 application/json (5673b)
-   paths totais: 6
-   paths de interesse (0):
+=== clientes_geral  GET /clientes/geral?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/geral
 
-### adm-core-ms  /adm-core-ms/v3/api-docs -> HTTP 404 application/json (63b)
-   Serviço não encontrado para o caminho: /adm-core-ms/v3/api-docs
+=== clientes_geral_de_clientes  GET /clientes/geral-de-clientes?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/geral-de-clientes
 
-### adm-core-ms-v2  /adm-core-ms/v2/api-docs -> HTTP 404 application/json (63b)
-   Serviço não encontrado para o caminho: /adm-core-ms/v2/api-docs
+=== clientes_relatorio  GET /clientes/relatorio?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/relatorio
 
-### adm-bff  /adm-bff/v3/api-docs -> HTTP 404 application/json (59b)
-   Serviço não encontrado para o caminho: /adm-bff/v3/api-docs
+=== clientes_aniversariantes  GET /clientes/aniversariantes?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/aniversariantes
 
-### core-ms  /core-ms/v3/api-docs -> HTTP 404 application/json (59b)
-   Serviço não encontrado para o caminho: /core-ms/v3/api-docs
+=== clientes_cancelados  GET /clientes/cancelados?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/cancelados
 
-### crm-ms  /crm-ms/v3/api-docs -> HTTP 404 application/json (58b)
-   Serviço não encontrado para o caminho: /crm-ms/v3/api-docs
+=== clientes_trancados  GET /clientes/trancados?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/trancados
 
-### treino-ms  /treino-ms/v3/api-docs -> HTTP 404 application/json (61b)
-   Serviço não encontrado para o caminho: /treino-ms/v3/api-docs
+=== clientes_bare  GET /clientes?page=0&size=3 ===
+  HTTP 200 application/json
+    itens: 3
+    campos (12): ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
+    tipos: {"nome": "str", "matricula": "str", "urlFoto": "NoneType", "categoria": "NoneType", "inicioContrato": "NoneType", "fimContrato": "NoneType", "codigoCliente": "int", "empresa": "str", "situacao": "str", "situacaoContrato": "NoneType", "telefone": "str", "email": "NoneType"}
 
-### financeiro-ms  /financeiro-ms/v3/api-docs -> HTTP 404 application/json (65b)
-   Serviço não encontrado para o caminho: /financeiro-ms/v3/api-docs
+=== clientes_completo  GET /clientes/completo?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/completo
+
+=== clientes_detalhado  GET /clientes/detalhado?page=0&size=3 ===
+  HTTP 404 application/json
+  corpo(140c): Serviço não encontrado para o caminho: /clientes/detalhado
 
 [probe] fim.
