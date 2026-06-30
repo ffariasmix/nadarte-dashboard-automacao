@@ -192,6 +192,7 @@ for mk, path in alunos_files.items():
         c_mat=find_col(colmap,"MATRICULA"); c_nome=find_col(colmap,"NOME")
         c_doc=find_col(colmap,"DOCUMENTO","CPF")
         c_nasc=find_col(colmap,"NASCIMENTO"); c_sexo=find_col(colmap,"SEXO"); c_mod=find_col(colmap,"MODALIDADE")
+        c_dm=find_col(colmap,"DATA MATRICULA","DATA DE MATRICULA","DT MATRICULA","DATA MATR")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -208,6 +209,7 @@ for mk, path in alunos_files.items():
                 "grupo": classify_grupo(mod), "mod": str(mod or "").strip(),
                 "sexo": sexo_of(r[c_sexo]) if (c_sexo is not None and c_sexo<len(r)) else "N/D",
                 "band": band_of(BAND_REF,by,bm,bd), "bm":bm,"bd":bd,"by":by,
+                "dm": (parse_dt(r[c_dm]).isoformat() if (c_dm is not None and c_dm<len(r) and parse_dt(r[c_dm])) else ""),
             }
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----
@@ -284,7 +286,7 @@ for (pos,unit),keys in active.items():
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Fitness"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
-            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),
+            "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),"dm":a.get("dm",""),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
