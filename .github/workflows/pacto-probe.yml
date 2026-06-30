@@ -28,7 +28,7 @@ jobs:
           PACTO_UNIT: '716NORTE'
           SAMPLE: '25'
         run: |
-          python scripts/pacto_fetch.py --collect | tee pacto_probe_result.txt
+          python scripts/pacto_fetch.py --probe | tee pacto_probe_result.txt
 
       - name: Commitar resultado (para leitura)
         run: |
