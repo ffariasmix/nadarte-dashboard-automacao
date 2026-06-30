@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PROBE PACTO — endpoint de CADASTRO COMPLETO (grupo Pessoa).
-NAO imprime dados pessoais (so nomes de campos). Uso: python scripts/pacto_fetch.py --probe
-Env: PACTO_API_KEY (Bearer), PACTO_UNIT
+PROBE PACTO — confirma o JOIN cliente<->pessoa para ligar demograficos.
+NAO imprime dados pessoais. Uso: python scripts/pacto_fetch.py --probe
 """
 import os, sys, re, json
 import urllib.request, urllib.error
 
 BASE = "https://apigw.pactosolucoes.com.br"
-SENSIVEL = re.compile(r"cpf|nasc|sexo|genero|telefone|email|nome|rg|endereco|logradouro|bairro|cep", re.I)
+SENS = re.compile(r"cpf|nasc|sexo|nome|telefone|email|rg", re.I)
 
 
 def http_get(path, key, timeout=45):
@@ -20,94 +19,79 @@ def http_get(path, key, timeout=45):
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, r.headers.get("Content-Type", ""), r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", "replace") if e.fp else ""
-        return e.code, (e.headers.get("Content-Type", "") if e.headers else ""), body
+        return e.code, (e.headers.get("Content-Type", "") if e.headers else ""), (e.read().decode("utf-8", "replace") if e.fp else "")
     except Exception as e:
         return -1, "", "EXC: " + str(e)
 
 
-def get_json(path, key):
+def gj(path, key):
     st, ct, body = http_get(path, key)
-    return st, ct, (json.loads(body) if st == 200 and "json" in ct.lower() else body)
+    if st == 200 and "json" in ct.lower():
+        try:
+            return st, json.loads(body)
+        except Exception:
+            return st, None
+    return st, body
 
 
-def first_row(obj):
-    if isinstance(obj, list):
-        return obj[0] if obj else None
-    if isinstance(obj, dict):
+def rows(o):
+    if isinstance(o, list):
+        return o
+    if isinstance(o, dict):
         for k in ("content", "data", "rows", "list", "items", "registros", "dados", "result", "results"):
-            if isinstance(obj.get(k), list) and obj[k]:
-                return obj[k][0]
-        return obj
-    return None
+            if isinstance(o.get(k), list):
+                return o[k]
+    return []
 
 
-def show_fields(label, obj):
-    row = first_row(obj)
-    if not isinstance(row, dict):
-        print(f"    ({label}) sem objeto/linha"); return
-    ks = sorted(row.keys())
-    print(f"    campos ({len(ks)}): {ks}")
-    # destaca campos sensiveis presentes (so o NOME do campo, nunca o valor)
-    hits = [k for k in ks if SENSIVEL.search(k)]
-    print(f"    >> tem cadastro? campos sensiveis presentes: {hits}")
-    # tipos dos campos aninhados (dict) — so chaves
-    for k, v in row.items():
-        if isinstance(v, dict):
-            print(f"    .{k} (dict) chaves: {sorted(v.keys())}")
-
-
-def try_ep(label, path, key):
-    print(f"\n=== {label}  GET {path} ===")
-    st, ct, obj = get_json(path, key)
-    print(f"  HTTP {st} {str(ct).split(';')[0]}")
-    if st == 200 and not isinstance(obj, str):
-        show_fields(label, obj)
-    else:
-        print(f"  corpo(140c): {str(obj)[:140]}")
+def fields(o):
+    r = (o[0] if isinstance(o, list) and o else (rows(o)[0] if rows(o) else (o if isinstance(o, dict) else None)))
+    return sorted(r.keys()) if isinstance(r, dict) else None
 
 
 def probe():
     key = os.environ.get("PACTO_API_KEY", "").strip()
     if not key:
-        print("[probe] ERRO: PACTO_API_KEY ausente."); sys.exit(1)
-    print(f"[probe] unidade={os.environ.get('PACTO_UNIT','?')} (ApiKey len={len(key)})")
+        print("[probe] ERRO: sem PACTO_API_KEY"); sys.exit(1)
+    print(f"[probe] unidade={os.environ.get('PACTO_UNIT','?')} (len={len(key)})")
 
-    # 1) codigoCliente do roster
-    st, ct, obj = get_json("/clientes/simples?page=0&size=5", key)
-    cod = None
-    row = first_row(obj) if st == 200 else None
-    if isinstance(obj, list):
-        for r in obj:
-            if isinstance(r, dict) and r.get("codigoCliente"):
-                cod = r["codigoCliente"]; break
-    print(f"[probe] codigoCliente: {'ok' if cod else 'nao'}")
+    # roster
+    st, obj = gj("/clientes/simples?page=0&size=10", key)
+    rs = rows(obj)
+    print(f"[clientes_simples] HTTP {st} | linhas {len(rs)} | campos {fields(obj)}")
+    cc = next((r.get("codigoCliente") for r in rs if isinstance(r, dict) and r.get("codigoCliente")), None)
+    print(f"[clientes_simples] codigoCliente exemplo capturado: {'sim' if cc else 'nao'}")
 
-    # 2) codPessoa a partir de um registro de acesso (cliente.pessoa)
-    codpessoa = None
-    if cod:
-        st, ct, ac = get_json(f"/acessos-cliente/by-pessoa/{cod}?page=0&size=1", key)
-        arow = first_row(ac) if st == 200 else None
-        if isinstance(arow, dict):
-            cl = arow.get("cliente")
-            if isinstance(cl, dict):
-                codpessoa = cl.get("pessoa") or cl.get("codigo")
-                print(f"    cliente.chaves: {sorted(cl.keys())}")
-    print(f"[probe] codPessoa: {'ok' if codpessoa else 'nao'} (valor oculto)")
+    # /v1/pessoa lista + paginacao
+    st, pj = gj("/v1/pessoa?page=0&size=3", key)
+    print(f"[v1_pessoa_lista] HTTP {st} | campos {fields(pj)} | tipo_topo {type(pj).__name__}")
+    if isinstance(pj, dict):
+        print(f"[v1_pessoa_lista] chaves_topo {sorted(pj.keys())}")
 
-    # 3) Endpoints de cadastro (grupo Pessoa)
-    if codpessoa:
-        cp = str(codpessoa)
-        try_ep("pessoas_detalhe",   f"/pessoas/{cp}", key)
-        try_ep("v1_pessoa_id",      f"/v1/pessoa/{cp}", key)
-        try_ep("venda_avulsa_pessoa", f"/venda-avulsa/pessoa/{cp}", key)
-    # 4) Lista de pessoas (bulk) e /clientes/simplificado (por cpf — so testa forma)
-    try_ep("v1_pessoa_lista", "/v1/pessoa?page=0&size=3", key)
+    pp = None
+    if cc:
+        st, ac = gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=1", key)
+        arow = rows(ac)
+        cl = arow[0].get("cliente") if arow and isinstance(arow[0], dict) else None
+        if isinstance(cl, dict):
+            print(f"[acesso.cliente] chaves {sorted(cl.keys())}")
+            pp = cl.get("pessoa")
+        print(f"[join] cliente.pessoa capturado: {'sim' if pp else 'nao'}")
+
+        # Testa /v1/pessoa/{id} com codPessoa e com codigoCliente, p/ saber qual e a chave
+        for nome, val in [("codPessoa", pp), ("codigoCliente", cc)]:
+            if val is None:
+                continue
+            st, d = gj(f"/v1/pessoa/{val}", key)
+            f = fields(d)
+            tem = [k for k in (f or []) if SENS.search(k)]
+            print(f"[v1_pessoa/{nome}] HTTP {st} | campos {f} | sensiveis {tem}")
+            st2, d2 = gj(f"/pessoas/{val}", key)
+            f2 = fields(d2)
+            tem2 = [k for k in (f2 or []) if SENS.search(k)]
+            print(f"[pessoas/{nome}] HTTP {st2} | campos {f2} | sensiveis {tem2}")
     print("\n[probe] fim.")
 
 
 if __name__ == "__main__":
-    if "--probe" in sys.argv:
-        probe()
-    else:
-        print("Use --probe.")
+    probe() if "--probe" in sys.argv else print("Use --probe.")
