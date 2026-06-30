@@ -111,6 +111,11 @@ def detect_header(rows, tokens, scan=8):
             return i, colmap
     return None, None
 def find_col(colmap, *cands):
+    # 1) match EXATO (evita que "MATRICULA" capture "DATA MATRICULA", etc.)
+    for cand in cands:
+        cu = up(cand)
+        if cu in colmap: return colmap[cu]
+    # 2) match por substring (tolerante a variacoes de cabecalho)
     for cand in cands:
         cu = up(cand)
         for name,ci in colmap.items():
