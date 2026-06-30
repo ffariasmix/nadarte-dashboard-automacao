@@ -1,49 +1,28 @@
-[probe] unidade=716NORTE (ApiKey len=74, valor NAO impresso)
+[probe] unidade=716NORTE (ApiKey len=74)
 
-=== clientes_simples  GET /clientes/simples?page=0&size=5 ===
-  HTTP 200 application/json
-  list[5] campos: ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
+### gateway  /v3/api-docs -> HTTP 200 application/json (5673b)
+   paths totais: 6
+   paths de interesse (0):
 
-[probe] codigoCliente capturado: sim (valor oculto)
+### adm-core-ms  /adm-core-ms/v3/api-docs -> HTTP 404 application/json (63b)
+   Serviço não encontrado para o caminho: /adm-core-ms/v3/api-docs
 
-=== acesso_nested  GET /acessos-cliente/by-pessoa/9649?page=0&size=1 ===
-  HTTP 200 application/json
-  list[1] campos: ['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
-    .cliente chaves: ['codigo', 'codigoMatricula', 'empresa', 'matricula', 'pessoa', 'situacao']
-    .localAcesso chaves: ['codigo', 'descricao', 'listaColetor']
-    .coletor chaves: ['codigo', 'descricao']
+### adm-core-ms-v2  /adm-core-ms/v2/api-docs -> HTTP 404 application/json (63b)
+   Serviço não encontrado para o caminho: /adm-core-ms/v2/api-docs
 
-=== clientes_detalhe  GET /clientes/9649 ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /clientes/9649
+### adm-bff  /adm-bff/v3/api-docs -> HTTP 404 application/json (59b)
+   Serviço não encontrado para o caminho: /adm-bff/v3/api-docs
 
-=== clientes_dados  GET /clientes/9649/dados ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /clientes/9649/dados
+### core-ms  /core-ms/v3/api-docs -> HTTP 404 application/json (59b)
+   Serviço não encontrado para o caminho: /core-ms/v3/api-docs
 
-=== clientes_cadastrais  GET /clientes/9649/dados-cadastrais ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /clientes/9649/dados-cadastrais
+### crm-ms  /crm-ms/v3/api-docs -> HTTP 404 application/json (58b)
+   Serviço não encontrado para o caminho: /crm-ms/v3/api-docs
 
-=== clientes_perfil  GET /clientes/9649/perfil ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /clientes/9649/perfil
+### treino-ms  /treino-ms/v3/api-docs -> HTTP 404 application/json (61b)
+   Serviço não encontrado para o caminho: /treino-ms/v3/api-docs
 
-=== perfil_aluno  GET /perfil-aluno/9649 ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /perfil-aluno/9649
-
-=== pessoa_detalhe  GET /pessoa/9649 ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /pessoa/9649
-
-=== clientes_completo  GET /clientes/9649/completo ===
-  HTTP 404 application/json
-  corpo(160c): Serviço não encontrado para o caminho: /clientes/9649/completo
-
-##### OpenAPI spec (mapeia todos os endpoints) #####
-  /v3/api-docs -> HTTP 200 application/json (5673 bytes)
-  >> SPEC OK: 6 paths
-  >> paths de cadastro (0):
+### financeiro-ms  /financeiro-ms/v3/api-docs -> HTTP 404 application/json (65b)
+   Serviço não encontrado para o caminho: /financeiro-ms/v3/api-docs
 
 [probe] fim.
