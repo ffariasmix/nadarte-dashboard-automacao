@@ -2,22 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Coletor da API PACTO -> Dashboard Frequencia & Retencao (Nad'Arte).
-
-MODO PROBE (descoberta segura de schema): NAO imprime dados pessoais.
-Para cada endpoint imprime apenas: status HTTP, formato, contagem,
-NOMES de campos, tipos e intervalos de datas (datas nao sao PII).
-Encadeia: /clientes/simples -> pega 1 codigoCliente/matricula (valores
-mascarados) -> testa endpoints de ACESSO por pessoa e variacoes do bulk.
-
+MODO PROBE: descoberta segura de schema (NAO imprime dados pessoais; so nomes de campos).
+Foco desta versao: achar o endpoint de CADASTRO COMPLETO (CPF, nascimento, sexo, modalidade, matricula).
 Uso:  python scripts/pacto_fetch.py --probe
-Env:  PACTO_API_KEY (Bearer, vem de GitHub Secret), PACTO_UNIT (rotulo)
+Env:  PACTO_API_KEY (Bearer), PACTO_UNIT (rotulo)
 """
 import os, sys, re, json, datetime
 import urllib.request, urllib.error, urllib.parse
 
 BASE = "https://apigw.pactosolucoes.com.br"
-DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}")
-DATE_HINT = ("data", "date", "dt", "nasc", "matric", "acesso", "checkin", "cadastro", "venc", "hora")
 
 
 def http_get(path, key, timeout=40):
@@ -34,72 +27,72 @@ def http_get(path, key, timeout=40):
         return -1, "", "EXC: " + str(e)
 
 
-def parse_date(v):
-    if not isinstance(v, str):
-        return None
-    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", v)
-    if m:
-        try: return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-        except ValueError: return None
-    m = re.search(r"(\d{2})/(\d{2})/(\d{4})", v)
-    if m:
-        try: return datetime.date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-        except ValueError: return None
-    return None
-
-
-def unwrap_list(obj):
-    if isinstance(obj, list):
-        return obj, None
+def keys_of(obj):
+    rows = obj if isinstance(obj, list) else None
     if isinstance(obj, dict):
-        page = {k: obj[k] for k in ("totalElements", "totalPages", "number", "size",
-                                    "total", "totalItens", "pagina", "last", "first") if k in obj}
         for k in ("content", "data", "rows", "list", "items", "registros", "dados", "result", "results"):
             if isinstance(obj.get(k), list):
-                return obj[k], page
-        return None, page
-    return None, None
+                rows = obj[k]; break
+        if rows is None:
+            return ("dict", sorted(obj.keys()))
+    if rows is not None:
+        if rows and isinstance(rows[0], dict):
+            return ("list[%d]" % len(rows), sorted(rows[0].keys()))
+        return ("list[%d]" % len(rows), [])
+    return (type(obj).__name__, [])
 
 
-def describe(obj):
-    rows, page = unwrap_list(obj)
-    if page:
-        print(f"    paginacao: {json.dumps(page, ensure_ascii=False)}")
-    if rows is None:
-        if isinstance(obj, dict):
-            print(f"    objeto chaves: {sorted(obj.keys())}")
-        else:
-            print(f"    tipo: {type(obj).__name__}")
-        return rows
-    print(f"    itens: {len(rows)}")
-    if rows and isinstance(rows[0], dict):
-        first = rows[0]
-        print(f"    campos ({len(first)}): {sorted(first.keys())}")
-        print(f"    tipos: {json.dumps({k: type(v).__name__ for k, v in first.items()}, ensure_ascii=False)}")
-        df = {}
-        for k in first:
-            if any(h in k.lower() for h in DATE_HINT) or (isinstance(first.get(k), str) and DATE_RE.search(first[k] or "")):
-                ds = [parse_date(r.get(k)) for r in rows if isinstance(r, dict)]
-                ds = [d for d in ds if d]
-                if ds:
-                    df[k] = f"{min(ds).isoformat()}..{max(ds).isoformat()} (n={len(ds)})"
-        if df:
-            print(f"    datas (intervalo na amostra): {json.dumps(df, ensure_ascii=False)}")
-    return rows
-
-
-def try_json(label, path, key):
+def try_json(label, path, key, show_nested=()):
     print(f"\n=== {label}  GET {path} ===")
     status, ctype, body = http_get(path, key)
-    print(f"  HTTP {status} {ctype}")
+    print(f"  HTTP {status} {ctype.split(';')[0]}")
     if status == 200 and "json" in ctype.lower():
         try:
-            return describe(json.loads(body))
+            obj = json.loads(body)
+            kind, ks = keys_of(obj)
+            print(f"  {kind} campos: {ks}")
+            # inspeciona objetos aninhados (so nomes de chaves, sem valores)
+            sample = (obj if isinstance(obj, dict) else (obj[0] if obj else {}))
+            rows = None
+            if isinstance(obj, dict):
+                for k in ("content","data","rows","list","items","registros","dados","result","results"):
+                    if isinstance(obj.get(k), list) and obj[k]:
+                        sample = obj[k][0]; break
+            elif isinstance(obj, list) and obj:
+                sample = obj[0]
+            for nk in show_nested:
+                if isinstance(sample, dict) and isinstance(sample.get(nk), dict):
+                    print(f"    .{nk} chaves: {sorted(sample[nk].keys())}")
+            return obj
         except Exception as e:
-            print(f"    (JSON invalido: {e})")
+            print(f"  (JSON invalido: {e})")
     else:
-        print(f"    corpo(160c): {body[:160].replace(chr(10),' ')}")
+        print(f"  corpo(160c): {body[:160].replace(chr(10),' ')}")
     return None
+
+
+def probe_spec(key):
+    print("\n##### OpenAPI spec (mapeia todos os endpoints) #####")
+    for spec in ["/v3/api-docs", "/adm-core-ms/v3/api-docs", "/adm-core-ms/api-docs",
+                 "/swagger.json", "/openapi.json", "/v2/api-docs", "/api-docs"]:
+        status, ctype, body = http_get(spec, key)
+        print(f"  {spec} -> HTTP {status} {ctype.split(';')[0]} ({len(body)} bytes)")
+        if status == 200 and "json" in ctype.lower():
+            try:
+                d = json.loads(body)
+                paths = d.get("paths", {})
+                print(f"  >> SPEC OK: {len(paths)} paths")
+                rx = re.compile(r"client|pessoa|perfil|matricula|cadastr|aluno", re.I)
+                hits = [p for p in paths if rx.search(p)]
+                print(f"  >> paths de cadastro ({len(hits)}):")
+                for p in hits[:60]:
+                    methods = ",".join(sorted(paths[p].keys()))
+                    print(f"     {methods.upper()} {p}")
+                return True
+            except Exception as e:
+                print(f"     (JSON invalido: {e})")
+    print("  (spec nao acessivel pelos caminhos testados)")
+    return False
 
 
 def probe():
@@ -107,52 +100,42 @@ def probe():
     unit = os.environ.get("PACTO_UNIT", "?")
     if not key:
         print("[probe] ERRO: PACTO_API_KEY ausente."); sys.exit(1)
-    print(f"[probe] unidade={unit} base={BASE} (ApiKey len={len(key)}, valor NAO impresso)")
+    print(f"[probe] unidade={unit} (ApiKey len={len(key)}, valor NAO impresso)")
 
-    # 1) Roster de clientes (paginado)
     rows = try_json("clientes_simples", "/clientes/simples?page=0&size=5", key)
-
-    # 2) Captura um id/matricula (mascarados) para testar acessos por pessoa
-    cod, mat = None, None
-    if rows:
+    cod = None
+    if isinstance(rows, list):
         for r in rows:
-            if isinstance(r, dict):
-                cod = cod or r.get("codigoCliente")
-                mat = mat or r.get("matricula")
-                if cod and mat:
-                    break
-    print(f"\n[probe] codigoCliente capturado: {'sim' if cod else 'nao'} | matricula capturada: {'sim' if mat else 'nao'} (valores ocultos)")
+            if isinstance(r, dict) and r.get("codigoCliente"):
+                cod = r["codigoCliente"]; break
+    elif isinstance(rows, dict):
+        for k in ("content","data","rows","list"):
+            if isinstance(rows.get(k), list):
+                for r in rows[k]:
+                    if isinstance(r, dict) and r.get("codigoCliente"):
+                        cod = r["codigoCliente"]; break
+                break
+    print(f"\n[probe] codigoCliente capturado: {'sim' if cod else 'nao'} (valor oculto)")
 
-    # 3) Endpoints de ACESSO por pessoa (substituindo ids reais)
+    # 1) Inspeciona o objeto 'cliente' aninhado num acesso (pode ja conter cadastro)
     if cod is not None:
         c = urllib.parse.quote(str(cod))
-        try_json("acessos_by_pessoa",   f"/acessos-cliente/by-pessoa/{c}", key)
-        try_json("acessos_ultimosmeses", f"/acessos-cliente/{c}/ultimos-meses", key)
-        try_json("acessos_info",         f"/acessos-cliente/{c}/info-acessos", key)
-        try_json("periodo_acesso",       f"/clientes/{c}/periodo-acesso", key)
-    if mat is not None:
-        m = urllib.parse.quote(str(mat))
-        try_json("registro_acesso_matricula", f"/clientes/listar-registro-de-acesso/{m}", key)
+        try_json("acesso_nested", f"/acessos-cliente/by-pessoa/{c}?page=0&size=1", key,
+                 show_nested=("cliente", "localAcesso", "coletor"))
+        # 2) Candidatos de detalhe/cadastro por codigoCliente
+        for label, p in [
+            ("clientes_detalhe",      f"/clientes/{c}"),
+            ("clientes_dados",        f"/clientes/{c}/dados"),
+            ("clientes_cadastrais",   f"/clientes/{c}/dados-cadastrais"),
+            ("clientes_perfil",       f"/clientes/{c}/perfil"),
+            ("perfil_aluno",          f"/perfil-aluno/{c}"),
+            ("pessoa_detalhe",        f"/pessoa/{c}"),
+            ("clientes_completo",     f"/clientes/{c}/completo"),
+        ]:
+            try_json(label, p, key)
 
-    # 4) Bulk de acessos — tenta variacoes de parametros de data (descoberta)
-    di, dfim = "2026-06-01", "2026-06-30"
-    variants = [
-        f"?dataInicial={di}&dataFinal={dfim}",
-        f"?dataInicio={di}&dataFim={dfim}",
-        f"?inicio={di}&fim={dfim}",
-        f"?dataInicial={urllib.parse.quote('01/06/2026')}&dataFinal={urllib.parse.quote('30/06/2026')}",
-        "?filters=" + urllib.parse.quote(json.dumps({"dataInicial": di, "dataFinal": dfim})),
-    ]
-    print("\n=== bulk lista-rapida-acessos (variacoes de data) ===")
-    for qs in variants:
-        status, ctype, body = http_get("/psec/alunos/lista-rapida-acessos" + qs, key)
-        print(f"  {qs[:70]} -> HTTP {status} {ctype.split(';')[0]}")
-        if status == 200 and "json" in ctype.lower():
-            try:
-                describe(json.loads(body)); print("   >> OK nesta variacao."); break
-            except Exception as e:
-                print(f"   (JSON invalido: {e})")
-
+    # 3) OpenAPI spec (jackpot: lista todos os endpoints de cliente)
+    probe_spec(key)
     print("\n[probe] fim.")
 
 
@@ -160,4 +143,4 @@ if __name__ == "__main__":
     if "--probe" in sys.argv:
         probe()
     else:
-        print("Use --probe (a coleta real sera implementada apos travar o schema).")
+        print("Use --probe.")
