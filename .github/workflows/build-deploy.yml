@@ -54,7 +54,7 @@ jobs:
       - name: Construir freq_multi.json (com checagem de consistencia)
         run: |
           set -o pipefail
-          python scripts/build_freq_multi.py data 2>build.log | cat
+          python scripts/build_freq_multi.py data 2>build.log | cat || { echo "::error::build_freq_multi.py falhou (ver traceback abaixo)"; cat build.log; exit 1; }
           cat build.log
           if grep -q '\[WARN\]' build.log; then
             echo "::error::Inconsistencia de churn detectada (ver build.log). Abortando sem publicar."
