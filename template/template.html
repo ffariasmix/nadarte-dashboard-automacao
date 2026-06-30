@@ -488,7 +488,7 @@ function expected(m,g,dps){return (state.vezG[g]||3)*semanas(m,dps);}
 function cumpr(ac,m,g,dps){return Math.min(1,ac[m]/expected(m,g,dps));}
 
 // ===== clusterização (idêntica ao modelo validado) =====
-function cluster(ac,frm,to,fs){
+function cluster(ac,frm,to,fs,novoCad){if(novoCad)return{cluster:'Novo',risco:'Baixo',ciclo:'Novo',inativo:0,ult:'—',motivo:'Matriculado no mês de referência — aluno novo.'};
   const rng=ac.slice(frm-1,to),n=rng.length;
   const ai=[];for(let i=0;i<n;i++)if(rng[i]>0)ai.push(i);
   if(!ai.length)return{cluster:'Sem acesso',risco:'Alto',ciclo:'Saindo',inativo:n,ult:'—',motivo:'Nenhum registro de acesso no período selecionado.'};
@@ -501,7 +501,7 @@ function cluster(ac,frm,to,fs){
   function R(cl,ex){const o=CLU[cl];return Object.assign({cluster:cl,risco:o.r,inativo:inativo,ult:ult},ex);}
   if(inativo>=2)return R('Em evasão',{ciclo:'Saindo',motivo:'Sem acessos há '+inativo+' meses (último em '+ult+'). Vinha de ~'+Math.round(early)+' acessos/mês.'});
   if(inativo===1){if(early>=4)return R('Em declínio',{ciclo:'Em risco',motivo:'Não acessou no último mês; vinha de ~'+Math.round(early)+' acessos/mês. Sinal de afastamento.'});return R('Esporádico',{ciclo:'Em risco',motivo:'Acessos intermitentes e sem registro no último mês.'});}
-  if(span===1&&first===n-1){var absIdx=frm-1+last;var anyBefore=false,prevAcc=(absIdx>0&&ac[absIdx-1]>0);for(var z=0;z<absIdx;z++){if(ac[z]>0){anyBefore=true;break;}}var ledgerOld=(fs!=null&&fs>=0&&fs<absIdx);if(!anyBefore&&!ledgerOld)return R('Novo',{ciclo:'Novo',motivo:'Primeiro registro em '+ult+' — 1ª vez no histórico completo.'});if(prevAcc)return R('Regular',{ciclo:'Consolidado',motivo:'Ativo em '+ult+' e também no mês anterior (visão de janela curta).'});var fsl=(fs!=null&&fs>=0&&fs<MES.length)?MES[fs]:'base anterior';return R('Retorno',{ciclo:'Crescendo',motivo:'Reativado em '+ult+' após ausência (1ª aparição: '+fsl+'). Já tinha histórico — não é novo.'});}
+  if(span===1&&first===n-1){var absIdx=frm-1+last;var anyBefore=false,prevAcc=(absIdx>0&&ac[absIdx-1]>0);for(var z=0;z<absIdx;z++){if(ac[z]>0){anyBefore=true;break;}}var ledgerOld=(fs!=null&&fs>=0&&fs<absIdx);if(!anyBefore&&!ledgerOld)return R('Esporádico',{ciclo:'Em risco',motivo:'Acesso isolado recente, sem rotina estabelecida.'});if(prevAcc)return R('Regular',{ciclo:'Consolidado',motivo:'Ativo em '+ult+' e também no mês anterior (visão de janela curta).'});var fsl=(fs!=null&&fs>=0&&fs<MES.length)?MES[fs]:'base anterior';return R('Retorno',{ciclo:'Crescendo',motivo:'Reativado em '+ult+' após ausência (1ª aparição: '+fsl+'). Já tinha histórico — não é novo.'});}
   if(change<=-0.40)return R('Em declínio',{ciclo:'Em risco',motivo:'Frequência caiu '+sig(change)+' (de ~'+Math.round(early)+' para ~'+Math.round(late)+' acessos/mês). Mudança de comportamento.'});
   if(presence<0.60)return R('Esporádico',{ciclo:'Em risco',motivo:'Padrão irregular: ativo em '+ai.length+' de '+span+' meses, com lacunas.'});
   if(change>=0.40)return R('Em ascensão',{ciclo:'Crescendo',motivo:'Frequência subiu '+sig(change)+' (de ~'+Math.round(early)+' para ~'+Math.round(late)+' acessos/mês).'});
@@ -511,7 +511,7 @@ function cluster(ac,frm,to,fs){
 function metaInfo(ac,frm,to,g,dps){const rng=ac.slice(frm-1,to);const ai=[];for(let i=0;i<rng.length;i++)if(rng[i]>0)ai.push(i);
   if(!ai.length)return{metaPct:0,atingiu:false};
   let s=0,k=0;for(let m=frm-1+ai[0];m<to;m++){s+=cumpr(ac,m,g,dps);k++;}const mp=k?s/k:0;return{metaPct:mp,atingiu:mp>=state.thr};}
-function met(s){const c=cluster(s.ac,state.from,state.to,s.fs);const rng=s.ac.slice(state.from-1,state.to);const mi=metaInfo(s.ac,state.from,state.to,s.grupo,s.dps);
+function met(s){const c=cluster(s.ac,state.from,state.to,s.fs,isNovoCad(s));const rng=s.ac.slice(state.from-1,state.to);const mi=metaInfo(s.ac,state.from,state.to,s.grupo,s.dps);
   const eng=(c.cluster==='Fiel'||c.cluster==='Regular');
   return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng});}
 function filtered(){return DATA.students.filter(s=>(state.unit==='REDE'||s.u===state.unit)&&(state.cat==='Total'||s.grupo===state.cat)&&(state.mod==='Todas'||s.mod===state.mod));}
@@ -624,7 +624,7 @@ function renderRiskMoney(L){
  if(single){box.innerHTML='<div class="panel" style="border-left:4px solid var(--muted);padding:15px 17px"><div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Receita em risco (R$)</div><div style="font-size:14px;color:var(--muted);margin-top:6px">Selecione <b>2+ meses</b> para estimar — o risco depende da trajetória do aluno (comparação entre meses).</div></div>';const w=document.getElementById('riskMoneyChartWrap');if(w)w.style.display='none';destroy('cRiskMoney');return;}
  let v=0,c=0,vA=0,cA=0;L.forEach(s=>{const r=s.m.risco;if(r==='Alto'||r==='Médio'){const tk=ticketU(s.u);v+=tk;c++;if(r==='Alto'){vA+=tk;cA++;}}});
  const ser={labels:[],vals:[]};
- for(let m=state.from+1;m<=state.to;m++){let mv=0;L.forEach(s=>{const r=cluster(s.ac,state.from,m,s.fs).risco;if(r==='Alto'||r==='Médio')mv+=ticketU(s.u);});ser.labels.push(MES[m-1]);ser.vals.push(Math.round(mv));}
+ for(let m=state.from+1;m<=state.to;m++){let mv=0;L.forEach(s=>{const r=cluster(s.ac,state.from,m,s.fs,isNovoCad(s)).risco;if(r==='Alto'||r==='Médio')mv+=ticketU(s.u);});ser.labels.push(MES[m-1]);ser.vals.push(Math.round(mv));}
  const junePart=(state.to===6);
  let momHtml='';
  const lastIdx=ser.vals.length-1,vIdx=(junePart&&ser.vals.length>=3)?lastIdx-1:lastIdx;
@@ -749,16 +749,21 @@ const IC_AL='<path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/>',IC_OK='<circle 
 // ===== Drawer de aluno: perfil + abordagem personalizada (reutilizavel em todas as abas) =====
 function akey(s){return (s.u||'')+'|'+(s.mat||'')+'|'+(s.nome||'');}
 function ulabel(k){var u=(DATA.unidades||[]).find(function(x){return x.key===k;});return u?u.label:(k||'');}
+function parseISO(d){if(!d)return null;var x=new Date(d);return isNaN(x.getTime())?null:x;}
+function fmtBR(d){if(!d)return '—';var dd=('0'+d.getDate()).slice(-2),mm=('0'+(d.getMonth()+1)).slice(-2);return dd+'/'+mm+'/'+d.getFullYear();}
+function mesRefYM(){var MN={Jan:1,Fev:2,Mar:3,Abr:4,Mai:5,Jun:6,Jul:7,Ago:8,Set:9,Out:10,Nov:11,Dez:12};var pp=MES[MES.length-1].split('.');return {y:2000+(parseInt(pp[1],10)||0),m:(MN[pp[0]]||0)};}
+function isNovoCad(s){var d=parseISO(s.dm);if(!d)return false;var r=mesRefYM();return d.getFullYear()===r.y&&(d.getMonth()+1)===r.m;}
+function tenureInfo(s){var d=parseISO(s.dm);if(!d)return null;var ref=parseRefDate();var dias=Math.floor((ref-d)/86400000);if(dias<0)dias=0;var anos=Math.floor(dias/365),meses=Math.floor((dias%365)/30);var label=anos>=1?(anos+' ano'+(anos>1?'s':'')+(meses?(' e '+meses+'m'):'')):(meses+(meses===1?' mês':' meses'));return {date:d,dias:dias,meses:anos*12+meses,label:label,desde:fmtBR(d)};}
 function aname(s){return '<span class="arow" data-k="'+akey(s).replace(/"/g,'&quot;')+'" title="Ver perfil e abordagem">'+escD(s.nome)+'</span>';}
 function findAluno(k){var p=String(k).split('|'),u=p[0],mat=p[1],nome=p.slice(2).join('|');
   return (DATA.students||[]).find(function(s){return s.u===u&&String(s.mat)===String(mat)&&s.nome===nome;});}
 function escD(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function safeU(u){u=String(u||'');return /^https?:\/\//i.test(u)?u:'#';}
-function abordagem(s,c,tenure){
+function abordagem(s,c,tenure){var tl=(tenure==null?'':(tenure>=12?(Math.floor(tenure/12)+' ano(s)'):(tenure+(tenure===1?' mês':' meses'))));
   var fiel=(c.cluster==='Fiel'||c.cluster==='Regular'||c.cluster==='Em ascensão');
   var alto=(c.risco==='Alto'||c.cluster==='Em evasão'||c.cluster==='Sem acesso');
   var medio=(c.cluster==='Em declínio'||c.risco==='Médio'||c.cluster==='Esporádico');
-  var longo=(tenure!=null&&tenure>=4);
+  var longo=(tenure!=null&&tenure>=12);
   if(c.cluster==='Novo')
     return {obj:'Onboarding',cor:'#3E6DAA',leitura:'Aluno novo — ainda criando hábito. A janela das primeiras semanas decide a permanência.',
       roteiro:['Dar boas-vindas e perguntar como foi a primeira experiência.','Garantir que sabe horários, turmas e como usar a estrutura.','Marcar um retorno em 2 semanas para acompanhar.'],oferta:'Aula experimental guiada / avaliação inicial gratuita.'};
@@ -766,23 +771,23 @@ function abordagem(s,c,tenure){
     return {obj:'Boas-vindas de volta',cor:'#6B5BAD',leitura:'Reativado — voltou após ausência. Momento frágil: reforçar o vínculo para não sair de novo.',
       roteiro:['Reconhecer o retorno de forma positiva (sem cobrança).','Entender o que motivou a volta e o objetivo atual.','Sugerir uma rotina leve para reconstruir o hábito.'],oferta:'Plano de retomada / reavaliação de objetivos.'};
   if(alto&&longo)
-    return {obj:'Resgate prioritário (fiel)',cor:'#D64545',leitura:'Cliente de longa data ('+tenure+' meses) que parou de forma abrupta — padrão típico de fator externo (mudança, lesão, agenda), não de desgaste. Alta chance de recuperação com toque pessoal.',
+    return {obj:'Resgate prioritário (fiel)',cor:'#D64545',leitura:'Cliente de longa data ('+tl+') que parou de forma abrupta — padrão típico de fator externo (mudança, lesão, agenda), não de desgaste. Alta chance de recuperação com toque pessoal.',
       roteiro:['Ligação da coordenação, tom de cuidado — "sentimos sua falta", sem venda dura.','Perguntar abertamente o que aconteceu e REGISTRAR o motivo real.','Oferecer solução para o motivo (congelamento, troca de horário/modalidade).'],oferta:'Flexibilização (pausa/horário) + retorno facilitado.'};
   if(alto)
-    return {obj:'Resgate ativo',cor:'#D64545',leitura:'Sem acessos no período' + (tenure!=null?(' e pouco tempo de casa ('+tenure+' meses)'):'') + ' — provável hábito nunca consolidado. Foco em reverter antes do cancelamento.',
+    return {obj:'Resgate ativo',cor:'#D64545',leitura:'Sem acessos no período' + (tenure!=null?(' e pouco tempo de casa ('+tl+')'):'') + ' — provável hábito nunca consolidado. Foco em reverter antes do cancelamento.',
       roteiro:['Ligação da coordenação + oferta de reativação.','Mapear e REGISTRAR o motivo da parada.','Propor recomeço com meta pequena e acompanhamento próximo.'],oferta:'Reativação + acompanhamento nas 2 primeiras semanas.'};
   if(medio)
     return {obj:'Retenção (sinal de alerta)',cor:'#E8821A',leitura:'Frequência em queda / irregular — ainda dá tempo de reverter antes de virar evasão.',
       roteiro:['Contato leve: "notamos que você apareceu menos, está tudo bem?".','Identificar barreira (horário, motivação, rotina) e REGISTRAR.','Repactuar uma meta realista e um próximo passo.'],oferta:'Ajuste de horário/modalidade ou novo desafio.'};
   if(fiel)
-    return {obj:'Reconhecimento & fidelização',cor:'#2E7D4F',leitura:'Aluno engajado'+(longo?(' e fiel de longa data ('+tenure+' meses)'):'')+'. Vale reconhecer e transformar em promotor.',
+    return {obj:'Reconhecimento & fidelização',cor:'#2E7D4F',leitura:'Aluno engajado'+(longo?(' e fiel de longa data ('+tl+')'):'')+'. Vale reconhecer e transformar em promotor.',
       roteiro:['Reconhecer a constância (mensagem/parabéns pela frequência).','Pedir INDICAÇÃO de amigos/familiares (programa member-get-member).','Oferecer próximo nível: novo objetivo, modalidade extra ou avaliação.'],oferta:'Programa de indicação + upgrade/cross-sell de modalidade.'};
   return {obj:'Acompanhamento',cor:'#5BAD6F',leitura:'Perfil estável. Manter relacionamento e atenção a mudanças de padrão.',
     roteiro:['Contato de relacionamento e check de satisfação.','Estimular constância e novos objetivos.'],oferta:'Check-in de satisfação.'};
 }
 var __avgStart=null;
 function parseRefDate(){var b=DATA.baseUpdated||'';var m=String(b).match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):new Date();}
-function enrollRef(s){var MN={Jan:0,Fev:1,Mar:2,Abr:3,Mai:4,Jun:5,Jul:6,Ago:7,Set:8,Out:9,Nov:10,Dez:11};var fs=(typeof s.fs==='number'&&s.fs>=0&&s.fs<MES.length)?s.fs:0;var p=MES[fs].split('.');return new Date(2000+(parseInt(p[1],10)||0),(MN[p[0]]||0),1);}
+function enrollRef(s){var __d=parseISO(s.dm);if(__d)return __d;var MN={Jan:0,Fev:1,Mar:2,Abr:3,Mai:4,Jun:5,Jul:6,Ago:7,Set:8,Out:9,Nov:10,Dez:11};var fs=(typeof s.fs==='number'&&s.fs>=0&&s.fs<MES.length)?s.fs:0;var p=MES[fs].split('.');return new Date(2000+(parseInt(p[1],10)||0),(MN[p[0]]||0),1);}
 function daysBetween(a,b){return Math.round((b-a)/86400000);}
 function avgStartDays(){if(__avgStart!==null)return __avgStart;var arr=[];(DATA.students||[]).forEach(function(s){if(!s.fa)return;var fa=new Date(s.fa);if(isNaN(fa.getTime()))return;var d=daysBetween(enrollRef(s),fa);if(d>=0&&d<=400)arr.push(d);});__avgStart=arr.length?Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length):-1;return __avgStart;}
 function onboardingPlan(s){var avg=avgStartDays(),ref=(avg>0?avg:21),elapsed=Math.max(0,daysBetween(enrollRef(s),parseRefDate())),avgT=(avg>0?('~'+avg+' dias'):'indisponível');
@@ -792,10 +797,10 @@ function onboardingPlan(s){var avg=avgStartDays(),ref=(avg>0?avg:21),elapsed=Mat
 }
 
 function alunoDetail(s){
-  var c=cluster(s.ac,state.from,state.to,s.fs);
+  var c=cluster(s.ac,state.from,state.to,s.fs,isNovoCad(s));
   var unitLabel=(((DATA.unidades||[]).find(function(u){return u.key===s.u;}))||{}).label||s.u;
   var nm=MES.length;
-  var tenure=(typeof s.fs==='number'&&s.fs>=0)?(nm-s.fs):null;
+  var ti=tenureInfo(s);var tenure=ti?ti.meses:null;
   var firstSeen=(typeof s.fs==='number'&&s.fs>=0&&s.fs<nm)?MES[s.fs]:'base anterior';
   var ai=[];for(var i=0;i<s.ac.length;i++)if(s.ac[i]>0)ai.push(i);
   var lastAcc=ai.length?MES[ai[ai.length-1]]:'sem registro';
@@ -813,8 +818,8 @@ function alunoDetail(s){
      +'<span class="adtag2">'+escD(s.grupo)+(s.mod?(' · '+escD(s.mod)):'')+'</span>'
      +'<span class="adtag2">'+escD(unitLabel)+'</span>'
      +(s.band?'<span class="adtag2">'+escD(s.band)+'</span>':'')
-     +(tenure!=null?'<span class="adtag2">'+tenure+' meses de casa</span>':'')+'</div>'
-   +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px"><span style="color:#3E6DAA">■</span> acessou · <span style="color:#E8A0A0">■</span> matriculado s/ acesso · <span style="color:#cfcfcf">■</span> não matriculado</div><div style="font-size:12px;color:var(--muted);margin-top:6px">1ª aparição: <b>'+escD(firstSeen)+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
+     +(ti?'<span class="adtag2">Aluno desde '+ti.desde+' · '+ti.label+' de casa</span>':'')+'</div>'
+   +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px"><span style="color:#3E6DAA">■</span> acessou · <span style="color:#E8A0A0">■</span> matriculado s/ acesso · <span style="color:#cfcfcf">■</span> não matriculado</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Matriculado em <b>'+(ti?ti.desde:'—')+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
    +'<div class="adsec"><div class="adlab">Diagnóstico</div>'+escD(c.motivo||'')+'</div>'
    +'<div class="adsec" style="border-left-color:'+ab.cor+'"><div class="adlab" style="color:'+ab.cor+'">Abordagem recomendada · '+escD(ab.obj)+'</div>'
      +'<div style="margin-bottom:6px">'+escD(ab.leitura)+'</div>'
@@ -847,7 +852,7 @@ function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--mute
 
 function winAgg(L,a,b){const lastM=MES[b-1];const risk={Alto:0,'Médio':0,Baixo:0},clu={};
  let fiel=0,eng=0,asc=0,meta=0,both=0,quase=0,sumiram=0,evas=0,mpS=0,nf=0;const base=L.length;
- for(let i=0;i<L.length;i++){const s=L[i];const c=cluster(s.ac,a,b,s.fs);const mi=metaInfo(s.ac,a,b,s.grupo,s.dps);
+ for(let i=0;i<L.length;i++){const s=L[i];const c=cluster(s.ac,a,b,s.fs,isNovoCad(s));const mi=metaInfo(s.ac,a,b,s.grupo,s.dps);
    const rng=s.ac.slice(a-1,b);let tot=0;for(let j=0;j<rng.length;j++)tot+=rng[j];
    risk[c.risco]=(risk[c.risco]||0)+1;clu[c.cluster]=(clu[c.cluster]||0)+1;
    const isEng=(c.cluster==='Fiel'||c.cluster==='Regular');
