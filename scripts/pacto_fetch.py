@@ -19,16 +19,52 @@ Modos:
 Uso: python3 pacto_fetch.py <data_dir>
 PII fica apenas nos .bin (gitignored/efemeros no CI), nunca em log.
 """
-import os, sys, json, time, random, datetime, calendar
+import os, sys, io, json, time, random, datetime, calendar, re
 import urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
 import openpyxl
 
 WORKERS = int(os.environ.get("PACTO_WORKERS", "4"))
+DRIVE_MONTHS = set()   # meses (yr,mn) que o Drive JA cobre em catraca (API nao repete)
+_SHEET_MONTH = re.compile(r"^\s*(\d{1,2})\.\s*\w+\.?(\d{4})?")
+
+def _sheet_month(sn):
+    m = _SHEET_MONTH.match(str(sn))
+    if not m:
+        return None
+    yr = int(m.group(2)) if m.group(2) else datetime.date.today().year
+    return (yr, int(m.group(1)))
+
+def window_months(start, end):
+    """lista de (yr,mn) de start ate end (inclusive)."""
+    out = []
+    y, m = start
+    while (y, m) <= end:
+        out.append((y, m))
+        m += 1
+        if m > 12:
+            m = 1; y += 1
+    return out
+
+def active_in_month(ini, fim, yr, mn, situacao=""):
+    """ATIVO no mes = contrato cobre o mes (inicio<=fim do mes E fim>=inicio do mes)."""
+    first = datetime.date(yr, mn, 1)
+    last = datetime.date(yr, mn, calendar.monthrange(yr, mn)[1])
+    if ini and ini > last:
+        return False
+    if fim and fim < first:
+        return False
+    if not ini and not fim:
+        # sem datas de contrato: so conta no mes corrente se estiver ATIVO hoje
+        return str(situacao).upper() == "ATIVO" and (yr, mn) == (NOW.year, NOW.month)
+    return True
 
 BASE = "https://apigw.pactosolucoes.com.br"
 DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
-WINDOW_START = (2025, 1)         # catraca: emite meses a partir daqui
+# catraca: emite meses a partir daqui. Alinhado ao recorte de "ativos" disponivel
+# (o motor precisa de roster ATIVO em todo mes da timeline; senao o gate barra).
+# Configuravel por env p/ crescer quando entrarem mais meses reais.
+WINDOW_START = tuple(int(x) for x in os.environ.get("PACTO_WINDOW_START", "2025-01").split("-"))
 NOW = datetime.date.today()
 ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
 
@@ -121,10 +157,10 @@ def to_date(v):
     return None
 
 # ------------------------- COLETA -------------------------
-def roster_ativos(key):
-    """paginacao robusta: dedupe por codigoCliente, para quando pagina nao traz codigo novo."""
+def roster_full(key):
+    """TODOS os clientes (ativos+inativos+visitantes), dedup por codigoCliente."""
     seen = set(); out = []
-    for pg in range(0, 120):
+    for pg in range(0, 300):
         st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
         r = lst(o)
         if not r:
@@ -136,61 +172,58 @@ def roster_ativos(key):
             cc = gv(c, "codigoCliente", "codigo")
             if cc is None or cc in seen:
                 continue
-            seen.add(cc); novos += 1
-            if str(gv(c, "situacao") or "").upper() == "ATIVO":
-                out.append(c)
-        if novos == 0:
-            break
-        if len(r) < 200:
+            seen.add(cc); novos += 1; out.append(c)
+        if novos == 0 or len(r) < 200:
             break
     return out
 
-def fetch_client(key, c):
-    """1 cliente -> (aluno_row, [(ym, acc_row)]). dados-pessoais (codPessoa+cpf) + 1 chamada de acesso."""
+def fetch_client_full(key, c, wmonths):
+    """1 cliente -> (rec, [datas na janela]). rec: attrs + contrato (ini/fim/sit).
+    dados-pessoais (codPessoa+cpf+demografia) + 1 chamada de acessos."""
     try:
-        M = gv(c, "matricula")
-        nome = gv(c, "nome") or ""
+        M = gv(c, "matricula"); nome = gv(c, "nome") or ""; sit = str(gv(c, "situacao") or "")
+        ini = to_date(gv(c, "inicioContrato")); fim = to_date(gv(c, "fimContrato"))
         modc = gv(c, "categoria") or ""
         st, o = gj(key, f"/clientes/{M}/dados-pessoais")
         dp = unwrap(o) if st == 200 else {}
-        cp  = gv(dp, "codigoPessoa", "codPessoa")
-        cpf = gv(dp, "cpf") or ""
-        aluno = {
-            "mat": M, "nome": nome, "cpf": cpf,
+        cp = gv(dp, "codigoPessoa", "codPessoa"); cpf = gv(dp, "cpf") or ""
+        rec = {
+            "ulabel": None, "mat": M, "nome": nome, "cpf": cpf,
             "nasc": to_date(gv(dp, "dataNascimento", "datanasc", "nascimento")),
             "sexo": gv(dp, "sexo") or "",
             "mod": gv(dp, "descricao") or gv(dp, "categoria") or modc,
-            "dm": to_date(gv(dp, "dataMatricula")),
+            "dm": to_date(gv(dp, "dataMatricula")) or ini,
+            "ini": ini, "fim": fim, "sit": sit,
         }
-        accrows = []
+        dates = []
         if cp:
             st, o = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
             for a in (lst(o) if st == 200 else []):
                 d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
-                if not d:
-                    continue
-                ym = (d.year, d.month)
-                if ym < WINDOW_START or ym > (NOW.year, NOW.month):
-                    continue
-                accrows.append((ym, {"cpf": cpf, "nome": nome, "data": d}))
-        return aluno, accrows
+                if d and (d.year, d.month) in wmonths:
+                    dates.append(d)
+        return rec, dates
     except Exception:
-        return {"mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
-                "nasc": None, "sexo": "", "mod": "", "dm": None}, []
+        return {"ulabel": None, "mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
+                "nasc": None, "sexo": "", "mod": "", "dm": None,
+                "ini": to_date(gv(c, "inicioContrato")), "fim": to_date(gv(c, "fimContrato")),
+                "sit": str(gv(c, "situacao") or "")}, []
 
 def coleta_unidade(unit_key, unit_label, key):
-    """retorna (alunos_rows, catraca) para a unidade. Coleta PARALELA (I/O bound)."""
-    ativos = roster_ativos(key)
-    alunos_rows = []
-    catraca = {}   # (year,month) -> list of {cpf,nome,data}
-    t0 = time.time()
+    """FULL-API: retorna lista de (rec, [datas]) dos clientes ATIVOS em >=1 mes da janela
+    (por contrato) — inclui quem ja saiu. Coleta PARALELA (I/O bound)."""
+    wmonths = set(window_months(WINDOW_START, (NOW.year, NOW.month)))
+    full = roster_full(key)
+    win = [c for c in full
+           if any(active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), y, m, gv(c, "situacao"))
+                  for (y, m) in wmonths)]
+    t0 = time.time(); recs = []
     with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        for aluno, accrows in ex.map(lambda c: fetch_client(key, c), ativos):
-            alunos_rows.append(aluno)
-            for ym, row in accrows:
-                catraca.setdefault(ym, []).append(row)
-    print(f"[t] {unit_key}: coleta de {len(ativos)} ativos em {time.time()-t0:.0f}s", file=sys.stderr)
-    return alunos_rows, catraca
+        for rec, dates in ex.map(lambda c: fetch_client_full(key, c, wmonths), win):
+            rec["ulabel"] = unit_label
+            recs.append((rec, dates))
+    print(f"[t] {unit_key}: base={len(full)} janela={len(win)} coletados em {time.time()-t0:.0f}s", file=sys.stderr)
+    return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
 AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA"]
@@ -214,6 +247,27 @@ def write_catraca_wb(path, sheets):
         for r in sheets[(yr, mn)]:
             ws.append(["", r["nome"], r["cpf"], r["data"]])
     wb.save(path)
+
+def merge_catraca_into(path, sheets):
+    """Acrescenta as folhas de mes da API dentro do workbook de catraca do Drive (mesmo arquivo),
+    somente para meses ainda ausentes. Preserva o historico completo do Drive."""
+    wb = openpyxl.load_workbook(io.BytesIO(open(path, "rb").read()))
+    have = set()
+    for sn in wb.sheetnames:
+        mm = _sheet_month(sn)
+        if mm:
+            have.add(mm)
+    add = 0
+    for (yr, mn) in sorted(sheets.keys()):
+        if (yr, mn) in have:
+            continue
+        ws = wb.create_sheet(title=f"{mn}. {ABBR[mn]}.{yr}"[:31])
+        ws.append(CT_HEADER)
+        for r in sheets[(yr, mn)]:
+            ws.append(["", r["nome"], r["cpf"], r["data"]])
+        add += 1
+    wb.save(path)
+    return add
 
 # ------------------------- SELFTEST (sintetico) -------------------------
 def selftest_data():
@@ -279,10 +333,11 @@ def main():
         print(f"[selftest] escrito {len(manifest)} arquivos em {DATA_DIR}", file=sys.stderr)
         return
 
+    # =================== FULL-API: reconstrucao por CONTRATO ===================
+    # "Ativos por mes" reconstruidos pelo CONTRATO (inclui quem ja saiu) -> churn SEM vies.
+    # Frequencia (facial) de TODOS que estiveram ativos na janela. Drive vira so fallback.
+    wmonths = window_months(WINDOW_START, (NOW.year, NOW.month))
     only = os.environ.get("PACTO_ONLY", "").strip()
-    cur_ym = (NOW.year, NOW.month)
-    alunos_cur = {}         # label -> rows (mes corrente)
-
     targets = [(uk, ulabel, secret) for (uk, ulabel, secret) in UNITS if not only or uk == only]
 
     def run_unit(t):
@@ -291,8 +346,7 @@ def main():
         if not key:
             print(f"[skip] {uk}: sem secret {secret}", file=sys.stderr); return None
         try:
-            alunos_rows, catraca = coleta_unidade(uk, ulabel, key)
-            return (uk, ulabel, alunos_rows, catraca)
+            return (uk, ulabel, coleta_unidade(uk, ulabel, key))
         except Exception as e:
             print(f"[ERRO] {uk}: {e}", file=sys.stderr); return None
 
@@ -303,21 +357,40 @@ def main():
             if r:
                 results.append(r)
 
-    for uk, ulabel, alunos_rows, catraca in results:
-        alunos_cur[ulabel] = alunos_rows
-        f = nextfid(); write_catraca_wb(os.path.join(DATA_DIR, f + ".bin"), catraca)
-        manifest[f] = f"Acessos Catrata Unidade {ulabel} (Nad'Arte)"
-        tot_acc = sum(len(v) for v in catraca.values())
-        ncpf = sum(1 for r in alunos_rows if len(str(r["cpf"] or "")) >= 11)
-        ndm = sum(1 for r in alunos_rows if r["dm"])
-        na = max(1, len(alunos_rows))
-        print(f"[ok] {uk}: ativos={len(alunos_rows)} cpf={100*ncpf//na}% dataMatr={100*ndm//na}% "
-              f"acessos={tot_acc} meses={sorted(catraca.keys())}", file=sys.stderr)
-    if alunos_cur:
-        f = nextfid(); write_alunos_wb(os.path.join(DATA_DIR, f + ".bin"), alunos_cur)
-        manifest[f] = f"{cur_ym[1]}. Alunos Ativos Rede ({ABBR[cur_ym[1]]}.{cur_ym[0]})"
-    json.dump(manifest, open(os.path.join(DATA_DIR, "manifest.json"), "w"), ensure_ascii=False)
-    print(f"[fim] manifest com {len(manifest)} arquivos", file=sys.stderr)
+    alunos_by_month = {ym: {} for ym in wmonths}   # ym -> {ulabel: [rec]}
+    catraca_by_unit = {}                            # ulabel -> {ym: [row]}
+    for uk, ulabel, recs in results:
+        cat = {}
+        for ym in wmonths:
+            alunos_by_month[ym][ulabel] = [
+                rec for rec, _ in recs
+                if active_in_month(rec["ini"], rec["fim"], ym[0], ym[1], rec["sit"])
+            ]
+        for rec, dates in recs:
+            for d in dates:
+                cat.setdefault((d.year, d.month), []).append({"cpf": rec["cpf"], "nome": rec["nome"], "data": d})
+        catraca_by_unit[ulabel] = cat
+        nwin = len(recs); ncpf = sum(1 for rec, _ in recs if len(str(rec["cpf"] or "")) >= 11)
+        tot_acc = sum(len(v) for v in cat.values())
+        por_mes = {f"{ym[0]}-{ym[1]:02d}": len(alunos_by_month[ym][ulabel]) for ym in wmonths}
+        print(f"[ok] {uk}: janela={nwin} cpf={100*ncpf//max(1,nwin)}% acessos={tot_acc} ativos/mes={por_mes}", file=sys.stderr)
+
+    # escrever: 1 arquivo de alunos por mes + 1 catraca por unidade
+    for ym in wmonths:
+        mes_rows = {ul: rows for ul, rows in alunos_by_month[ym].items() if rows}
+        if mes_rows:
+            f = nextfid(); write_alunos_wb(os.path.join(DATA_DIR, f + ".bin"), mes_rows)
+            manifest[f] = f"{ym[1]}. Alunos Ativos Rede ({ABBR[ym[1]]}.{ym[0]})"
+    for ulabel, cat in catraca_by_unit.items():
+        if cat:
+            f = nextfid(); write_catraca_wb(os.path.join(DATA_DIR, f + ".bin"), cat)
+            manifest[f] = f"Acessos Catrata Unidade {ulabel} (Nad'Arte)"
+    # so sobrescreve manifest se a API produziu dados; senao mantem o do Drive (fallback)
+    if manifest:
+        json.dump(manifest, open(os.path.join(DATA_DIR, "manifest.json"), "w"), ensure_ascii=False)
+        json.dump({"baseUpdated": NOW.isoformat(), "baseUpdatedBy": "API PACTO"},
+                  open(os.path.join(DATA_DIR, "meta.json"), "w"), ensure_ascii=False)
+    print(f"[fim] full-API: {len(manifest)} arquivos, janela {wmonths[0]}..{wmonths[-1]}", file=sys.stderr)
 
 
 if __name__ == "__main__":
