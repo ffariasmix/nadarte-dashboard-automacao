@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — decidir id/ponte de frequencia. Roster tem matricula+codigoCliente (sem cpf/codPessoa).
-Testa: (A) rotulo dos meios; (B) relacao codigoCliente x pessoa.codigo; (C) recuperar 'vazios'
-via endpoints por matricula. PII-safe: sem cpf/nome."""
+"""716N — achar a ponte cliente(codigoCliente/matricula) -> codPessoa/CPF, e validar
+by-pessoa(codPessoa) conferindo acc.cliente.codigo == codigoCliente. PII-safe (mascara cpf/nome)."""
 import os, sys, json, time
 import urllib.request, urllib.error
 
@@ -37,7 +36,7 @@ def lst(o):
     if isinstance(o, list):
         return o
     if isinstance(o, dict):
-        for k in ("content", "data", "result", "results", "rows", "list", "items", "alunos", "acessos", "clientes"):
+        for k in ("content", "data", "result", "results", "rows", "list", "items", "clientes", "acessos"):
             v = o.get(k)
             if isinstance(v, list):
                 return v
@@ -58,85 +57,114 @@ def gv(d, *names):
     return None
 
 
+def deep(o, key, _d=0):
+    """acha 1o valor de 'key' em qualquer nivel."""
+    if _d > 6:
+        return None
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if k.lower() == key.lower() and not isinstance(v, (dict, list)):
+                return v
+        for v in o.values():
+            r = deep(v, key, _d + 1)
+            if r is not None:
+                return r
+    elif isinstance(o, list):
+        for it in o:
+            r = deep(it, key, _d + 1)
+            if r is not None:
+                return r
+    return None
+
+
+def keys_all(o, _d=0, acc=None):
+    if acc is None:
+        acc = set()
+    if _d > 3:
+        return acc
+    if isinstance(o, dict):
+        for k, v in o.items():
+            acc.add(k)
+            keys_all(v, _d + 1, acc)
+    elif isinstance(o, list) and o:
+        keys_all(o[0], _d + 1, acc)
+    return acc
+
+
 def main():
     if not KEY:
         print("[v] sem chave"); sys.exit(1)
 
-    # roster ATIVO
-    todos = []
-    for pg in range(0, 60):
-        st, o = gj(f"/clientes/simples?page={pg}&size=200")
-        r = lst(o)
-        if not r:
-            break
-        todos.extend([c for c in r if isinstance(c, dict)])
-        if len(r) < 200:
-            break
-    ativos = [c for c in todos if str(gv(c, "situacao") or "").upper() == "ATIVO"]
-    print(f"[roster] total={len(todos)} ATIVO={len(ativos)}")
+    # pega alguns ATIVO (com matricula+codigoCliente)
+    st, o = gj("/clientes/simples?page=0&size=200")
+    r = lst(o)
+    ativos = [c for c in r if str(gv(c, "situacao") or "").upper() == "ATIVO"][:6]
+    print(f"[amostra] {len(ativos)} ativos")
 
-    # amostra espalhada
-    N = 50
-    step = max(1, len(ativos) // N)
-    sample = ativos[::step][:N]
+    # candidatos de endpoint de DETALHE do cliente (procuro codPessoa/cpf)
+    cand = [
+        "/clientes/{m}",
+        "/clientes/{c}",
+        "/clientes/dados-pessoais/{m}",
+        "/clientes/dados-pessoais/{c}",
+        "/clientes/ficha/{m}",
+        "/clientes/detalhe/{m}",
+        "/v1/pessoa/{c}",
+        "/v1/pessoa?matricula={m}",
+        "/v1/cliente/{c}",
+        "/v1/cliente?matricula={m}",
+        "/clientes/{m}/dados-pessoais",
+        "/acessos-cliente/{c}/ultimos-meses",
+    ]
 
-    # ---- A) rotulo dos meios + B) relacao de ids ----
-    labels = {}
-    vazios = []
-    comdata = 0
-    rel_lines = []
-    for c in sample:
-        cc = gv(c, "codigoCliente", "codigo")
-        mat = gv(c, "matricula")
-        st, o = gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=50")
-        acc = lst(o) if st == 200 else []
-        if acc:
-            comdata += 1
-            a0 = acc[0]
-            for a in acc:
-                code = str(gv(a, "meioIdentificacaoEntrada"))
-                lab = gv(a, "meioIdentificacaoEntradaApresentar")
-                if lab and code not in labels:
-                    labels[code] = str(lab)
-            cli = gv(a0, "cliente") or {}
-            pes = gv(a0, "pessoa") or {}
-            if len(rel_lines) < 8:
-                rel_lines.append(
-                    f"    usei codigoCliente={cc} matr={mat} | acc.cliente.codigo={gv(cli,'codigo')} acc.pessoa.codigo={gv(pes,'codigo')} acc.matricula={gv(a0,'matricula')}"
-                )
-        else:
-            vazios.append(c)
-        time.sleep(0.03)
+    for i, c in enumerate(ativos[:3]):
+        C = gv(c, "codigoCliente", "codigo")
+        M = gv(c, "matricula")
+        print(f"\n=== cliente #{i}: codigoCliente={C} matricula={M} ===")
+        for tmpl in cand:
+            path = tmpl.replace("{m}", str(M)).replace("{c}", str(C))
+            st, o = gj(path)
+            has_cp = deep(o, "codPessoa") or deep(o, "codigoPessoa")
+            # tenta codPessoa via pessoa.codigo aninhado
+            cp2 = None
+            if isinstance(o, (dict, list)):
+                pcod = None
+                # procura um 'codigo' dentro de um bloco 'pessoa'
+                def find_pessoa_codigo(x, _d=0):
+                    if _d > 5:
+                        return None
+                    if isinstance(x, dict):
+                        if "pessoa" in {k.lower() for k in x} :
+                            for k in x:
+                                if k.lower() == "pessoa" and isinstance(x[k], dict):
+                                    return gv(x[k], "codigo")
+                        for v in x.values():
+                            rr = find_pessoa_codigo(v, _d + 1)
+                            if rr is not None:
+                                return rr
+                    elif isinstance(x, list):
+                        for it in x:
+                            rr = find_pessoa_codigo(it, _d + 1)
+                            if rr is not None:
+                                return rr
+                    return None
+                cp2 = find_pessoa_codigo(o)
+            has_cpf = deep(o, "cpf")
+            flag = ""
+            if st == 200 and (has_cp or cp2 or has_cpf):
+                flag = f"  <<< codPessoa={has_cp or cp2} cpf?={'sim' if has_cpf else 'nao'}"
+            ks = ""
+            if st == 200 and i == 0:
+                ks = " keys=" + str(sorted(keys_all(o)))[:180]
+            print(f"  {st}  {tmpl}{flag}{ks}")
+            time.sleep(0.03)
 
-    print(f"\n[A] meios (codigo->rotulo): {labels}")
-    print(f"\n[B] relacao de ids (amostra):")
-    for l in rel_lines:
-        print(l)
-    print(f"\n[cobertura by-pessoa(codigoCliente)] amostra={len(sample)} | com_dados={comdata} ({100*comdata/max(1,len(sample)):.0f}%) | vazios={len(vazios)}")
-
-    # ---- C) recuperar VAZIOS por matricula ----
-    if vazios:
-        alvos = vazios[:12]
-        print(f"\n[C] tentando recuperar {len(alvos)} 'vazios' por endpoints com matricula:")
-        variantes = [
-            "/clientes/listar-registro-de-acesso/{m}",
-            "/clientes/listar-registro-de-acesso/{m}?dataInicial=01/01/2025&dataFinal=01/07/2026",
-            "/clientes/listar-registro-de-acesso/{m}?dataInicio=2025-01-01&dataFim=2026-07-01",
-            "/clientes/listar-registro-de-acesso/{m}?page=0&size=50",
-            "/acessos-cliente/by-pessoa/{m}?page=0&size=50",  # by matricula (teste)
-        ]
-        recuperados = {v: 0 for v in variantes}
-        status_amostra = {}
-        for c in alvos:
-            mat = gv(c, "matricula")
-            for v in variantes:
-                st, o = gj(v.format(m=mat))
-                status_amostra.setdefault(v, st)
-                if st == 200 and lst(o):
-                    recuperados[v] += 1
-                time.sleep(0.03)
-        for v in variantes:
-            print(f"    {status_amostra.get(v)}  recuperou={recuperados[v]}/{len(alvos)}  <- {v}")
+    # se achamos codPessoa por algum caminho, validar by-pessoa(codPessoa)
+    print("\n[validacao by-pessoa(codPessoa)] (se houver ponte)")
+    c0 = ativos[0]
+    C0 = gv(c0, "codigoCliente", "codigo"); M0 = gv(c0, "matricula")
+    # tenta obter codPessoa pela melhor rota encontrada manualmente depois; aqui so registro C0/M0
+    print(f"  cliente base: codigoCliente={C0} matricula={M0}")
 
     print("\n[v] fim.")
 
