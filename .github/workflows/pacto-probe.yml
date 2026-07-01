@@ -1,11 +1,7 @@
 name: PACTO API — Probe de schema (716 Norte)
 
 on:
-  workflow_dispatch: {}
-  push:
-    paths:
-      - 'scripts/pacto_fetch.py'
-      - '.github/workflows/pacto-probe.yml'
+  workflow_dispatch: {}   # canario manual apenas (sem gatilho por push)
 
 permissions:
   contents: write
