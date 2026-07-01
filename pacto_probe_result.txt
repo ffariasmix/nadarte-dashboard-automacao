@@ -1,24 +1,48 @@
-[roster] total=12000 ATIVO=594
+[amostra] 6 ativos
 
-[A] meios (codigo->rotulo): {'12': 'Reconhecimento Facial', '5': 'Digitado a senha de acesso na catraca', '2': 'Digitado a matrícula no teclado do computador', '10': 'Digitado o código de barras no teclado do computador'}
+=== cliente #0: codigoCliente=3144 matricula=003144 ===
+  404  /clientes/{m}
+  404  /clientes/{c}
+  404  /clientes/dados-pessoais/{m}
+  404  /clientes/dados-pessoais/{c}
+  404  /clientes/ficha/{m}
+  404  /clientes/detalhe/{m}
+  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim keys=['codigo', 'content', 'cpf', 'datanasc', 'error', 'message', 'messageID', 'messageValue', 'meta', 'nome', 'sexo']
+  400  /v1/pessoa?matricula={m}
+  200  /v1/cliente/{c}  <<< codPessoa=3146 cpf?=sim keys=['avisos', 'bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'clienteObservacao', 'clienteSintetico', 'codigo', 'colaborador', 'colaboradores', 'content', 'cpf', 'dataAtualizacao
+  500  /v1/cliente?matricula={m}
+  200  /clientes/{m}/dados-pessoais  <<< codPessoa=3146 cpf?=sim keys=['categoria', 'codCategoria', 'codigo', 'codigoCliente', 'codigoPessoa', 'content', 'cpf', 'dataCadastro', 'dataMatricula', 'dataValidadeCarteirinha', 'ddi', 'descricao', 'emails',
+  200  /acessos-cliente/{c}/ultimos-meses keys=['content']
 
-[B] relacao de ids (amostra):
-    usei codigoCliente=18235 matr=018176 | acc.cliente.codigo=17919 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=17179 matr=017121 | acc.cliente.codigo=16892 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=18966 matr=018907 | acc.cliente.codigo=18600 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=17210 matr=017152 | acc.cliente.codigo=16921 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=16257 matr=016207 | acc.cliente.codigo=16007 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=17033 matr=016976 | acc.cliente.codigo=16752 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=18401 matr=018342 | acc.cliente.codigo=18083 acc.pessoa.codigo=None acc.matricula=None
-    usei codigoCliente=17472 matr=017414 | acc.cliente.codigo=17174 acc.pessoa.codigo=None acc.matricula=None
+=== cliente #1: codigoCliente=4277 matricula=004277 ===
+  404  /clientes/{m}
+  404  /clientes/{c}
+  404  /clientes/dados-pessoais/{m}
+  404  /clientes/dados-pessoais/{c}
+  404  /clientes/ficha/{m}
+  404  /clientes/detalhe/{m}
+  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim
+  400  /v1/pessoa?matricula={m}
+  200  /v1/cliente/{c}  <<< codPessoa=4279 cpf?=sim
+  500  /v1/cliente?matricula={m}
+  200  /clientes/{m}/dados-pessoais  <<< codPessoa=4279 cpf?=sim
+  200  /acessos-cliente/{c}/ultimos-meses
 
-[cobertura by-pessoa(codigoCliente)] amostra=50 | com_dados=26 (52%) | vazios=24
+=== cliente #2: codigoCliente=18740 matricula=018681 ===
+  404  /clientes/{m}
+  404  /clientes/{c}
+  404  /clientes/dados-pessoais/{m}
+  404  /clientes/dados-pessoais/{c}
+  404  /clientes/ficha/{m}
+  404  /clientes/detalhe/{m}
+  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim
+  400  /v1/pessoa?matricula={m}
+  200  /v1/cliente/{c}  <<< codPessoa=19117 cpf?=sim
+  500  /v1/cliente?matricula={m}
+  200  /clientes/{m}/dados-pessoais  <<< codPessoa=19117 cpf?=sim
+  200  /acessos-cliente/{c}/ultimos-meses
 
-[C] tentando recuperar 12 'vazios' por endpoints com matricula:
-    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}
-    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?dataInicial=01/01/2025&dataFinal=01/07/2026
-    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?dataInicio=2025-01-01&dataFim=2026-07-01
-    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?page=0&size=50
-    200  recuperou=2/12  <- /acessos-cliente/by-pessoa/{m}?page=0&size=50
+[validacao by-pessoa(codPessoa)] (se houver ponte)
+  cliente base: codigoCliente=3144 matricula=003144
 
 [v] fim.
