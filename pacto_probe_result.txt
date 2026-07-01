@@ -1,3 +1,21 @@
+[PROBE acessos-por-periodo] janela 01/06/2026 -> 01/07/2026
+  [404] n=0 acessos-cliente?ini/fim BR cru=Serviço não encontrado para o caminho: /acessos-cliente
+  [404] n=0 acessos-cliente?inicio/fim ISO cru=Serviço não encontrado para o caminho: /acessos-cliente
+  [404] n=0 acessos-cliente/periodo BR cru=Serviço não encontrado para o caminho: /acessos-cliente/periodo
+  [404] n=0 acessos-cliente/listar BR cru=Serviço não encontrado para o caminho: /acessos-cliente/listar
+  [404] n=0 acessos-cliente/relatorio BR cru=Serviço não encontrado para o caminho: /acessos-cliente/relatorio
+  [404] n=0 clientes/listar-registro ?datas BR cru=Serviço não encontrado para o caminho: /clientes/listar-registro-de-acesso
+  [404] n=0 clientes/listar-registro ?datas ISO cru=Serviço não encontrado para o caminho: /clientes/listar-registro-de-acesso
+  [404] n=0 acessos?datas BR cru=Serviço não encontrado para o caminho: /acessos
+  [404] n=0 v1/acesso?datas BR cru=Serviço não encontrado para o caminho: /v1/acesso
+  [404] n=0 relatorios/acessos BR cru=Serviço não encontrado para o caminho: /relatorios/acessos
+  [404] n=0 psec/acessos?datas BR e1 cru=Serviço não encontrado para o caminho: /psec/acessos
+  [200] n=2000 psec/alunos/lista-rapida limite2000 e1  <<<<< TEM DADOS campos=['matricula'] chaves=['aniversariante', 'aulaAvulsa', 'aviso', 'avisos', 'codigoCliente', 'cor', 'diaria', 'divisor', 'foto', 'freepass']
+  [404] n=0 acessos-cliente/por-periodo BR cru=Serviço não encontrado para o caminho: /acessos-cliente/por-periodo
+  [404] n=0 acessos-cliente/consulta BR cru=Serviço não encontrado para o caminho: /acessos-cliente/consulta
+  [404] n=0 psec/relatorios/acessos e1 cru=Serviço não encontrado para o caminho: /psec/relatorios/acessos
+
+[v] fim.
 --- arquivos gerados (nomes/contagem, sem conteudo) ---
 sem manifest: [Errno 2] No such file or directory: 'data/manifest.json'
 bins: 0
