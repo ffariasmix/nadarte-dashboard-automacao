@@ -1,17 +1,17 @@
-### /psec/alunos/lista-rapida-acessos ###
+[shape] empresaId=1 -> HTTP 200 | cru(220c): {'content': {'lista': [{'idMemcached': '16923;01071421', 'codigoCliente': 16923, 'matricula': 16868, 'hora': '14:21', 'nome': 'marianna goulart araujo barros', 'parq': False, 'parqAssinado': {'chave': 'PARQ_NEGATIVO', 'd
 
-  header={'empresaId': 1} limite=50 -> HTTP 200 | itens=0
+[varredura empresaId]
+  empresaId= 1 -> HTTP 200 | itens=0
+  empresaId= 2 -> HTTP 200 | itens=0
+  empresaId= 3 -> HTTP 200 | itens=0
+  empresaId= 4 -> HTTP 200 | itens=0
+  empresaId= 5 -> HTTP 200 | itens=0
+  empresaId= 6 -> HTTP 200 | itens=0
+  empresaId= 7 -> HTTP 200 | itens=0
+  empresaId= 8 -> HTTP 200 | itens=0
+  empresaId= 9 -> HTTP 200 | itens=0
+  empresaId=10 -> HTTP 200 | itens=0
+  empresaId=11 -> HTTP 200 | itens=0
+  empresaId=12 -> HTTP 200 | itens=0
 
-  header={'empresaId': 1} limite=5000 -> HTTP 200 | itens=0
-
-  header={} limite=50 -> HTTP 500 | itens=0
-    corpo(140c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
-
-  header={} limite=5000 -> HTTP 500 | itens=0
-    corpo(140c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
-
-  header={'empresaId': 0} limite=50 -> HTTP 200 | itens=0
-
-  header={'empresaId': 0} limite=5000 -> HTTP 200 | itens=0
-
-[m] fim.
+[v] fim.
