@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 """716N — PROBE: achar endpoint de ACESSOS POR PERIODO (unidade inteira), p/ evitar coleta aluno-a-aluno.
 PII-safe: imprime status, contagem e presenca de campos (nunca cpf/nome)."""
-import os, sys, json
+import os, sys, json, functools
 import urllib.request, urllib.error
+
+print = functools.partial(print, file=sys.stderr)  # workflow captura stderr
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
