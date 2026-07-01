@@ -1,10 +1,7 @@
-== /psec/clientes/ativos ==
-   (/psec/clientes/ativos) HTTP 200 corpo(100c): {'content': {'clientes': None, 'erro': 'Problemas ao obter a secret'}}
-   total = 0
+[716N] ativos=944 | amostra=200
+[cobertura 2025+] com >=1 acesso: 63/200 (32%)
+[cobertura 2026 ] com >=1 acesso: 39/200 (20%)
+[2026] distrib de meses-ativos/aluno (1..7): {"1": 2, "2": 6, "3": 2, "4": 4, "5": 5, "6": 15, "7": 5}
+[2026] acessos/mes (amostra): {"2026-01": 234, "2026-02": 194, "2026-03": 216, "2026-04": 197, "2026-05": 204, "2026-06": 184, "2026-07": 5}
 
-== /clientes/simples (filtro situacao) ==
-   total lido = 19295 | ATIVO (meu filtro) = 944
-   situacao geral: {"VISITANTE": 5637, "INATIVO": 12701, "ATIVO": 944, "TRANCADO": 13}
-   situacaoContrato ENTRE os ATIVO: {"NORMAL": 874, "A_VENCER": 59, "ATESTADO": 11}
-
-[a] fim.
+[26] fim.
