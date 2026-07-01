@@ -22,20 +22,34 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Validacao rede (PII-safe)
+      - name: Instalar openpyxl
+        run: pip install "openpyxl>=3.1"
+
+      - name: Canario coletor 716N (PII-safe; .bin ficam gitignored)
         env:
+          PACTO_ONLY: '716Norte'
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
           PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
           PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
         run: |
-          python scripts/pacto_fetch.py | tee pacto_probe_result.txt
+          python scripts/pacto_fetch.py data 2> pacto_probe_result.txt || true
+          echo "--- arquivos gerados (nomes/contagem, sem conteudo) ---" >> pacto_probe_result.txt
+          python - <<'PY' >> pacto_probe_result.txt 2>&1
+          import json, glob
+          try:
+              man = json.load(open("data/manifest.json"))
+              print("manifest:", json.dumps(man, ensure_ascii=False))
+          except Exception as e:
+              print("sem manifest:", e)
+          print("bins:", len(glob.glob("data/*.bin")))
+          PY
 
-      - name: Commitar resultado (para leitura)
+      - name: Commitar resultado (PII-safe)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pacto_probe_result.txt
-          git commit -m "rede: validacao 5 unidades [skip ci]" || echo "sem mudanca"
+          git commit -m "canario 716N coletor [skip ci]" || echo "sem mudanca"
           git push
