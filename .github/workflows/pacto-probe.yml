@@ -25,9 +25,8 @@ jobs:
       - name: Instalar openpyxl
         run: pip install "openpyxl>=3.1"
 
-      - name: Canario coletor 716N (PII-safe; .bin ficam gitignored)
+      - name: Canario coletor REDE 5 unidades (PII-safe; .bin ficam gitignored)
         env:
-          PACTO_ONLY: '716Norte'
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
