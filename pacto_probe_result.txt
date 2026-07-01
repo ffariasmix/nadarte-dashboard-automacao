@@ -1,22 +1,24 @@
-[shape clientes/simples] HTTP 200 | itens_pg=5
-  chaves: ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
-[shape v1/pessoa] HTTP 200 | itens_pg=3
-  chaves: ['codigo', 'cpf', 'datanasc', 'nome', 'sexo']
+[roster] total=12000 ATIVO=594
 
-[roster] total clientes = 10220
-  situacao: {'INATIVO': 6667, 'VISITANTE': 3046, 'ATIVO': 497, 'TRANCADO': 10}
-  ATIVO exato = 497
+[A] meios (codigo->rotulo): {'12': 'Reconhecimento Facial', '5': 'Digitado a senha de acesso na catraca', '2': 'Digitado a matrícula no teclado do computador', '10': 'Digitado o código de barras no teclado do computador'}
 
-[acesso] chaves: ['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
+[B] relacao de ids (amostra):
+    usei codigoCliente=18235 matr=018176 | acc.cliente.codigo=17919 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=17179 matr=017121 | acc.cliente.codigo=16892 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=18966 matr=018907 | acc.cliente.codigo=18600 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=17210 matr=017152 | acc.cliente.codigo=16921 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=16257 matr=016207 | acc.cliente.codigo=16007 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=17033 matr=016976 | acc.cliente.codigo=16752 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=18401 matr=018342 | acc.cliente.codigo=18083 acc.pessoa.codigo=None acc.matricula=None
+    usei codigoCliente=17472 matr=017414 | acc.cliente.codigo=17174 acc.pessoa.codigo=None acc.matricula=None
 
-[cobertura by-pessoa(codigoCliente)] amostra=90 de 497 ATIVOS (espalhada)
-  sem_id=0 | erros_http=0
-  com >=1 acesso (qualquer data): 52  (58%)
-  com acesso em 2026:            24  (27%)
-  com acesso nos ultimos 90d:    20  (22%)
-  total registros amostrados: 3096
-  intervalo: 2015-08-14 -> 2026-07-01
-  meios (todos): {'12': 2667, '2': 322, '1': 59, '5': 47, '11': 1}
-  meios (so 2026): {'12': 627, '2': 62, '11': 1}
+[cobertura by-pessoa(codigoCliente)] amostra=50 | com_dados=26 (52%) | vazios=24
+
+[C] tentando recuperar 12 'vazios' por endpoints com matricula:
+    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}
+    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?dataInicial=01/01/2025&dataFinal=01/07/2026
+    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?dataInicio=2025-01-01&dataFim=2026-07-01
+    400  recuperou=0/12  <- /clientes/listar-registro-de-acesso/{m}?page=0&size=50
+    200  recuperou=2/12  <- /acessos-cliente/by-pessoa/{m}?page=0&size=50
 
 [v] fim.
