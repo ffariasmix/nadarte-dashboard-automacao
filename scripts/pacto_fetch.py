@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PROBE PACTO — endpoint de CONTRATO p/ achar a MODALIDADE. PII-safe (nomes de campos + modalidade, que nao e PII)."""
+"""PROBE PACTO — CONTRATO de aluno ATIVO p/ achar MODALIDADE. PII-safe."""
 import os, sys, json, re
 import urllib.request, urllib.error
 
@@ -38,44 +38,59 @@ def content(o):
     return []
 
 
-def dump(label, obj):
-    rows = content(obj)
-    r = rows[0] if rows else (obj if isinstance(obj, dict) else None)
-    if not isinstance(r, dict):
-        print(f"    ({label}) sem objeto"); return
-    print(f"    campos ({len(r)}): {sorted(r.keys())}")
-    # destaca campos que parecem plano/modalidade/atividade (nomes + valores curtos nao-PII)
-    interesse = [k for k in r if re.search(r"modalidade|plano|atividade|produto|servico|descri|tipo|categoria|nome", k, re.I)]
-    for k in interesse:
-        v = r.get(k)
-        if isinstance(v, (str, int, float, bool)) and not re.search(r"pessoa|cliente|cpf|email|telefone", k, re.I):
-            print(f"      {k} = {str(v)[:60]}")
-        elif isinstance(v, dict):
-            print(f"      {k} (dict) chaves: {sorted(v.keys())}")
-        elif isinstance(v, list) and v and isinstance(v[0], dict):
-            print(f"      {k} (list[dict]) chaves: {sorted(v[0].keys())}")
+def deep_find_keys(obj, pat, prefix="", out=None, depth=0):
+    if out is None:
+        out = []
+    if depth > 4:
+        return out
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            p = f"{prefix}.{k}" if prefix else k
+            if re.search(pat, k, re.I) and isinstance(v, (str, int, float)):
+                out.append((p, str(v)[:50]))
+            deep_find_keys(v, pat, p, out, depth + 1)
+    elif isinstance(obj, list) and obj:
+        deep_find_keys(obj[0], pat, prefix + "[0]", out, depth + 1)
+    return out
 
 
 def probe():
     key = os.environ.get("PACTO_API_KEY", "").strip()
     print(f"[diag] len={len(key)}")
 
-    # matricula de exemplo do roster
-    st, rs = gj("/clientes/simples?page=0&size=10", key)
-    mat = next((r.get("matricula") for r in content(rs) if isinstance(r, dict) and r.get("matricula")), None)
-    print(f"[diag] matricula exemplo capturada: {'sim' if mat else 'nao'}")
+    # varre paginas do roster ate achar um ATIVO, pega matricula
+    mat = None
+    for pg in range(0, 40):
+        st, rs = gj(f"/clientes/simples?page={pg}&size=50", key)
+        rows = content(rs)
+        if not rows:
+            break
+        for r in rows:
+            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO" and r.get("matricula"):
+                mat = r["matricula"]; break
+        if mat:
+            break
+    print(f"[diag] matricula ATIVO encontrada: {'sim' if mat else 'nao'} (pagina {pg})")
 
-    # 1) contratos por matricula
     if mat:
         st, c = gj(f"/v1/contrato/matricula/{mat}", key)
-        print(f"\n=== /v1/contrato/matricula/{{mat}} -> HTTP {st} ===")
-        dump("por_matricula", c)
-
-    # 2) contratos paginados (bulk)
-    st, c2 = gj("/v1/contrato?page=0&size=3", key)
-    print(f"\n=== /v1/contrato?page=0&size=3 -> HTTP {st} ===")
-    dump("bulk", c2)
-
+        print(f"\n=== /v1/contrato/matricula/{{ativo}} -> HTTP {st} ===")
+        rows = content(c)
+        print(f"    itens: {len(rows)}")
+        r = rows[0] if rows else None
+        if isinstance(r, dict):
+            print(f"    campos ({len(r)}): {sorted(r.keys())}")
+            for k, v in r.items():
+                if isinstance(v, dict):
+                    print(f"      {k} (dict) chaves: {sorted(v.keys())}")
+                elif isinstance(v, list) and v and isinstance(v[0], dict):
+                    print(f"      {k} (list) chaves: {sorted(v[0].keys())}")
+            hits = deep_find_keys(r, r"modalidade|plano|atividade|produto|descri|nomePlano|nomeContrato")
+            print(f"    campos modalidade/plano (valor): {hits[:20]}")
+        elif isinstance(c, dict):
+            print(f"    topo chaves: {sorted(c.keys())}")
+            hits = deep_find_keys(c, r"modalidade|plano|atividade|produto|descri")
+            print(f"    modalidade/plano encontrados: {hits[:20]}")
     print("\n[diag] fim.")
 
 
