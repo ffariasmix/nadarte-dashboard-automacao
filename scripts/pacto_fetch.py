@@ -24,7 +24,7 @@ import urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
 import openpyxl
 
-WORKERS = int(os.environ.get("PACTO_WORKERS", "12"))
+WORKERS = int(os.environ.get("PACTO_WORKERS", "4"))
 
 BASE = "https://apigw.pactosolucoes.com.br"
 DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
@@ -42,7 +42,7 @@ UNITS = [
 ]
 
 # ------------------------- HTTP -------------------------
-def http_get(key, path, timeout=30, tries=2):
+def http_get(key, path, timeout=30, tries=5):
     for i in range(tries):
         req = urllib.request.Request(BASE + path, method="GET")
         req.add_header("Authorization", "Bearer " + key)
@@ -54,11 +54,12 @@ def http_get(key, path, timeout=30, tries=2):
             code = e.code
             body = e.read().decode("utf-8", "replace") if e.fp else ""
             if code in (429, 500, 502, 503, 504) and i < tries - 1:
-                time.sleep(1.5 * (i + 1)); continue
+                # backoff exponencial c/ jitter (rate-limit da PACTO)
+                time.sleep(min(12.0, 0.8 * (2 ** i)) + random.uniform(0, 0.4)); continue
             return code, body
         except Exception as e:
             if i < tries - 1:
-                time.sleep(1.0 * (i + 1)); continue
+                time.sleep(min(8.0, 0.8 * (2 ** i))); continue
             return -1, str(e)
     return -1, ""
 
