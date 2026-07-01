@@ -1,18 +1,17 @@
-[x] matricula ativa: ok
+### /psec/alunos/lista-rapida-acessos ###
 
-### /clientes/listar-registro-de-acesso/{matricula} ###
-  (sem qs)                                      HTTP 400 
-  ?dataInicial=2026-01-01&dataFinal=2026-06-30  HTTP 400 
-  ?dataInicio=2026-01-01&dataFim=2026-06-30     HTTP 400 
-  ?inicio=2026-01-01&fim=2026-06-30             HTTP 400 
-  ?dataInicial=01/01/2026&dataFinal=30/06/2026  HTTP 400 
-  ?dtInicio=2026-01-01&dtFim=2026-06-30         HTTP 400 
+  header={'empresaId': 1} limite=50 -> HTTP 200 | itens=0
 
-### /psec/alunos/lista-rapida-acessos (em massa) ###
-  ?dataInicial=2026-01-01&dataFinal=2026-06-30  HTTP 400 
-  ?dataInicio=2026-01-01&dataFim=2026-06-30     HTTP 400 
-  ?inicio=2026-01-01&fim=2026-06-30             HTTP 400 
-  ?dataInicial=01/01/2026&dataFinal=30/06/2026  HTTP 400 
-  ?dtInicio=2026-01-01&dtFim=2026-06-30         HTTP 400 
+  header={'empresaId': 1} limite=5000 -> HTTP 200 | itens=0
 
-[x] fim.
+  header={} limite=50 -> HTTP 500 | itens=0
+    corpo(140c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
+
+  header={} limite=5000 -> HTTP 500 | itens=0
+    corpo(140c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
+
+  header={'empresaId': 0} limite=50 -> HTTP 200 | itens=0
+
+  header={'empresaId': 0} limite=5000 -> HTTP 200 | itens=0
+
+[m] fim.
