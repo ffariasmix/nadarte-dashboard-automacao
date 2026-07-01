@@ -1,29 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Validacao multi-unidade PACTO (5 unidades, sem Natal).
-Para cada unidade: total de ATIVOS + distribuicao de situacao + distribuicao
-do ANO de inicioContrato (para achar a linha de censura da migracao) +
-cobertura demografica (amostra). Tudo PII-safe (so contagens).
-Env: PACTO_KEY_716NORTE, PACTO_KEY_905SUL, PACTO_KEY_604NORTE, PACTO_KEY_LAGONORTE, PACTO_KEY_LAGOSUL
+716N — validacao de TENURE (histórico de contrato / 1o acesso) + MATRIZ DE FREQUENCIA (18m).
+PII-safe (contagens, anos, totais mensais). Env: PACTO_KEY_716NORTE, SAMPLE(=30)
 """
 import os, sys, re, json, datetime
 import urllib.request, urllib.error
 from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
-UNIDADES = [
-    ("716 Norte", "PACTO_KEY_716NORTE"),
-    ("905 Sul",   "PACTO_KEY_905SUL"),
-    ("604 Norte", "PACTO_KEY_604NORTE"),
-    ("Lago Norte","PACTO_KEY_LAGONORTE"),
-    ("Lago Sul",  "PACTO_KEY_LAGOSUL"),
-]
+KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
+SAMPLE = int(os.environ.get("SAMPLE", "30"))
 
 
-def http_get(path, key, timeout=50):
+def http_get(path, timeout=50):
     req = urllib.request.Request(BASE + path, method="GET")
-    req.add_header("Authorization", "Bearer " + key)
+    req.add_header("Authorization", "Bearer " + KEY)
     req.add_header("Accept", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -34,8 +26,8 @@ def http_get(path, key, timeout=50):
         return -1, str(e)
 
 
-def gj(path, key):
-    st, body = http_get(path, key)
+def gj(path):
+    st, body = http_get(path)
     try:
         return json.loads(body)
     except Exception:
@@ -52,60 +44,75 @@ def content(o):
     return []
 
 
-def year_of(v):
-    if v is None:
-        return None
-    if isinstance(v, (int, float)):  # epoch ms
-        try:
-            return datetime.datetime.utcfromtimestamp(v / 1000).year
-        except Exception:
-            return None
-    m = re.search(r"(\d{4})", str(v))
-    return int(m.group(1)) if m else None
-
-
-def unidade(label, key, maxpages=120):
-    ativos = []
-    sit = Counter()
-    for pg in range(maxpages):
-        rows = content(gj(f"/clientes/simples?page={pg}&size=200", key))
-        if not rows:
-            break
-        for r in rows:
-            if isinstance(r, dict):
-                s = (r.get("situacao") or "?").upper()
-                sit[s] += 1
-                if s == "ATIVO":
-                    ativos.append(r)
-        if len(rows) < 200:
-            break
-    # distribuicao de ano de inicioContrato (censura)
-    anos = Counter(year_of(r.get("inicioContrato")) for r in ativos)
-    com_inicio = sum(v for a, v in anos.items() if a)
-    print(f"\n==== {label} ====")
-    print(f"  ATIVOS = {len(ativos)}  | situacao total = {json.dumps(dict(sit), ensure_ascii=False)}")
-    print(f"  ativos com inicioContrato preenchido = {com_inicio}/{len(ativos)}")
-    top = sorted(((a, v) for a, v in anos.items() if a), key=lambda x: -x[1])[:8]
-    print(f"  ano inicioContrato (top): {top}")
-    return len(ativos)
+def ym(s):
+    m = re.search(r"(\d{4})-(\d{2})", s or "") if isinstance(s, str) else None
+    return f"{m.group(1)}-{m.group(2)}" if m else None
 
 
 def main():
-    print("[rede] validacao das 5 unidades (sem Natal)")
-    total = 0
-    resumo = []
-    for label, env in UNIDADES:
-        key = os.environ.get(env, "").strip()
-        if not key:
-            print(f"\n==== {label} ==== SEM CHAVE ({env})"); continue
-        n = unidade(label, key)
-        total += n
-        resumo.append((label, n))
-    print("\n===== RESUMO ATIVOS POR UNIDADE =====")
-    for label, n in resumo:
-        print(f"  {label:12} {n}")
-    print(f"  {'REDE (5)':12} {total}")
-    print("\n[rede] fim.")
+    if not KEY:
+        print("[t] sem chave 716N"); sys.exit(1)
+    # roster -> ativos
+    ativos = []
+    for pg in range(120):
+        rows = content(gj(f"/clientes/simples?page={pg}&size=200"))
+        if not rows:
+            break
+        ativos += [r for r in rows if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO"]
+        if len(rows) < 200:
+            break
+    print(f"[716N] ativos={len(ativos)} | amostrando {min(SAMPLE,len(ativos))}")
+
+    contratos_len = Counter()
+    anos_contrato = Counter()
+    ano_1acesso = Counter()
+    com_acesso = 0
+    mensal = Counter()
+    hoje = datetime.date(2026, 6, 1)
+    janela = set()
+    for i in range(18):
+        y = hoje.year; m = hoje.month - i
+        while m <= 0:
+            m += 12; y -= 1
+        janela.add(f"{y}-{m:02d}")
+
+    for r in ativos[:SAMPLE]:
+        cc = r.get("codigoCliente"); mat = r.get("matricula")
+        # contrato: quantos + anos citados
+        if mat:
+            ct = content(gj(f"/v1/contrato/matricula/{mat}"))
+            contratos_len[len(ct)] += 1
+            for c in ct:
+                if isinstance(c, dict):
+                    for yy in re.findall(r"(\d{4})", str(c.get("descricao") or "")):
+                        if 1985 <= int(yy) <= 2027:
+                            anos_contrato[int(yy)] += 1
+        # acessos: 1o acesso (ano) + matriz mensal (18m)
+        if cc:
+            acc = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=200"))
+            # paginar ate acabar (historico completo p/ 1o acesso)
+            pg = 1
+            allacc = list(acc)
+            while len(acc) == 200 and pg < 40:
+                acc = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page={pg}&size=200"))
+                allacc += acc; pg += 1
+            meses = [ym(a.get("dtHrEntrada")) for a in allacc if isinstance(a, dict)]
+            meses = [x for x in meses if x]
+            if meses:
+                com_acesso += 1
+                ano_1acesso[min(meses)[:4]] += 1
+                for mm in meses:
+                    if mm in janela:
+                        mensal[mm] += 1
+
+    print(f"[contrato] itens por aluno (len): {dict(contratos_len)}")
+    print(f"[contrato] anos citados nas descricoes (top): {sorted(anos_contrato.items())}")
+    print(f"[tenure] 1o acesso por ANO (amostra): {dict(sorted(ano_1acesso.items()))}")
+    print(f"[freq] com >=1 acesso: {com_acesso}/{min(SAMPLE,len(ativos))}")
+    print(f"[freq] MATRIZ mensal 18m (soma amostra):")
+    for mm in sorted(janela):
+        print(f"    {mm}: {mensal.get(mm,0)}")
+    print("\n[t] fim.")
 
 
 if __name__ == "__main__":
