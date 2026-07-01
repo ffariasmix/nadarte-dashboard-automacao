@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PROBE 716N — Data Matricula + histórico de contrato (tenure/vencimentos). PII-safe."""
-import os, sys, re, json
+"""
+Gerador/validador 716N — Vencimentos (TODOS ativos) + tempo de casa real (dataMatricula)
++ grupo (plano) + frequencia 2025+ (amostra). PII-safe.
+Env: PACTO_KEY_716NORTE, SAMPLE(=200)
+"""
+import os, sys, re, json, datetime
 import urllib.request, urllib.error
+from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
-KEYWORDS = re.compile(r"matric|data|nasc|plano|modalidade|venc|inicio|fim|contrato|situac|cadastr|desde|termin", re.I)
-PII = re.compile(r"nome|cpf|email|telefone|rg|foto|senha", re.I)
+SAMPLE = int(os.environ.get("SAMPLE", "200"))
+TODAY = datetime.date(2026, 7, 1)
+CUT = "2025-01"  # frequencia confiavel a partir daqui
+
+CAT = {
+    "Água": ["NATAC", "NATA", "HIDRO", "BEBE", "AQUA"],
+    "Lutas e Outros": ["KARATE", "MUAY", "JIU", "JUDO", "HAPKIDO", "CAPOEIRA", "BOXE", "TAEKWON", "KUNG", "LUTA"],
+    "Fitness": ["TRANSITO LIVRE", "FITNESS", "MUSCULA", "DANCA", "PILATES", "AULA COLETIVA", "FUNCIONAL",
+                "SPINNING", "CROSS", "ZUMBA", "RITMO", "GINASTICA", "ALONGA", "YOGA", "TREINA"],
+}
 
 
 def http_get(path, timeout=45):
@@ -25,82 +38,122 @@ def http_get(path, timeout=45):
 def gj(path):
     st, b = http_get(path)
     try:
-        return st, json.loads(b)
+        return json.loads(b)
     except Exception:
-        return st, b
+        return None
 
 
-def walk(obj, prefix="", out=None, depth=0):
-    """coleta (chave-caminho, valor) para chaves de interesse, sem PII, ate profundidade 3."""
-    if out is None:
-        out = []
-    if depth > 3:
-        return out
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            p = f"{prefix}.{k}" if prefix else k
-            if KEYWORDS.search(k) and not PII.search(k) and isinstance(v, (str, int, float, bool)):
-                out.append((p, str(v)[:40]))
-            walk(v, p, out, depth + 1)
-    elif isinstance(obj, list) and obj:
-        walk(obj[0], prefix + "[0]", out, depth + 1)
-    return out
+def content(o):
+    if isinstance(o, list):
+        return o
+    if isinstance(o, dict):
+        for k in ("content", "data", "result", "results", "rows", "list", "items"):
+            if isinstance(o.get(k), list):
+                return o[k]
+        if "content" in o and isinstance(o["content"], dict):
+            return [o["content"]]
+    return []
 
 
-def keys_top(obj):
-    if isinstance(obj, dict):
-        for kk in ("content", "data", "result", "results"):
-            if isinstance(obj.get(kk), list) and obj[kk]:
-                return sorted(obj[kk][0].keys()) if isinstance(obj[kk][0], dict) else "list"
-        return sorted(obj.keys())
-    if isinstance(obj, list) and obj and isinstance(obj[0], dict):
-        return sorted(obj[0].keys())
-    return type(obj).__name__
+def to_date(v):
+    if v is None or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        try:
+            return datetime.date(1970, 1, 1) + datetime.timedelta(milliseconds=v)
+        except Exception:
+            return None
+    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", str(v)) or re.search(r"(\d{2})/(\d{2})/(\d{4})", str(v))
+    if not m:
+        return None
+    g = m.groups()
+    try:
+        return datetime.date(int(g[0]), int(g[1]), int(g[2])) if len(g[0]) == 4 else datetime.date(int(g[2]), int(g[1]), int(g[0]))
+    except Exception:
+        return None
 
 
-def probe(mat, cc):
-    eps = [
-        ("aluno_completo",   f"/psec/alunos/obter-aluno-completo-por-matricula/{mat}"),
-        ("dados_pessoais",   f"/clientes/{mat}/dados-pessoais"),
-        ("dados_plano",      f"/clientes/{mat}/dados-plano"),
-        ("linha_contratos",  f"/clientes/{mat}/linha-tempo/contratos"),
-        ("contratos_bymat",  f"/contratos/by-matricula/{mat}"),
-        ("aluno_simples",    f"/psec/alunos/{mat}/obter-aluno-simples"),
-    ]
-    for label, path in eps:
-        st, obj = gj(path)
-        print(f"\n=== {label}  GET {path[:60]} -> HTTP {st} ===")
-        if st == 200 and not isinstance(obj, str):
-            print(f"   chaves: {keys_top(obj)}")
-            hits = walk(obj)
-            # dedup
-            seen = set(); uniq = []
-            for k, v in hits:
-                if k not in seen:
-                    seen.add(k); uniq.append((k, v))
-            print(f"   campos-chave (nao-PII): {uniq[:25]}")
-        else:
-            print(f"   corpo(120c): {str(obj)[:120]}")
+def grupo(plano):
+    T = str(plano or "").upper()
+    a = any(t in T for t in CAT["Água"]); f = any(t in T for t in CAT["Fitness"]); l = any(t in T for t in CAT["Lutas e Outros"])
+    if a and (f or l): return "Ambos"
+    if a: return "Água"
+    if f: return "Fitness"
+    if l: return "Lutas e Outros"
+    return "Fitness"
+
+
+def band(nasc):
+    d = to_date(nasc)
+    if not d: return "N/D"
+    age = TODAY.year - d.year
+    for lim, lab in [(11, "0–11"), (17, "12–17"), (29, "18–29"), (44, "30–44"), (59, "45–59")]:
+        if age <= lim: return lab
+    return "60+"
 
 
 def main():
     if not KEY:
-        print("[p] sem chave 716N"); sys.exit(1)
-    # acha um ATIVO
-    mat = cc = None
-    for pg in range(30):
-        st, o = gj(f"/clientes/simples?page={pg}&size=50")
-        rows = o.get("content") if isinstance(o, dict) else (o if isinstance(o, list) else [])
-        rows = rows or (o if isinstance(o, list) else [])
-        for r in (rows or []):
-            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO":
-                mat = r.get("matricula"); cc = r.get("codigoCliente"); break
-        if mat:
+        print("[gen] sem chave 716N"); sys.exit(1)
+    # ROSTER ativo (com fimContrato p/ vencimentos)
+    ativos = []
+    for pg in range(120):
+        rows = content(gj(f"/clientes/simples?page={pg}&size=200"))
+        if not rows:
             break
-    print(f"[p] matricula ATIVO ok={bool(mat)}")
-    if mat:
-        probe(mat, cc)
-    print("\n[p] fim.")
+        ativos += [r for r in rows if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO"]
+        if len(rows) < 200:
+            break
+    print(f"[716N] ATIVOS = {len(ativos)}")
+
+    # ===== VENCIMENTOS — TODOS os ativos (fimContrato do roster) =====
+    venc = Counter(); sem_fim = 0
+    for r in ativos:
+        d = to_date(r.get("fimContrato"))
+        if not d:
+            sem_fim += 1; continue
+        dias = (d - TODAY).days
+        if dias < 0: venc["vencido"] += 1
+        elif dias <= 30: venc["<=30 dias"] += 1
+        elif dias <= 60: venc["31-60 dias"] += 1
+        elif dias <= 90: venc["61-90 dias"] += 1
+        else: venc[">90 dias"] += 1
+    print(f"[VENCIMENTOS] (todos {len(ativos)}) {json.dumps(dict(venc), ensure_ascii=False)} | sem fimContrato={sem_fim}")
+
+    # ===== AMOSTRA: tempo de casa real + grupo + frequencia 2025+ =====
+    tenure = Counter(); grp = Counter(); bnd = Counter()
+    freq25 = Counter(); com_freq25 = 0; n = 0
+    for r in ativos[:SAMPLE]:
+        mat = r.get("matricula"); cc = r.get("codigoCliente")
+        if not mat:
+            continue
+        n += 1
+        dp = content(gj(f"/clientes/{mat}/dados-pessoais"))
+        if dp and isinstance(dp[0], dict):
+            dm = to_date(dp[0].get("dataMatricula"))
+            if dm:
+                y = dm.year
+                tenure["<2010" if y < 2010 else ("2010-2014" if y < 2015 else ("2015-2019" if y < 2020 else ("2020-2023" if y < 2024 else "2024+")))] += 1
+            bnd[band(dp[0].get("nascimento"))] += 1
+        lc = content(gj(f"/clientes/{mat}/linha-tempo/contratos"))
+        plano = lc[0].get("plano") if lc and isinstance(lc[0], dict) else None
+        grp[grupo(plano)] += 1
+        # frequencia 2025+
+        acc = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=200")) if cc else []
+        meses = set()
+        for a in acc:
+            m = re.search(r"(\d{4}-\d{2})", str(a.get("dtHrEntrada") or "")) if isinstance(a, dict) else None
+            if m and m.group(1) >= CUT:
+                meses.add(m.group(1)); freq25[m.group(1)] += 1
+        if meses:
+            com_freq25 += 1
+    print(f"[amostra] n={n}")
+    print(f"[tempo de casa REAL - dataMatricula] {json.dumps(dict(sorted(tenure.items())), ensure_ascii=False)}")
+    print(f"[grupo] {json.dumps(dict(grp), ensure_ascii=False)}")
+    print(f"[faixa etaria] {json.dumps(dict(bnd), ensure_ascii=False)}")
+    print(f"[frequencia 2025+] com >=1 acesso: {com_freq25}/{n}")
+    print(f"[frequencia 2025+] acessos/mes (amostra): {json.dumps(dict(sorted(freq25.items())), ensure_ascii=False)}")
+    print("\n[gen] fim.")
 
 
 if __name__ == "__main__":
