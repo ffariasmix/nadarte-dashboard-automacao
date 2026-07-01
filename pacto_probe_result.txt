@@ -1,25 +1,10 @@
-[p] matricula ATIVO ok=True
+[716N] ATIVOS = 944
+[VENCIMENTOS] (todos 944) {">90 dias": 665, "<=30 dias": 99, "61-90 dias": 102, "31-60 dias": 78} | sem fimContrato=0
+[amostra] n=200
+[tempo de casa REAL - dataMatricula] {"2010-2014": 8, "2015-2019": 10, "2020-2023": 36, "2024+": 116, "<2010": 8}
+[grupo] {"Fitness": 119, "Água": 78, "Lutas e Outros": 3}
+[faixa etaria] {"45–59": 37, "60+": 29, "30–44": 44, "0–11": 48, "18–29": 13, "12–17": 9}
+[frequencia 2025+] com >=1 acesso: 64/200
+[frequencia 2025+] acessos/mes (amostra): {"2025-01": 137, "2025-02": 165, "2025-03": 167, "2025-04": 175, "2025-05": 126, "2025-06": 159, "2025-07": 155, "2025-08": 203, "2025-09": 247, "2025-10": 256, "2025-11": 212, "2025-12": 187, "2026-01": 243, "2026-02": 177, "2026-03": 210, "2026-04": 194, "2026-05": 200, "2026-06": 180}
 
-=== aluno_completo  GET /psec/alunos/obter-aluno-completo-por-matricula/003144 -> HTTP 400 ===
-   corpo(120c): <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns
-
-=== dados_pessoais  GET /clientes/003144/dados-pessoais -> HTTP 200 ===
-   chaves: ['content']
-   campos-chave (nao-PII): [('content.matricula', '003144'), ('content.nascimento', '-16664400000'), ('content.situacao', 'AT'), ('content.situacaoContrato', 'NO'), ('content.dataMatricula', '1085626800000'), ('content.dataCadastro', '1085626800000')]
-
-=== dados_plano  GET /clientes/003144/dados-plano -> HTTP 200 ===
-   chaves: ['content']
-   campos-chave (nao-PII): [('content.situacao', 'NORMAL'), ('content.codigoContrato', '42372'), ('content.dataCadastro', '1085626800000'), ('content.dataMatricula', '1085626800000'), ('content.dataRematricula', '1659841200000'), ('content.inicioVinculoAtual', '1659841200000')]
-
-=== linha_contratos  GET /clientes/003144/linha-tempo/contratos -> HTTP 200 ===
-   chaves: ['contrato', 'contratoPlano', 'plano']
-   campos-chave (nao-PII): [('content[0].contrato', '42372'), ('content[0].plano', 'TRANSITO LIVRE - RENOVAÇÃO'), ('content[0].contratoPlano', '42372 - TRANSITO LIVRE - RENOVAÇÃO')]
-
-=== contratos_bymat  GET /contratos/by-matricula/003144 -> HTTP 500 ===
-   corpo(120c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
-
-=== aluno_simples  GET /psec/alunos/003144/obter-aluno-simples -> HTTP 200 ===
-   chaves: ['content']
-   campos-chave (nao-PII): []
-
-[p] fim.
+[gen] fim.
