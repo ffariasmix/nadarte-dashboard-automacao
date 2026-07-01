@@ -1,48 +1,22 @@
-[amostra] 6 ativos
+[roster] total=14000 ATIVO=698
 
-=== cliente #0: codigoCliente=3144 matricula=003144 ===
-  404  /clientes/{m}
-  404  /clientes/{c}
-  404  /clientes/dados-pessoais/{m}
-  404  /clientes/dados-pessoais/{c}
-  404  /clientes/ficha/{m}
-  404  /clientes/detalhe/{m}
-  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim keys=['codigo', 'content', 'cpf', 'datanasc', 'error', 'message', 'messageID', 'messageValue', 'meta', 'nome', 'sexo']
-  400  /v1/pessoa?matricula={m}
-  200  /v1/cliente/{c}  <<< codPessoa=3146 cpf?=sim keys=['avisos', 'bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'clienteObservacao', 'clienteSintetico', 'codigo', 'colaborador', 'colaboradores', 'content', 'cpf', 'dataAtualizacao
-  500  /v1/cliente?matricula={m}
-  200  /clientes/{m}/dados-pessoais  <<< codPessoa=3146 cpf?=sim keys=['categoria', 'codCategoria', 'codigo', 'codigoCliente', 'codigoPessoa', 'content', 'cpf', 'dataCadastro', 'dataMatricula', 'dataValidadeCarteirinha', 'ddi', 'descricao', 'emails',
-  200  /acessos-cliente/{c}/ultimos-meses keys=['content']
+[ponte dados-pessoais] amostra=70
+  dados-pessoais 200: 70  | com codigoPessoa: 70  | com cpf: 70
 
-=== cliente #1: codigoCliente=4277 matricula=004277 ===
-  404  /clientes/{m}
-  404  /clientes/{c}
-  404  /clientes/dados-pessoais/{m}
-  404  /clientes/dados-pessoais/{c}
-  404  /clientes/ficha/{m}
-  404  /clientes/detalhe/{m}
-  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim
-  400  /v1/pessoa?matricula={m}
-  200  /v1/cliente/{c}  <<< codPessoa=4279 cpf?=sim
-  500  /v1/cliente?matricula={m}
-  200  /clientes/{m}/dados-pessoais  <<< codPessoa=4279 cpf?=sim
-  200  /acessos-cliente/{c}/ultimos-meses
+[validacao id] by-pessoa(codPessoa): confere=69  diverge=0
+    codCli=3144 matr=003144 codPessoa=3146 -> acc.cliente.codigo=3144 OK
+    codCli=19142 matr=019083 codPessoa=19548 -> acc.cliente.codigo=19142 OK
+    codCli=18705 matr=018646 codPessoa=19078 -> acc.cliente.codigo=18705 OK
+    codCli=17802 matr=017744 codPessoa=18106 -> acc.cliente.codigo=17802 OK
+    codCli=19363 matr=019304 codPessoa=19780 -> acc.cliente.codigo=19363 OK
+    codCli=15088 matr=015039 codPessoa=15308 -> acc.cliente.codigo=15088 OK
 
-=== cliente #2: codigoCliente=18740 matricula=018681 ===
-  404  /clientes/{m}
-  404  /clientes/{c}
-  404  /clientes/dados-pessoais/{m}
-  404  /clientes/dados-pessoais/{c}
-  404  /clientes/ficha/{m}
-  404  /clientes/detalhe/{m}
-  200  /v1/pessoa/{c}  <<< codPessoa=None cpf?=sim
-  400  /v1/pessoa?matricula={m}
-  200  /v1/cliente/{c}  <<< codPessoa=19117 cpf?=sim
-  500  /v1/cliente?matricula={m}
-  200  /clientes/{m}/dados-pessoais  <<< codPessoa=19117 cpf?=sim
-  200  /acessos-cliente/{c}/ultimos-meses
-
-[validacao by-pessoa(codPessoa)] (se houver ponte)
-  cliente base: codigoCliente=3144 matricula=003144
+[cobertura REAL]
+  com >=1 acesso: 69/70 (99%)
+  acesso em 2026: 67/70 (96%)
+  acesso ult.90d: 67/70 (96%)
+  total registros: 9507
+  intervalo: 2015-08-19 -> 2026-07-01
+  meios 2026: {'Reconhecimento Facial': 2168, 'Digitado a senha de acesso na catraca': 141, 'Digitado a matrícula no teclado do computador': 140, 'Inserido manualmente': 4}
 
 [v] fim.
