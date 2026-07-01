@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — testar /psec/alunos/lista-rapida-acessos (feed em massa, inclui facial).
-Params: tipo=1, limite alto, empresaId (HEADER). PII-safe (campos, meios, datas)."""
+"""716N — achar empresaId que retorna acessos em /psec/alunos/lista-rapida-acessos. PII-safe."""
 import os, sys, re, json
 import urllib.request, urllib.error
-from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
 
 
-def http_get(path, headers=None, timeout=60):
+def http_get(path, headers=None, timeout=45):
     req = urllib.request.Request(BASE + path, method="GET")
     req.add_header("Authorization", "Bearer " + KEY); req.add_header("Accept", "application/json")
     for k, v in (headers or {}).items():
@@ -32,53 +30,40 @@ def gj(path, headers=None):
         return st, b
 
 
-def content(o):
+def lst(o):
     if isinstance(o, list):
         return o
     if isinstance(o, dict):
-        for k in ("content", "data", "result", "results", "rows", "list", "items"):
+        for k in ("content", "data", "result", "results", "rows", "list", "items", "alunos", "acessos"):
             if isinstance(o.get(k), list):
                 return o[k]
     return []
 
 
-def find_dates_meios(rows):
-    meios = Counter(); datas = []
-    for r in rows:
-        if not isinstance(r, dict):
-            continue
-        for k, v in r.items():
-            if isinstance(v, str):
-                if re.search(r"meio|ident", k, re.I) and not re.search(r"\d", v):
-                    meios[v[:30]] += 1
-                m = re.search(r"(\d{4}-\d{2}-\d{2})", v) or re.search(r"(\d{2}/\d{2}/\d{4})", v)
-                if m and re.search(r"data|entrada|hora|acesso|dt", k, re.I):
-                    datas.append((k, m.group(1)))
-    return meios, datas
-
-
 def main():
     if not KEY:
-        print("[m] sem chave"); sys.exit(1)
-    print("### /psec/alunos/lista-rapida-acessos ###")
-    for hdr in [{"empresaId": 1}, {}, {"empresaId": 0}]:
-        for lim in [50, 5000]:
-            st, o = gj(f"/psec/alunos/lista-rapida-acessos?tipo=1&limite={lim}", headers=hdr)
-            rows = content(o)
-            print(f"\n  header={hdr} limite={lim} -> HTTP {st} | itens={len(rows)}")
-            if st == 200 and rows and isinstance(rows[0], dict):
-                print(f"    campos: {sorted(rows[0].keys())}")
-                meios, datas = find_dates_meios(rows)
-                print(f"    meios (amostra): {json.dumps(dict(meios), ensure_ascii=False)[:300]}")
-                if datas:
-                    ds = sorted(set(d for _, d in datas))
-                    print(f"    campo-data ex: {datas[0]} | intervalo: {ds[0]}..{ds[-1]} (n={len(datas)})")
-                else:
-                    print(f"    (sem campo de data reconhecido) 1a linha crua(200c): {json.dumps(rows[0], ensure_ascii=False)[:200]}")
-                return  # achou, para
-            elif st != 200:
-                print(f"    corpo(140c): {str(o)[:140]}")
-    print("\n[m] fim.")
+        print("[v] sem chave"); sys.exit(1)
+    # 1) estrutura crua com empresaId=1 (p/ ver o shape)
+    st, o = gj("/psec/alunos/lista-rapida-acessos?tipo=1&limite=5", headers={"empresaId": 1})
+    print(f"[shape] empresaId=1 -> HTTP {st} | cru(220c): {str(o)[:220]}")
+
+    # 2) varre empresaId 1..12
+    print("\n[varredura empresaId]")
+    achou = None
+    for e in range(1, 13):
+        st, o = gj("/psec/alunos/lista-rapida-acessos?tipo=1&limite=20", headers={"empresaId": e})
+        rows = lst(o)
+        marca = "  <<< TEM ACESSOS" if rows else ""
+        print(f"  empresaId={e:2} -> HTTP {st} | itens={len(rows)}{marca}")
+        if rows and achou is None:
+            achou = e
+    if achou:
+        st, o = gj("/psec/alunos/lista-rapida-acessos?tipo=1&limite=20", headers={"empresaId": achou})
+        rows = lst(o)
+        if rows and isinstance(rows[0], dict):
+            print(f"\n[achou empresaId={achou}] campos: {sorted(rows[0].keys())}")
+            print(f"   1a linha(260c): {json.dumps(rows[0], ensure_ascii=False)[:260]}")
+    print("\n[v] fim.")
 
 
 if __name__ == "__main__":
