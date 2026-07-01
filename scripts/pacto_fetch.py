@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — método EFICIENTE de frequencia: /acessos-cliente/{cod}/ultimos-meses (1 call/aluno)
-+ fallback bulk. Descobre estrutura e mede cobertura 2025+. PII-safe.
-Env: PACTO_KEY_716NORTE, SAMPLE(=150)"""
+"""716N — Definir "ATIVO" correto: /psec/clientes/ativos (verdade PACTO) x filtro situacao,
++ cruzamento situacao x situacaoContrato. PII-safe. Env: PACTO_KEY_716NORTE"""
 import os, sys, re, json
 import urllib.request, urllib.error
 from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
-SAMPLE = int(os.environ.get("SAMPLE", "150"))
-CUT = "2025-01"
 
 
 def http_get(path, timeout=45):
@@ -43,74 +40,52 @@ def content(o):
     return []
 
 
-def parse_um(obj):
-    """Extrai {YYYY-MM: qtd} de /ultimos-meses (estrutura desconhecida -> heuristica)."""
-    out = {}
-    rows = content(obj)
-    for r in rows:
-        if not isinstance(r, dict):
-            continue
-        # acha um campo mes/ano e um de quantidade
-        mes = None; ano = None; qtd = None
-        for k, v in r.items():
-            kl = k.lower()
-            if mes is None and ("mes" in kl or "month" in kl) and isinstance(v, (int, str)):
-                mes = v
-            if ano is None and ("ano" in kl or "year" in kl) and isinstance(v, (int, str)):
-                ano = v
-            if qtd is None and ("qtd" in kl or "quant" in kl or "total" in kl or "count" in kl or "acesso" in kl) and isinstance(v, (int, float)):
-                qtd = v
-            # campo tipo "periodo":"2025-09" ou "MM/YYYY"
-            if isinstance(v, str):
-                m = re.search(r"(\d{4})-(\d{2})", v) or re.search(r"(\d{2})/(\d{4})", v)
-                if m and mes is None and ano is None:
-                    g = m.groups()
-                    if len(g[0]) == 4:
-                        ano, mes = g[0], g[1]
-                    else:
-                        mes, ano = g[0], g[1]
-        if mes is not None and ano is not None:
-            key = f"{int(ano):04d}-{int(mes):02d}"
-            out[key] = (qtd if isinstance(qtd, (int, float)) else 1)
+def paginate(base, maxp=130):
+    sep = "&" if "?" in base else "?"
+    out = []
+    for pg in range(maxp):
+        st, o = gj(f"{base}{sep}page={pg}&size=200")
+        rows = content(o)
+        if st != 200 or not rows:
+            if pg == 0:
+                print(f"   ({base}) HTTP {st} corpo(100c): {str(o)[:100]}")
+            break
+        out += rows
+        if len(rows) < 200:
+            break
     return out
 
 
 def main():
     if not KEY:
-        print("[e] sem chave"); sys.exit(1)
-    ativos = []
-    for pg in range(120):
-        st, o = gj(f"/clientes/simples?page={pg}&size=200")
-        rows = content(o)
-        if not rows:
-            break
-        ativos += [r for r in rows if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO"]
-        if len(rows) < 200:
-            break
-    print(f"[716N] ativos={len(ativos)} | amostra={min(SAMPLE,len(ativos))}")
+        print("[a] sem chave"); sys.exit(1)
 
-    # estrutura crua do 1o (aprender o formato)
-    first_cc = next((r.get("codigoCliente") for r in ativos if r.get("codigoCliente")), None)
-    if first_cc:
-        st, o = gj(f"/acessos-cliente/{first_cc}/ultimos-meses")
-        print(f"[ultimos-meses] HTTP {st} | cru(240c): {str(o)[:240]}")
+    # 1) VERDADE PACTO: /psec/clientes/ativos
+    print("== /psec/clientes/ativos ==")
+    ativos_pacto = paginate("/psec/clientes/ativos")
+    print(f"   total = {len(ativos_pacto)}")
+    if ativos_pacto and isinstance(ativos_pacto[0], dict):
+        print(f"   campos: {sorted(ativos_pacto[0].keys())}")
 
-    com = 0; mensal = Counter(); n = 0
-    for r in ativos[:SAMPLE]:
-        cc = r.get("codigoCliente")
-        if not cc:
+    # 2) Meu filtro: /clientes/simples situacao=ATIVO + cruzamento com situacaoContrato
+    print("\n== /clientes/simples (filtro situacao) ==")
+    todos = paginate("/clientes/simples")
+    sit = Counter(); sitc = Counter(); cross = Counter()
+    ativos_meu = 0
+    for r in todos:
+        if not isinstance(r, dict):
             continue
-        n += 1
-        st, o = gj(f"/acessos-cliente/{cc}/ultimos-meses")
-        um = parse_um(o)
-        got = {k: v for k, v in um.items() if k >= CUT}
-        if got:
-            com += 1
-            for k, v in got.items():
-                mensal[k] += v
-    print(f"[freq 2025+ via ultimos-meses] com >=1: {com}/{n} ({round(100*com/n) if n else 0}%)")
-    print(f"[freq] acessos/mes (amostra): {json.dumps(dict(sorted(mensal.items())), ensure_ascii=False)}")
-    print("\n[e] fim.")
+        s = (r.get("situacao") or "?").upper()
+        sc = (r.get("situacaoContrato") or "?")
+        sit[s] += 1
+        if s == "ATIVO":
+            ativos_meu += 1
+            sitc[str(sc)] += 1
+    print(f"   total lido = {len(todos)} | ATIVO (meu filtro) = {ativos_meu}")
+    print(f"   situacao geral: {json.dumps(dict(sit), ensure_ascii=False)}")
+    print(f"   situacaoContrato ENTRE os ATIVO: {json.dumps(dict(sitc), ensure_ascii=False)}")
+
+    print("\n[a] fim.")
 
 
 if __name__ == "__main__":
