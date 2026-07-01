@@ -22,18 +22,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Coletar (resumo PII-safe; sem dados pessoais)
+      - name: Validacao rede (PII-safe)
         env:
-          PACTO_API_KEY: ${{ secrets.PACTO_KEY_716NORTE }}
-          PACTO_UNIT: '716NORTE'
-          SAMPLE: '25'
+          PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
+          PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
+          PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
+          PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
+          PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
         run: |
-          python scripts/pacto_fetch.py --probe | tee pacto_probe_result.txt
+          python scripts/pacto_fetch.py | tee pacto_probe_result.txt
 
       - name: Commitar resultado (para leitura)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pacto_probe_result.txt
-          git commit -m "collect: resumo PII-safe [skip ci]" || echo "sem mudanca"
+          git commit -m "rede: validacao 5 unidades [skip ci]" || echo "sem mudanca"
           git push
