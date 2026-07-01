@@ -1,6 +1,10 @@
-[716N] ativos=944 | amostra=150
-[ultimos-meses] HTTP 200 | cru(240c): {'content': [0, 0, 0, 0]}
-[freq 2025+ via ultimos-meses] com >=1: 0/150 (0%)
-[freq] acessos/mes (amostra): {}
+== /psec/clientes/ativos ==
+   (/psec/clientes/ativos) HTTP 200 corpo(100c): {'content': {'clientes': None, 'erro': 'Problemas ao obter a secret'}}
+   total = 0
 
-[e] fim.
+== /clientes/simples (filtro situacao) ==
+   total lido = 19295 | ATIVO (meu filtro) = 944
+   situacao geral: {"VISITANTE": 5637, "INATIVO": 12701, "ATIVO": 944, "TRANCADO": 13}
+   situacaoContrato ENTRE os ATIVO: {"NORMAL": 874, "A_VENCER": 59, "ATESTADO": 11}
+
+[a] fim.
