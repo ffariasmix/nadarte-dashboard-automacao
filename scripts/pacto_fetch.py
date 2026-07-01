@@ -21,7 +21,10 @@ PII fica apenas nos .bin (gitignored/efemeros no CI), nunca em log.
 """
 import os, sys, json, time, random, datetime, calendar
 import urllib.request, urllib.error
+from concurrent.futures import ThreadPoolExecutor
 import openpyxl
+
+WORKERS = int(os.environ.get("PACTO_WORKERS", "12"))
 
 BASE = "https://apigw.pactosolucoes.com.br"
 DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
@@ -39,7 +42,7 @@ UNITS = [
 ]
 
 # ------------------------- HTTP -------------------------
-def http_get(key, path, timeout=45, tries=3):
+def http_get(key, path, timeout=30, tries=2):
     for i in range(tries):
         req = urllib.request.Request(BASE + path, method="GET")
         req.add_header("Authorization", "Bearer " + key)
@@ -141,47 +144,51 @@ def roster_ativos(key):
             break
     return out
 
-def coleta_unidade(unit_key, unit_label, key):
-    """retorna (alunos_rows, catraca_sheets) para a unidade. PII fica nas estruturas (vao pro xlsx)."""
-    ativos = roster_ativos(key)
-    alunos_rows = []
-    catraca = {}   # (year,month) -> list of {cpf,nome,data}
-    for c in ativos:
-        C = gv(c, "codigoCliente", "codigo")
+def fetch_client(key, c):
+    """1 cliente -> (aluno_row, [(ym, acc_row)]). dados-pessoais (codPessoa+cpf) + 1 chamada de acesso."""
+    try:
         M = gv(c, "matricula")
         nome = gv(c, "nome") or ""
-        mod  = gv(c, "categoria") or ""
+        modc = gv(c, "categoria") or ""
         st, o = gj(key, f"/clientes/{M}/dados-pessoais")
         dp = unwrap(o) if st == 200 else {}
         cp  = gv(dp, "codigoPessoa", "codPessoa")
         cpf = gv(dp, "cpf") or ""
-        nasc = to_date(gv(dp, "dataNascimento", "datanasc", "nascimento"))
-        sexo = gv(dp, "sexo") or ""
-        dm   = to_date(gv(dp, "dataMatricula"))
-        mod  = gv(dp, "descricao") or gv(dp, "categoria") or mod
-        alunos_rows.append({
-            "mat": M, "nome": nome, "cpf": cpf, "nasc": nasc,
-            "sexo": sexo, "mod": mod, "dm": dm,
-        })
-        if not cp:
-            continue
-        # acessos (paginado)
-        for apg in range(0, 20):
-            st, o = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page={apg}&size=300")
-            acc = lst(o) if st == 200 else []
-            if not acc:
-                break
-            for a in acc:
+        aluno = {
+            "mat": M, "nome": nome, "cpf": cpf,
+            "nasc": to_date(gv(dp, "dataNascimento", "datanasc", "nascimento")),
+            "sexo": gv(dp, "sexo") or "",
+            "mod": gv(dp, "descricao") or gv(dp, "categoria") or modc,
+            "dm": to_date(gv(dp, "dataMatricula")),
+        }
+        accrows = []
+        if cp:
+            st, o = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
+            for a in (lst(o) if st == 200 else []):
                 d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
                 if not d:
                     continue
                 ym = (d.year, d.month)
                 if ym < WINDOW_START or ym > (NOW.year, NOW.month):
                     continue
-                catraca.setdefault(ym, []).append({"cpf": cpf, "nome": nome, "data": d})
-            if len(acc) < 300:
-                break
-        time.sleep(0.02)
+                accrows.append((ym, {"cpf": cpf, "nome": nome, "data": d}))
+        return aluno, accrows
+    except Exception:
+        return {"mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
+                "nasc": None, "sexo": "", "mod": "", "dm": None}, []
+
+def coleta_unidade(unit_key, unit_label, key):
+    """retorna (alunos_rows, catraca) para a unidade. Coleta PARALELA (I/O bound)."""
+    ativos = roster_ativos(key)
+    alunos_rows = []
+    catraca = {}   # (year,month) -> list of {cpf,nome,data}
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        for aluno, accrows in ex.map(lambda c: fetch_client(key, c), ativos):
+            alunos_rows.append(aluno)
+            for ym, row in accrows:
+                catraca.setdefault(ym, []).append(row)
+    print(f"[t] {unit_key}: coleta de {len(ativos)} ativos em {time.time()-t0:.0f}s", file=sys.stderr)
     return alunos_rows, catraca
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
