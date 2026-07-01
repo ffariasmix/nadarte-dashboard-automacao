@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — achar a ponte cliente(codigoCliente/matricula) -> codPessoa/CPF, e validar
-by-pessoa(codPessoa) conferindo acc.cliente.codigo == codigoCliente. PII-safe (mascara cpf/nome)."""
+"""716N — VALIDACAO FINAL do pipeline correto:
+roster ATIVO -> /clientes/{matricula}/dados-pessoais (codPessoa+cpf+dataMatricula)
+-> /acessos-cliente/by-pessoa/{codPessoa}. Confere acc.cliente.codigo==codigoCliente e
+mede cobertura real (2026 / ult.90d). PII-safe: cpf mascarado, sem nomes."""
 import os, sys, json, time
+from datetime import datetime, timezone, timedelta
 import urllib.request, urllib.error
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
+NOW = datetime(2026, 7, 1, tzinfo=timezone.utc)
+D90 = NOW - timedelta(days=90)
 
 
 def http_get(path, headers=None, timeout=45):
@@ -57,115 +62,128 @@ def gv(d, *names):
     return None
 
 
-def deep(o, key, _d=0):
-    """acha 1o valor de 'key' em qualquer nivel."""
-    if _d > 6:
+def unwrap(o):
+    """dados-pessoais retorna {content:{...}} ou {...}."""
+    if isinstance(o, dict):
+        c = o.get("content")
+        if isinstance(c, dict):
+            return c
+        return o
+    return {}
+
+
+def to_dt(v):
+    if v is None:
         return None
-    if isinstance(o, dict):
-        for k, v in o.items():
-            if k.lower() == key.lower() and not isinstance(v, (dict, list)):
-                return v
-        for v in o.values():
-            r = deep(v, key, _d + 1)
-            if r is not None:
-                return r
-    elif isinstance(o, list):
-        for it in o:
-            r = deep(it, key, _d + 1)
-            if r is not None:
-                return r
+    try:
+        if isinstance(v, (int, float)) or (isinstance(v, str) and str(v).isdigit()):
+            n = int(v)
+            if n > 10_000_000_000:
+                n //= 1000
+            return datetime.fromtimestamp(n, tz=timezone.utc)
+        s = str(v)[:19].replace("T", " ")
+        for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y"):
+            try:
+                return datetime.strptime(s, f).replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+    except Exception:
+        return None
     return None
-
-
-def keys_all(o, _d=0, acc=None):
-    if acc is None:
-        acc = set()
-    if _d > 3:
-        return acc
-    if isinstance(o, dict):
-        for k, v in o.items():
-            acc.add(k)
-            keys_all(v, _d + 1, acc)
-    elif isinstance(o, list) and o:
-        keys_all(o[0], _d + 1, acc)
-    return acc
 
 
 def main():
     if not KEY:
         print("[v] sem chave"); sys.exit(1)
 
-    # pega alguns ATIVO (com matricula+codigoCliente)
-    st, o = gj("/clientes/simples?page=0&size=200")
-    r = lst(o)
-    ativos = [c for c in r if str(gv(c, "situacao") or "").upper() == "ATIVO"][:6]
-    print(f"[amostra] {len(ativos)} ativos")
+    # roster ATIVO
+    todos = []
+    for pg in range(0, 70):
+        st, o = gj(f"/clientes/simples?page={pg}&size=200")
+        r = lst(o)
+        if not r:
+            break
+        todos.extend([c for c in r if isinstance(c, dict)])
+        if len(r) < 200:
+            break
+    ativos = [c for c in todos if str(gv(c, "situacao") or "").upper() == "ATIVO"]
+    print(f"[roster] total={len(todos)} ATIVO={len(ativos)}")
 
-    # candidatos de endpoint de DETALHE do cliente (procuro codPessoa/cpf)
-    cand = [
-        "/clientes/{m}",
-        "/clientes/{c}",
-        "/clientes/dados-pessoais/{m}",
-        "/clientes/dados-pessoais/{c}",
-        "/clientes/ficha/{m}",
-        "/clientes/detalhe/{m}",
-        "/v1/pessoa/{c}",
-        "/v1/pessoa?matricula={m}",
-        "/v1/cliente/{c}",
-        "/v1/cliente?matricula={m}",
-        "/clientes/{m}/dados-pessoais",
-        "/acessos-cliente/{c}/ultimos-meses",
-    ]
+    N = 70
+    step = max(1, len(ativos) // N)
+    sample = ativos[::step][:N]
 
-    for i, c in enumerate(ativos[:3]):
+    res_dp = 0        # dados-pessoais ok
+    tem_codpessoa = 0
+    tem_cpf = 0
+    confere = 0       # acc.cliente.codigo == codigoCliente
+    nao_confere = 0
+    com_acesso = com_2026 = com_90d = 0
+    meios26 = {}
+    total_acc = 0
+    dmin = dmax = None
+    exemplos = []
+
+    for c in sample:
         C = gv(c, "codigoCliente", "codigo")
         M = gv(c, "matricula")
-        print(f"\n=== cliente #{i}: codigoCliente={C} matricula={M} ===")
-        for tmpl in cand:
-            path = tmpl.replace("{m}", str(M)).replace("{c}", str(C))
-            st, o = gj(path)
-            has_cp = deep(o, "codPessoa") or deep(o, "codigoPessoa")
-            # tenta codPessoa via pessoa.codigo aninhado
-            cp2 = None
-            if isinstance(o, (dict, list)):
-                pcod = None
-                # procura um 'codigo' dentro de um bloco 'pessoa'
-                def find_pessoa_codigo(x, _d=0):
-                    if _d > 5:
-                        return None
-                    if isinstance(x, dict):
-                        if "pessoa" in {k.lower() for k in x} :
-                            for k in x:
-                                if k.lower() == "pessoa" and isinstance(x[k], dict):
-                                    return gv(x[k], "codigo")
-                        for v in x.values():
-                            rr = find_pessoa_codigo(v, _d + 1)
-                            if rr is not None:
-                                return rr
-                    elif isinstance(x, list):
-                        for it in x:
-                            rr = find_pessoa_codigo(it, _d + 1)
-                            if rr is not None:
-                                return rr
-                    return None
-                cp2 = find_pessoa_codigo(o)
-            has_cpf = deep(o, "cpf")
-            flag = ""
-            if st == 200 and (has_cp or cp2 or has_cpf):
-                flag = f"  <<< codPessoa={has_cp or cp2} cpf?={'sim' if has_cpf else 'nao'}"
-            ks = ""
-            if st == 200 and i == 0:
-                ks = " keys=" + str(sorted(keys_all(o)))[:180]
-            print(f"  {st}  {tmpl}{flag}{ks}")
-            time.sleep(0.03)
+        st, o = gj(f"/clientes/{M}/dados-pessoais")
+        dp = unwrap(o) if st == 200 else {}
+        cp = gv(dp, "codigoPessoa", "codPessoa")
+        cpf = gv(dp, "cpf")
+        if dp:
+            res_dp += 1
+        if cp:
+            tem_codpessoa += 1
+        if cpf:
+            tem_cpf += 1
+        if not cp:
+            continue
 
-    # se achamos codPessoa por algum caminho, validar by-pessoa(codPessoa)
-    print("\n[validacao by-pessoa(codPessoa)] (se houver ponte)")
-    c0 = ativos[0]
-    C0 = gv(c0, "codigoCliente", "codigo"); M0 = gv(c0, "matricula")
-    # tenta obter codPessoa pela melhor rota encontrada manualmente depois; aqui so registro C0/M0
-    print(f"  cliente base: codigoCliente={C0} matricula={M0}")
+        st, o = gj(f"/acessos-cliente/by-pessoa/{cp}?page=0&size=300")
+        acc = lst(o) if st == 200 else []
+        if acc:
+            a0 = acc[0]
+            cli = gv(a0, "cliente") or {}
+            acc_cli = gv(cli, "codigo")
+            if str(acc_cli) == str(C):
+                confere += 1
+            else:
+                nao_confere += 1
+            if len(exemplos) < 6:
+                exemplos.append(f"    codCli={C} matr={M} codPessoa={cp} -> acc.cliente.codigo={acc_cli} {'OK' if str(acc_cli)==str(C) else 'DIVERGE'}")
+            com_acesso += 1
+            total_acc += len(acc)
+            h26 = h90 = False
+            for a in acc:
+                dt = to_dt(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
+                if dt:
+                    dmin = dt if (dmin is None or dt < dmin) else dmin
+                    dmax = dt if (dmax is None or dt > dmax) else dmax
+                    if dt.year == 2026:
+                        h26 = True
+                        m = str(gv(a, "meioIdentificacaoEntradaApresentar") or gv(a, "meioIdentificacaoEntrada") or "?")
+                        meios26[m] = meios26.get(m, 0) + 1
+                    if dt >= D90:
+                        h90 = True
+            com_2026 += 1 if h26 else 0
+            com_90d += 1 if h90 else 0
+        time.sleep(0.03)
 
+    n = len(sample)
+    print(f"\n[ponte dados-pessoais] amostra={n}")
+    print(f"  dados-pessoais 200: {res_dp}  | com codigoPessoa: {tem_codpessoa}  | com cpf: {tem_cpf}")
+    print(f"\n[validacao id] by-pessoa(codPessoa): confere={confere}  diverge={nao_confere}")
+    for e in exemplos:
+        print(e)
+    print(f"\n[cobertura REAL]")
+    print(f"  com >=1 acesso: {com_acesso}/{n} ({100*com_acesso/max(1,n):.0f}%)")
+    print(f"  acesso em 2026: {com_2026}/{n} ({100*com_2026/max(1,n):.0f}%)")
+    print(f"  acesso ult.90d: {com_90d}/{n} ({100*com_90d/max(1,n):.0f}%)")
+    print(f"  total registros: {total_acc}")
+    if dmin and dmax:
+        print(f"  intervalo: {dmin.date()} -> {dmax.date()}")
+    print(f"  meios 2026: { {k: meios26[k] for k in sorted(meios26, key=lambda x:-meios26[x])[:6]} }")
     print("\n[v] fim.")
 
 
