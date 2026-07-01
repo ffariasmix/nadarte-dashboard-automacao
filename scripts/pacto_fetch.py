@@ -1,13 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PROBE PACTO — CONTRATO de aluno ATIVO p/ achar MODALIDADE. PII-safe."""
-import os, sys, json, re
+"""
+Conversor/validador PACTO -> Dashboard (716 Norte).
+Junta: roster ATIVO (/clientes/simples) + demografico (cliente.pessoa) +
+modalidade (/v1/contrato/matricula) + acessos (/acessos-cliente/by-pessoa),
+e imprime DISTRIBUICOES PII-safe para validar contra o painel atual.
+Env: PACTO_API_KEY, PACTO_UNIT, SAMPLE(=150), MAXPAGES(=90)
+"""
+import os, sys, re, json, datetime
 import urllib.request, urllib.error
+from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
+REF = datetime.date(2026, 6, 30)  # mes-base atual
+
+CAT = {
+    "Água":   ["NATAC", "NATA", "HIDRO", "BEBE", "AQUA"],
+    "Lutas e Outros": ["KARATE", "MUAY", "JIU", "JUDO", "HAPKIDO", "CAPOEIRA", "BOXE", "TAEKWON", "KUNG", "LUTA"],
+    "Fitness": ["TRANSITO LIVRE", "FITNESS", "MUSCULA", "DANCA", "PILATES", "AULA COLETIVA", "FUNCIONAL",
+                "SPINNING", "CROSS", "ZUMBA", "RITMO", "GINASTICA", "ALONGA", "YOGA", "TREINA"],
+}
 
 
-def http_get(path, key, timeout=45):
+def http_get(path, key, timeout=50):
     req = urllib.request.Request(BASE + path, method="GET")
     req.add_header("Authorization", "Bearer " + key)
     req.add_header("Accept", "application/json")
@@ -23,9 +38,9 @@ def http_get(path, key, timeout=45):
 def gj(path, key):
     st, body = http_get(path, key)
     try:
-        return st, json.loads(body)
+        return json.loads(body)
     except Exception:
-        return st, None
+        return None
 
 
 def content(o):
@@ -38,61 +53,107 @@ def content(o):
     return []
 
 
-def deep_find_keys(obj, pat, prefix="", out=None, depth=0):
-    if out is None:
-        out = []
-    if depth > 4:
-        return out
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            p = f"{prefix}.{k}" if prefix else k
-            if re.search(pat, k, re.I) and isinstance(v, (str, int, float)):
-                out.append((p, str(v)[:50]))
-            deep_find_keys(v, pat, p, out, depth + 1)
-    elif isinstance(obj, list) and obj:
-        deep_find_keys(obj[0], pat, prefix + "[0]", out, depth + 1)
-    return out
+def deaccent(s):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
-def probe():
+def grupo_de(desc):
+    T = deaccent(str(desc or "")).upper()
+    a = any(t in T for t in CAT["Água"])
+    f = any(t in T for t in CAT["Fitness"])
+    l = any(t in T for t in CAT["Lutas e Outros"])
+    if a and (f or l):
+        return "Ambos"
+    if a:
+        return "Água"
+    if f:
+        return "Fitness"
+    if l:
+        return "Lutas e Outros"
+    return "Fitness"
+
+
+def band_de(nasc_ms):
+    try:
+        y = datetime.datetime.utcfromtimestamp(int(nasc_ms) / 1000).year
+    except Exception:
+        return "N/D"
+    age = REF.year - y
+    if age <= 11: return "0–11"
+    if age <= 17: return "12–17"
+    if age <= 29: return "18–29"
+    if age <= 44: return "30–44"
+    if age <= 59: return "45–59"
+    return "60+"
+
+
+def ym(s):
+    m = re.search(r"(\d{4})-(\d{2})", s or "") if isinstance(s, str) else None
+    return f"{m.group(1)}-{m.group(2)}" if m else None
+
+
+def build():
     key = os.environ.get("PACTO_API_KEY", "").strip()
-    print(f"[diag] len={len(key)}")
+    unit = os.environ.get("PACTO_UNIT", "?")
+    sample = int(os.environ.get("SAMPLE", "150"))
+    maxp = int(os.environ.get("MAXPAGES", "90"))
+    if not key:
+        print("[build] ERRO: sem PACTO_API_KEY"); sys.exit(1)
+    print(f"[build] unidade={unit} sample={sample}")
 
-    # varre paginas do roster ate achar um ATIVO, pega matricula
-    mat = None
-    for pg in range(0, 40):
-        st, rs = gj(f"/clientes/simples?page={pg}&size=50", key)
-        rows = content(rs)
+    # ROSTER completo -> ativos
+    ativos = []
+    for pg in range(maxp):
+        rows = content(gj(f"/clientes/simples?page={pg}&size=200", key))
         if not rows:
             break
         for r in rows:
-            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO" and r.get("matricula"):
-                mat = r["matricula"]; break
-        if mat:
+            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO":
+                ativos.append(r)
+        if len(rows) < 200:
             break
-    print(f"[diag] matricula ATIVO encontrada: {'sim' if mat else 'nao'} (pagina {pg})")
+    print(f"[roster] ATIVOS totais (716N) = {len(ativos)}")
 
-    if mat:
-        st, c = gj(f"/v1/contrato/matricula/{mat}", key)
-        print(f"\n=== /v1/contrato/matricula/{{ativo}} -> HTTP {st} ===")
-        rows = content(c)
-        print(f"    itens: {len(rows)}")
-        r = rows[0] if rows else None
-        if isinstance(r, dict):
-            print(f"    campos ({len(r)}): {sorted(r.keys())}")
-            for k, v in r.items():
-                if isinstance(v, dict):
-                    print(f"      {k} (dict) chaves: {sorted(v.keys())}")
-                elif isinstance(v, list) and v and isinstance(v[0], dict):
-                    print(f"      {k} (list) chaves: {sorted(v[0].keys())}")
-            hits = deep_find_keys(r, r"modalidade|plano|atividade|produto|descri|nomePlano|nomeContrato")
-            print(f"    campos modalidade/plano (valor): {hits[:20]}")
-        elif isinstance(c, dict):
-            print(f"    topo chaves: {sorted(c.keys())}")
-            hits = deep_find_keys(c, r"modalidade|plano|atividade|produto|descri")
-            print(f"    modalidade/plano encontrados: {hits[:20]}")
-    print("\n[diag] fim.")
+    # amostra: demografico + modalidade + acessos
+    grp, sx, bd = Counter(), Counter(), Counter()
+    com_demo = com_contrato = com_acesso = 0
+    dmin = dmax = None
+    n = 0
+    for r in ativos[:sample]:
+        cc = r.get("codigoCliente"); mat = r.get("matricula")
+        if not cc:
+            continue
+        n += 1
+        # 1 acesso -> demografico + confirma acesso
+        ac = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=1", key))
+        if ac and isinstance(ac[0], dict):
+            com_acesso += 1
+            pes = (ac[0].get("cliente") or {}).get("pessoa") or {}
+            if isinstance(pes, dict):
+                if pes.get("sexo") or pes.get("dataNascimento"):
+                    com_demo += 1
+                sx[str(pes.get("sexo") or "N/D")] += 1
+                bd[band_de(pes.get("dataNascimento"))] += 1
+            d = ym(ac[0].get("dtHrEntrada"))
+            if d:
+                dmin = d if dmin is None or d < dmin else dmin
+                dmax = d if dmax is None or d > dmax else dmax
+        # contrato -> modalidade -> grupo
+        if mat:
+            ct = content(gj(f"/v1/contrato/matricula/{mat}", key))
+            if ct and isinstance(ct[0], dict):
+                com_contrato += 1
+                grp[grupo_de(ct[0].get("descricao"))] += 1
+            else:
+                grp["N/D"] += 1
+    print(f"[amostra] n={n} | com_acesso={com_acesso} | com_demografico={com_demo} | com_contrato={com_contrato}")
+    print(f"[grupo]  {json.dumps(dict(grp), ensure_ascii=False)}")
+    print(f"[sexo]   {json.dumps(dict(sx), ensure_ascii=False)}")
+    print(f"[faixa]  {json.dumps(dict(bd), ensure_ascii=False)}")
+    print(f"[acessos] cobertura(datas 1o acesso amostra) {dmin}..{dmax}")
+    print("\n[build] fim.")
 
 
 if __name__ == "__main__":
-    probe()
+    build()
