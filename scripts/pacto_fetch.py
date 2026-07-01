@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — achar a fonte de acesso COMPLETA (facial+catraca+chamada), como o export.
-Testa /clientes/listar-registro-de-acesso/{matricula} e /psec/alunos/lista-rapida-acessos.
-PII-safe. Env: PACTO_KEY_716NORTE"""
-import os, sys, re, json, urllib.parse
+"""716N — testar /psec/alunos/lista-rapida-acessos (feed em massa, inclui facial).
+Params: tipo=1, limite alto, empresaId (HEADER). PII-safe (campos, meios, datas)."""
+import os, sys, re, json
 import urllib.request, urllib.error
+from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
 
 
-def http_get(path, timeout=45):
+def http_get(path, headers=None, timeout=60):
     req = urllib.request.Request(BASE + path, method="GET")
     req.add_header("Authorization", "Bearer " + KEY); req.add_header("Accept", "application/json")
+    for k, v in (headers or {}).items():
+        req.add_header(k, str(v))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, r.read().decode("utf-8", "replace")
@@ -22,8 +24,8 @@ def http_get(path, timeout=45):
         return -1, str(e)
 
 
-def gj(path):
-    st, b = http_get(path)
+def gj(path, headers=None):
+    st, b = http_get(path, headers)
     try:
         return st, json.loads(b)
     except Exception:
@@ -40,66 +42,43 @@ def content(o):
     return []
 
 
-def descreve(o):
-    rows = content(o)
-    if not rows:
-        return f"vazio/estrutura: {str(o)[:120]}"
-    r = rows[0] if isinstance(rows[0], dict) else None
-    if not r:
-        return f"itens={len(rows)} (nao-dict)"
-    campos = sorted(r.keys())
-    # valores nao-PII de interesse (meio, data, coletor)
-    amostra = {}
-    for k, v in r.items():
-        if re.search(r"meio|ident|data|entrada|hora|coletor|sentido|situac|acesso", k, re.I) and isinstance(v, (str, int, float, bool)):
-            amostra[k] = str(v)[:35]
-    return f"itens={len(rows)} | campos={campos} | amostra={json.dumps(amostra, ensure_ascii=False)}"
+def find_dates_meios(rows):
+    meios = Counter(); datas = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        for k, v in r.items():
+            if isinstance(v, str):
+                if re.search(r"meio|ident", k, re.I) and not re.search(r"\d", v):
+                    meios[v[:30]] += 1
+                m = re.search(r"(\d{4}-\d{2}-\d{2})", v) or re.search(r"(\d{2}/\d{2}/\d{4})", v)
+                if m and re.search(r"data|entrada|hora|acesso|dt", k, re.I):
+                    datas.append((k, m.group(1)))
+    return meios, datas
 
 
 def main():
     if not KEY:
-        print("[x] sem chave"); sys.exit(1)
-    # matricula ATIVA
-    mat = None
-    for pg in range(30):
-        st, o = gj(f"/clientes/simples?page={pg}&size=50")
-        for r in content(o):
-            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO" and r.get("matricula"):
-                mat = r["matricula"]; break
-        if mat:
-            break
-    print(f"[x] matricula ativa: {'ok' if mat else 'nao'}")
-    if not mat:
-        return
-    matq = urllib.parse.quote(str(mat))
-
-    di, df = "2026-01-01", "2026-06-30"
-    dib, dfb = "01/01/2026", "30/06/2026"
-    variantes = [
-        "",
-        f"?dataInicial={di}&dataFinal={df}",
-        f"?dataInicio={di}&dataFim={df}",
-        f"?inicio={di}&fim={df}",
-        f"?dataInicial={urllib.parse.quote(dib)}&dataFinal={urllib.parse.quote(dfb)}",
-        f"?dtInicio={di}&dtFim={df}",
-    ]
-    print("\n### /clientes/listar-registro-de-acesso/{matricula} ###")
-    for qs in variantes:
-        st, o = gj(f"/clientes/listar-registro-de-acesso/{matq}{qs}")
-        tag = "OK" if (st == 200 and content(o)) else ""
-        print(f"  {qs or '(sem qs)':45} HTTP {st} {tag}")
-        if st == 200 and content(o):
-            print("     -> " + descreve(o)); break
-
-    print("\n### /psec/alunos/lista-rapida-acessos (em massa) ###")
-    for qs in variantes[1:]:
-        st, o = gj(f"/psec/alunos/lista-rapida-acessos{qs}")
-        tag = "OK" if (st == 200 and content(o)) else ""
-        print(f"  {qs:45} HTTP {st} {tag}")
-        if st == 200 and content(o):
-            print("     -> " + descreve(o)); break
-
-    print("\n[x] fim.")
+        print("[m] sem chave"); sys.exit(1)
+    print("### /psec/alunos/lista-rapida-acessos ###")
+    for hdr in [{"empresaId": 1}, {}, {"empresaId": 0}]:
+        for lim in [50, 5000]:
+            st, o = gj(f"/psec/alunos/lista-rapida-acessos?tipo=1&limite={lim}", headers=hdr)
+            rows = content(o)
+            print(f"\n  header={hdr} limite={lim} -> HTTP {st} | itens={len(rows)}")
+            if st == 200 and rows and isinstance(rows[0], dict):
+                print(f"    campos: {sorted(rows[0].keys())}")
+                meios, datas = find_dates_meios(rows)
+                print(f"    meios (amostra): {json.dumps(dict(meios), ensure_ascii=False)[:300]}")
+                if datas:
+                    ds = sorted(set(d for _, d in datas))
+                    print(f"    campo-data ex: {datas[0]} | intervalo: {ds[0]}..{ds[-1]} (n={len(datas)})")
+                else:
+                    print(f"    (sem campo de data reconhecido) 1a linha crua(200c): {json.dumps(rows[0], ensure_ascii=False)[:200]}")
+                return  # achou, para
+            elif st != 200:
+                print(f"    corpo(140c): {str(o)[:140]}")
+    print("\n[m] fim.")
 
 
 if __name__ == "__main__":
