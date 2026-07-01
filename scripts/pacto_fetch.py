@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PROBE PACTO — diagnostico do JOIN cliente.pessoa <-> /v1/pessoa.codigo. PII-safe."""
-import os, sys, json
+"""PROBE PACTO — endpoint de CONTRATO p/ achar a MODALIDADE. PII-safe (nomes de campos + modalidade, que nao e PII)."""
+import os, sys, json, re
 import urllib.request, urllib.error
 
 BASE = "https://apigw.pactosolucoes.com.br"
@@ -38,45 +38,45 @@ def content(o):
     return []
 
 
+def dump(label, obj):
+    rows = content(obj)
+    r = rows[0] if rows else (obj if isinstance(obj, dict) else None)
+    if not isinstance(r, dict):
+        print(f"    ({label}) sem objeto"); return
+    print(f"    campos ({len(r)}): {sorted(r.keys())}")
+    # destaca campos que parecem plano/modalidade/atividade (nomes + valores curtos nao-PII)
+    interesse = [k for k in r if re.search(r"modalidade|plano|atividade|produto|servico|descri|tipo|categoria|nome", k, re.I)]
+    for k in interesse:
+        v = r.get(k)
+        if isinstance(v, (str, int, float, bool)) and not re.search(r"pessoa|cliente|cpf|email|telefone", k, re.I):
+            print(f"      {k} = {str(v)[:60]}")
+        elif isinstance(v, dict):
+            print(f"      {k} (dict) chaves: {sorted(v.keys())}")
+        elif isinstance(v, list) and v and isinstance(v[0], dict):
+            print(f"      {k} (list[dict]) chaves: {sorted(v[0].keys())}")
+
+
 def probe():
     key = os.environ.get("PACTO_API_KEY", "").strip()
     print(f"[diag] len={len(key)}")
 
-    # 1) um codigoCliente
+    # matricula de exemplo do roster
     st, rs = gj("/clientes/simples?page=0&size=10", key)
-    cc = next((r.get("codigoCliente") for r in content(rs) if isinstance(r, dict) and r.get("codigoCliente")), None)
-    print(f"[diag] codigoCliente={cc}")
+    mat = next((r.get("matricula") for r in content(rs) if isinstance(r, dict) and r.get("matricula")), None)
+    print(f"[diag] matricula exemplo capturada: {'sim' if mat else 'nao'}")
 
-    # 2) estrutura de cliente.pessoa num acesso (SO tipo/chaves, sem valores textuais)
-    st, ac = gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=2", key)
-    rows = content(ac)
-    if rows:
-        cl = rows[0].get("cliente")
-        print(f"[diag] cliente tipo={type(cl).__name__}")
-        if isinstance(cl, dict):
-            pv = cl.get("pessoa")
-            print(f"[diag] cliente.pessoa tipo={type(pv).__name__}")
-            if isinstance(pv, dict):
-                print(f"[diag] cliente.pessoa chaves={sorted(pv.keys())}")
-                # imprime SO campos numericos/ids (nao textuais)
-                ids = {k: v for k, v in pv.items() if isinstance(v, (int, float, bool))}
-                print(f"[diag] cliente.pessoa ids-numericos={json.dumps(ids)}")
-            else:
-                print(f"[diag] cliente.pessoa valor(num?)={pv if isinstance(pv,(int,float)) else 'nao-numerico'}")
-            print(f"[diag] cliente.codigo={cl.get('codigo')} | cliente.codigoMatricula={cl.get('codigoMatricula')}")
+    # 1) contratos por matricula
+    if mat:
+        st, c = gj(f"/v1/contrato/matricula/{mat}", key)
+        print(f"\n=== /v1/contrato/matricula/{{mat}} -> HTTP {st} ===")
+        dump("por_matricula", c)
 
-    # 3) um codigo de /v1/pessoa (id interno, nao PII) e teste de detalhe
-    st, pj = gj("/v1/pessoa?page=0&size=3", key)
-    prow = content(pj)
-    pk = prow[0].get("codigo") if prow and isinstance(prow[0], dict) else None
-    print(f"[diag] /v1/pessoa.codigo exemplo={pk}")
-    if pk is not None:
-        st2, d = gj(f"/v1/pessoa/{pk}", key)
-        drow = content(d)
-        keys = sorted((drow[0] if drow else (d if isinstance(d, dict) else {})).keys())
-        print(f"[diag] GET /v1/pessoa/{pk} -> HTTP {st2} | topo={type(d).__name__} | campos={keys}")
+    # 2) contratos paginados (bulk)
+    st, c2 = gj("/v1/contrato?page=0&size=3", key)
+    print(f"\n=== /v1/contrato?page=0&size=3 -> HTTP {st} ===")
+    dump("bulk", c2)
 
-    print("[diag] fim.")
+    print("\n[diag] fim.")
 
 
 if __name__ == "__main__":
