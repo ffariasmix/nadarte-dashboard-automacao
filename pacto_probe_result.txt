@@ -1,36 +1,26 @@
-[rede] validacao das 5 unidades (sem Natal)
+[716N] ativos=953 | amostrando 30
+[contrato] itens por aluno (len): {1: 26, 0: 4}
+[contrato] anos citados nas descricoes (top): [(2026, 11), (2027, 16)]
+[tenure] 1o acesso por ANO (amostra): {'2015': 3, '2023': 1, '2024': 3, '2025': 7}
+[freq] com >=1 acesso: 14/30
+[freq] MATRIZ mensal 18m (soma amostra):
+    2025-01: 17
+    2025-02: 21
+    2025-03: 16
+    2025-04: 21
+    2025-05: 11
+    2025-06: 23
+    2025-07: 25
+    2025-08: 43
+    2025-09: 63
+    2025-10: 61
+    2025-11: 41
+    2025-12: 28
+    2026-01: 38
+    2026-02: 33
+    2026-03: 40
+    2026-04: 26
+    2026-05: 39
+    2026-06: 39
 
-==== 716 Norte ====
-  ATIVOS = 953  | situacao total = {"VISITANTE": 5637, "INATIVO": 12692, "ATIVO": 953, "TRANCADO": 13}
-  ativos com inicioContrato preenchido = 953/953
-  ano inicioContrato (top): [(2026, 504), (2025, 444), (2024, 5)]
-
-==== 905 Sul ====
-  ATIVOS = 961  | situacao total = {"INATIVO": 9945, "VISITANTE": 6282, "ATIVO": 961, "TRANCADO": 17}
-  ativos com inicioContrato preenchido = 961/961
-  ano inicioContrato (top): [(2026, 588), (2025, 367), (2024, 6)]
-
-==== 604 Norte ====
-  ATIVOS = 1101  | situacao total = {"VISITANTE": 8583, "INATIVO": 10756, "ATIVO": 1101, "TRANCADO": 26}
-  ativos com inicioContrato preenchido = 1101/1101
-  ano inicioContrato (top): [(2026, 686), (2025, 411), (2024, 4)]
-
-==== Lago Norte ====
-  ATIVOS = 896  | situacao total = {"VISITANTE": 7402, "INATIVO": 6001, "ATIVO": 896, "TRANCADO": 12}
-  ativos com inicioContrato preenchido = 896/896
-  ano inicioContrato (top): [(2026, 478), (2025, 412), (2024, 6)]
-
-==== Lago Sul ====
-  ATIVOS = 708  | situacao total = {"VISITANTE": 2210, "INATIVO": 4870, "ATIVO": 708, "TRANCADO": 3}
-  ativos com inicioContrato preenchido = 708/708
-  ano inicioContrato (top): [(2026, 428), (2025, 274), (2024, 6)]
-
-===== RESUMO ATIVOS POR UNIDADE =====
-  716 Norte    953
-  905 Sul      961
-  604 Norte    1101
-  Lago Norte   896
-  Lago Sul     708
-  REDE (5)     4619
-
-[rede] fim.
+[t] fim.
