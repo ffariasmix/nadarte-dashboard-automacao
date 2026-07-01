@@ -1,56 +1,84 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — VALIDACAO FINAL do pipeline correto:
-roster ATIVO -> /clientes/{matricula}/dados-pessoais (codPessoa+cpf+dataMatricula)
--> /acessos-cliente/by-pessoa/{codPessoa}. Confere acc.cliente.codigo==codigoCliente e
-mede cobertura real (2026 / ult.90d). PII-safe: cpf mascarado, sem nomes."""
-import os, sys, json, time
-from datetime import datetime, timezone, timedelta
+"""
+pacto_fetch.py — Coletor PACTO (ZillyonWeb) -> arquivos no formato do motor.
+
+Substitui/complementa o drive_download.py: para cada unidade, puxa da API
+  1) roster ATIVO (dedupe por codigoCliente),
+  2) /clientes/{matricula}/dados-pessoais  -> codPessoa + CPF + dataMatricula + demografia,
+  3) /acessos-cliente/by-pessoa/{codPessoa} -> historico de acessos (inclui facial),
+e ESCREVE, em <data_dir>, planilhas .bin (xlsx) + manifest.json + meta.json IDENTICAS
+ao que o build_freq_multi.py ja le hoje (Alunos Ativos por mes; Acessos Catraca por unidade).
+A juncao aluno x acesso e por CPF (chave que existe nas duas bases).
+
+Modos:
+  - producao:   le PACTO_KEY_<UNIT> do ambiente (GitHub Secrets). 1 chave por unidade.
+  - PACTO_SELFTEST=1: nao chama API; gera dados sinteticos no MESMO formato (teste de formato/gate).
+  - PACTO_ONLY=716Norte: limita a coleta a 1 unidade (canario).
+
+Uso: python3 pacto_fetch.py <data_dir>
+PII fica apenas nos .bin (gitignored/efemeros no CI), nunca em log.
+"""
+import os, sys, json, time, random, datetime, calendar
 import urllib.request, urllib.error
+import openpyxl
 
 BASE = "https://apigw.pactosolucoes.com.br"
-KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
-NOW = datetime(2026, 7, 1, tzinfo=timezone.utc)
-D90 = NOW - timedelta(days=90)
+DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
+WINDOW_START = (2025, 1)         # catraca: emite meses a partir daqui
+NOW = datetime.date.today()
+ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
 
+# unidade -> (label do motor, nome do Secret). Natal fora ate ago/2026 (confirmar).
+UNITS = [
+    ("716Norte",  "716 Norte",  "PACTO_KEY_716NORTE"),
+    ("905Sul",    "905 Sul",    "PACTO_KEY_905SUL"),
+    ("604Norte",  "604 Norte",  "PACTO_KEY_604NORTE"),
+    ("LagoNorte", "Lago Norte", "PACTO_KEY_LAGONORTE"),
+    ("LagoSul",   "Lago Sul",   "PACTO_KEY_LAGOSUL"),
+]
 
-def http_get(path, headers=None, timeout=45):
-    req = urllib.request.Request(BASE + path, method="GET")
-    req.add_header("Authorization", "Bearer " + KEY)
-    req.add_header("Accept", "application/json")
-    for k, v in (headers or {}).items():
-        req.add_header(k, str(v))
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, r.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        return e.code, (e.read().decode("utf-8", "replace") if e.fp else "")
-    except Exception as e:
-        return -1, str(e)
+# ------------------------- HTTP -------------------------
+def http_get(key, path, timeout=45, tries=3):
+    for i in range(tries):
+        req = urllib.request.Request(BASE + path, method="GET")
+        req.add_header("Authorization", "Bearer " + key)
+        req.add_header("Accept", "application/json")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.status, r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            code = e.code
+            body = e.read().decode("utf-8", "replace") if e.fp else ""
+            if code in (429, 500, 502, 503, 504) and i < tries - 1:
+                time.sleep(1.5 * (i + 1)); continue
+            return code, body
+        except Exception as e:
+            if i < tries - 1:
+                time.sleep(1.0 * (i + 1)); continue
+            return -1, str(e)
+    return -1, ""
 
-
-def gj(path, headers=None):
-    st, b = http_get(path, headers)
+def gj(key, path):
+    st, b = http_get(key, path)
     try:
         return st, json.loads(b)
     except Exception:
         return st, b
 
-
 def lst(o):
     if isinstance(o, list):
         return o
     if isinstance(o, dict):
-        for k in ("content", "data", "result", "results", "rows", "list", "items", "clientes", "acessos"):
+        for k in ("content","data","result","results","rows","list","items","clientes","acessos"):
             v = o.get(k)
             if isinstance(v, list):
                 return v
             if isinstance(v, dict):
-                for k2 in ("lista", "content", "items", "rows"):
+                for k2 in ("lista","content","items","rows"):
                     if isinstance(v.get(k2), list):
                         return v[k2]
     return []
-
 
 def gv(d, *names):
     if not isinstance(d, dict):
@@ -61,9 +89,7 @@ def gv(d, *names):
             return d[low[n.lower()]]
     return None
 
-
 def unwrap(o):
-    """dados-pessoais retorna {content:{...}} ou {...}."""
     if isinstance(o, dict):
         c = o.get("content")
         if isinstance(c, dict):
@@ -71,8 +97,7 @@ def unwrap(o):
         return o
     return {}
 
-
-def to_dt(v):
+def to_date(v):
     if v is None:
         return None
     try:
@@ -80,111 +105,199 @@ def to_dt(v):
             n = int(v)
             if n > 10_000_000_000:
                 n //= 1000
-            return datetime.fromtimestamp(n, tz=timezone.utc)
+            return datetime.datetime.fromtimestamp(n, tz=datetime.timezone.utc).date()
         s = str(v)[:19].replace("T", " ")
-        for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y"):
+        for f in ("%Y-%m-%d %H:%M:%S","%Y-%m-%d","%d/%m/%Y %H:%M:%S","%d/%m/%Y"):
             try:
-                return datetime.strptime(s, f).replace(tzinfo=timezone.utc)
+                return datetime.datetime.strptime(s, f).date()
             except Exception:
                 pass
     except Exception:
         return None
     return None
 
-
-def main():
-    if not KEY:
-        print("[v] sem chave"); sys.exit(1)
-
-    # roster ATIVO
-    todos = []
-    for pg in range(0, 70):
-        st, o = gj(f"/clientes/simples?page={pg}&size=200")
+# ------------------------- COLETA -------------------------
+def roster_ativos(key):
+    """paginacao robusta: dedupe por codigoCliente, para quando pagina nao traz codigo novo."""
+    seen = set(); out = []
+    for pg in range(0, 120):
+        st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
         r = lst(o)
         if not r:
             break
-        todos.extend([c for c in r if isinstance(c, dict)])
+        novos = 0
+        for c in r:
+            if not isinstance(c, dict):
+                continue
+            cc = gv(c, "codigoCliente", "codigo")
+            if cc is None or cc in seen:
+                continue
+            seen.add(cc); novos += 1
+            if str(gv(c, "situacao") or "").upper() == "ATIVO":
+                out.append(c)
+        if novos == 0:
+            break
         if len(r) < 200:
             break
-    ativos = [c for c in todos if str(gv(c, "situacao") or "").upper() == "ATIVO"]
-    print(f"[roster] total={len(todos)} ATIVO={len(ativos)}")
+    return out
 
-    N = 70
-    step = max(1, len(ativos) // N)
-    sample = ativos[::step][:N]
-
-    res_dp = 0        # dados-pessoais ok
-    tem_codpessoa = 0
-    tem_cpf = 0
-    confere = 0       # acc.cliente.codigo == codigoCliente
-    nao_confere = 0
-    com_acesso = com_2026 = com_90d = 0
-    meios26 = {}
-    total_acc = 0
-    dmin = dmax = None
-    exemplos = []
-
-    for c in sample:
+def coleta_unidade(unit_key, unit_label, key):
+    """retorna (alunos_rows, catraca_sheets) para a unidade. PII fica nas estruturas (vao pro xlsx)."""
+    ativos = roster_ativos(key)
+    alunos_rows = []
+    catraca = {}   # (year,month) -> list of {cpf,nome,data}
+    for c in ativos:
         C = gv(c, "codigoCliente", "codigo")
         M = gv(c, "matricula")
-        st, o = gj(f"/clientes/{M}/dados-pessoais")
+        nome = gv(c, "nome") or ""
+        mod  = gv(c, "categoria") or ""
+        st, o = gj(key, f"/clientes/{M}/dados-pessoais")
         dp = unwrap(o) if st == 200 else {}
-        cp = gv(dp, "codigoPessoa", "codPessoa")
-        cpf = gv(dp, "cpf")
-        if dp:
-            res_dp += 1
-        if cp:
-            tem_codpessoa += 1
-        if cpf:
-            tem_cpf += 1
+        cp  = gv(dp, "codigoPessoa", "codPessoa")
+        cpf = gv(dp, "cpf") or ""
+        nasc = to_date(gv(dp, "dataNascimento", "datanasc", "nascimento"))
+        sexo = gv(dp, "sexo") or ""
+        dm   = to_date(gv(dp, "dataMatricula"))
+        mod  = gv(dp, "descricao") or gv(dp, "categoria") or mod
+        alunos_rows.append({
+            "mat": M, "nome": nome, "cpf": cpf, "nasc": nasc,
+            "sexo": sexo, "mod": mod, "dm": dm,
+        })
         if not cp:
             continue
-
-        st, o = gj(f"/acessos-cliente/by-pessoa/{cp}?page=0&size=300")
-        acc = lst(o) if st == 200 else []
-        if acc:
-            a0 = acc[0]
-            cli = gv(a0, "cliente") or {}
-            acc_cli = gv(cli, "codigo")
-            if str(acc_cli) == str(C):
-                confere += 1
-            else:
-                nao_confere += 1
-            if len(exemplos) < 6:
-                exemplos.append(f"    codCli={C} matr={M} codPessoa={cp} -> acc.cliente.codigo={acc_cli} {'OK' if str(acc_cli)==str(C) else 'DIVERGE'}")
-            com_acesso += 1
-            total_acc += len(acc)
-            h26 = h90 = False
+        # acessos (paginado)
+        for apg in range(0, 20):
+            st, o = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page={apg}&size=300")
+            acc = lst(o) if st == 200 else []
+            if not acc:
+                break
             for a in acc:
-                dt = to_dt(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
-                if dt:
-                    dmin = dt if (dmin is None or dt < dmin) else dmin
-                    dmax = dt if (dmax is None or dt > dmax) else dmax
-                    if dt.year == 2026:
-                        h26 = True
-                        m = str(gv(a, "meioIdentificacaoEntradaApresentar") or gv(a, "meioIdentificacaoEntrada") or "?")
-                        meios26[m] = meios26.get(m, 0) + 1
-                    if dt >= D90:
-                        h90 = True
-            com_2026 += 1 if h26 else 0
-            com_90d += 1 if h90 else 0
-        time.sleep(0.03)
+                d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
+                if not d:
+                    continue
+                ym = (d.year, d.month)
+                if ym < WINDOW_START or ym > (NOW.year, NOW.month):
+                    continue
+                catraca.setdefault(ym, []).append({"cpf": cpf, "nome": nome, "data": d})
+            if len(acc) < 300:
+                break
+        time.sleep(0.02)
+    return alunos_rows, catraca
 
-    n = len(sample)
-    print(f"\n[ponte dados-pessoais] amostra={n}")
-    print(f"  dados-pessoais 200: {res_dp}  | com codigoPessoa: {tem_codpessoa}  | com cpf: {tem_cpf}")
-    print(f"\n[validacao id] by-pessoa(codPessoa): confere={confere}  diverge={nao_confere}")
-    for e in exemplos:
-        print(e)
-    print(f"\n[cobertura REAL]")
-    print(f"  com >=1 acesso: {com_acesso}/{n} ({100*com_acesso/max(1,n):.0f}%)")
-    print(f"  acesso em 2026: {com_2026}/{n} ({100*com_2026/max(1,n):.0f}%)")
-    print(f"  acesso ult.90d: {com_90d}/{n} ({100*com_90d/max(1,n):.0f}%)")
-    print(f"  total registros: {total_acc}")
-    if dmin and dmax:
-        print(f"  intervalo: {dmin.date()} -> {dmax.date()}")
-    print(f"  meios 2026: { {k: meios26[k] for k in sorted(meios26, key=lambda x:-meios26[x])[:6]} }")
-    print("\n[v] fim.")
+# ------------------------- ESCRITA (formato do motor) -------------------------
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA"]
+CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
+
+def write_alunos_wb(path, unit_label_to_rows):
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    for label, rows in unit_label_to_rows.items():
+        ws = wb.create_sheet(title=label[:31])
+        ws.append(AL_HEADER)
+        for r in rows:
+            ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"]])
+    wb.save(path)
+
+def write_catraca_wb(path, sheets):
+    """sheets: {(year,month): [ {cpf,nome,data} ]}"""
+    wb = openpyxl.Workbook(); wb.remove(wb.active)
+    for (yr, mn) in sorted(sheets.keys()):
+        ws = wb.create_sheet(title=f"{mn}. {ABBR[mn]}.{yr}"[:31])
+        ws.append(CT_HEADER)
+        for r in sheets[(yr, mn)]:
+            ws.append(["", r["nome"], r["cpf"], r["data"]])
+    wb.save(path)
+
+# ------------------------- SELFTEST (sintetico) -------------------------
+def selftest_data():
+    """gera 5 unidades x 2 meses, ~640 ativos/unid, overlap ~85%, acessos suficientes."""
+    random.seed(7)
+    months = [(2026, 5), (2026, 6)]
+    alunos_by_month = {m: {} for m in months}
+    catraca_by_unit = {}
+    for uk, ulabel, _ in UNITS:
+        base_ids = list(range(1000, 1000 + 640))   # cpfs sinteticos
+        prev = set()
+        cat = {}
+        for mi, m in enumerate(months):
+            # 85% de retencao + alguns novos
+            if mi == 0:
+                cur = set(base_ids[:600])
+            else:
+                keep = set(random.sample(sorted(prev), int(len(prev) * 0.85)))
+                novos = set(base_ids[600:640])
+                cur = keep | novos
+            prev = cur
+            rows = []
+            for cid in sorted(cur):
+                cpf = f"{uk[:3].upper()}{cid:08d}"[:11].ljust(11, "0")
+                rows.append({
+                    "mat": str(cid), "nome": f"ALUNO {uk} {cid}", "cpf": cpf,
+                    "nasc": datetime.date(1990, ((cid % 12) + 1), ((cid % 27) + 1)),
+                    "sexo": "M" if cid % 2 else "F",
+                    "mod": random.choice(["TRANSITO LIVRE","MUSCULACAO","NATACAO","MUAY THAI"]),
+                    "dm": datetime.date(2024, 1, 1),
+                })
+                # acessos no mes (>=1 p/ maioria)
+                naccess = random.choice([0, 2, 4, 8, 12])
+                for _ in range(naccess):
+                    day = random.randint(1, calendar.monthrange(m[0], m[1])[1])
+                    cat.setdefault(m, []).append({"cpf": cpf, "nome": f"ALUNO {uk} {cid}",
+                                                  "data": datetime.date(m[0], m[1], day)})
+            alunos_by_month[m][ulabel] = rows
+        catraca_by_unit[(uk, ulabel)] = cat
+    return months, alunos_by_month, catraca_by_unit
+
+# ------------------------- MAIN -------------------------
+def main():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    manifest = {}
+    fid = 0
+    def nextfid():
+        nonlocal fid; fid += 1; return f"api{fid:04d}"
+
+    if os.environ.get("PACTO_SELFTEST") == "1":
+        months, alunos_by_month, catraca_by_unit = selftest_data()
+        for (yr, mn) in months:
+            f = nextfid(); path = os.path.join(DATA_DIR, f + ".bin")
+            write_alunos_wb(path, alunos_by_month[(yr, mn)])
+            manifest[f] = f"{mn}. Alunos Ativos Rede ({ABBR[mn]}.{yr})"
+        for (uk, ulabel), sheets in catraca_by_unit.items():
+            f = nextfid(); path = os.path.join(DATA_DIR, f + ".bin")
+            write_catraca_wb(path, sheets)
+            manifest[f] = f"Acessos Catrata Unidade {ulabel} (Nad'Arte)"
+        json.dump(manifest, open(os.path.join(DATA_DIR, "manifest.json"), "w"), ensure_ascii=False)
+        json.dump({"baseUpdated": NOW.isoformat(), "baseUpdatedBy": "selftest"},
+                  open(os.path.join(DATA_DIR, "meta.json"), "w"), ensure_ascii=False)
+        print(f"[selftest] escrito {len(manifest)} arquivos em {DATA_DIR}", file=sys.stderr)
+        return
+
+    only = os.environ.get("PACTO_ONLY", "").strip()
+    cur_ym = (NOW.year, NOW.month)
+    alunos_cur = {}         # label -> rows (mes corrente)
+    for uk, ulabel, secret in UNITS:
+        if only and uk != only:
+            continue
+        key = os.environ.get(secret, "").strip()
+        if not key:
+            print(f"[skip] {uk}: sem secret {secret}", file=sys.stderr); continue
+        try:
+            alunos_rows, catraca = coleta_unidade(uk, ulabel, key)
+            alunos_cur[ulabel] = alunos_rows
+            f = nextfid(); write_catraca_wb(os.path.join(DATA_DIR, f + ".bin"), catraca)
+            manifest[f] = f"Acessos Catrata Unidade {ulabel} (Nad'Arte)"
+            tot_acc = sum(len(v) for v in catraca.values())
+            ncpf = sum(1 for r in alunos_rows if len(str(r["cpf"] or "")) >= 11)
+            ndm = sum(1 for r in alunos_rows if r["dm"])
+            na = max(1, len(alunos_rows))
+            print(f"[ok] {uk}: ativos={len(alunos_rows)} cpf={100*ncpf//na}% dataMatr={100*ndm//na}% "
+                  f"acessos={tot_acc} meses={sorted(catraca.keys())}", file=sys.stderr)
+        except Exception as e:
+            print(f"[ERRO] {uk}: {e}", file=sys.stderr)
+    if alunos_cur:
+        f = nextfid(); write_alunos_wb(os.path.join(DATA_DIR, f + ".bin"), alunos_cur)
+        manifest[f] = f"{cur_ym[1]}. Alunos Ativos Rede ({ABBR[cur_ym[1]]}.{cur_ym[0]})"
+    json.dump(manifest, open(os.path.join(DATA_DIR, "manifest.json"), "w"), ensure_ascii=False)
+    print(f"[fim] manifest com {len(manifest)} arquivos", file=sys.stderr)
 
 
 if __name__ == "__main__":
