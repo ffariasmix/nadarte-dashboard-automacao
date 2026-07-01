@@ -1,26 +1,25 @@
-[716N] ativos=953 | amostrando 30
-[contrato] itens por aluno (len): {1: 26, 0: 4}
-[contrato] anos citados nas descricoes (top): [(2026, 11), (2027, 16)]
-[tenure] 1o acesso por ANO (amostra): {'2015': 3, '2023': 1, '2024': 3, '2025': 7}
-[freq] com >=1 acesso: 14/30
-[freq] MATRIZ mensal 18m (soma amostra):
-    2025-01: 17
-    2025-02: 21
-    2025-03: 16
-    2025-04: 21
-    2025-05: 11
-    2025-06: 23
-    2025-07: 25
-    2025-08: 43
-    2025-09: 63
-    2025-10: 61
-    2025-11: 41
-    2025-12: 28
-    2026-01: 38
-    2026-02: 33
-    2026-03: 40
-    2026-04: 26
-    2026-05: 39
-    2026-06: 39
+[p] matricula ATIVO ok=True
 
-[t] fim.
+=== aluno_completo  GET /psec/alunos/obter-aluno-completo-por-matricula/003144 -> HTTP 400 ===
+   corpo(120c): <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns
+
+=== dados_pessoais  GET /clientes/003144/dados-pessoais -> HTTP 200 ===
+   chaves: ['content']
+   campos-chave (nao-PII): [('content.matricula', '003144'), ('content.nascimento', '-16664400000'), ('content.situacao', 'AT'), ('content.situacaoContrato', 'NO'), ('content.dataMatricula', '1085626800000'), ('content.dataCadastro', '1085626800000')]
+
+=== dados_plano  GET /clientes/003144/dados-plano -> HTTP 200 ===
+   chaves: ['content']
+   campos-chave (nao-PII): [('content.situacao', 'NORMAL'), ('content.codigoContrato', '42372'), ('content.dataCadastro', '1085626800000'), ('content.dataMatricula', '1085626800000'), ('content.dataRematricula', '1659841200000'), ('content.inicioVinculoAtual', '1659841200000')]
+
+=== linha_contratos  GET /clientes/003144/linha-tempo/contratos -> HTTP 200 ===
+   chaves: ['contrato', 'contratoPlano', 'plano']
+   campos-chave (nao-PII): [('content[0].contrato', '42372'), ('content[0].plano', 'TRANSITO LIVRE - RENOVAÇÃO'), ('content[0].contratoPlano', '42372 - TRANSITO LIVRE - RENOVAÇÃO')]
+
+=== contratos_bymat  GET /contratos/by-matricula/003144 -> HTTP 500 ===
+   corpo(120c): {'meta': {'error': None, 'message': None, 'messageID': None, 'messageValue': None}}
+
+=== aluno_simples  GET /psec/alunos/003144/obter-aluno-simples -> HTTP 200 ===
+   chaves: ['content']
+   campos-chave (nao-PII): []
+
+[p] fim.
