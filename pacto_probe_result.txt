@@ -1,9 +1,16 @@
-[build] unidade=716NORTE sample=25
-[roster] ATIVOS totais (716N) = 882
-[amostra] n=25 | com_acesso=13 | com_demografico=13 | com_contrato=25
-[grupo]  {"Fitness": 15, "Água": 10}
-[sexo]   {"F": 7, "M": 6}
-[faixa]  {"18–29": 2, "0–11": 1, "30–44": 6, "60+": 2, "45–59": 2}
-[acessos] cobertura(datas 1o acesso amostra) 2016-01..2026-06
+[rede] validacao das 5 unidades (sem Natal)
 
-[build] fim.
+==== 716 Norte ==== SEM CHAVE (PACTO_KEY_716NORTE)
+
+==== 905 Sul ==== SEM CHAVE (PACTO_KEY_905SUL)
+
+==== 604 Norte ==== SEM CHAVE (PACTO_KEY_604NORTE)
+
+==== Lago Norte ==== SEM CHAVE (PACTO_KEY_LAGONORTE)
+
+==== Lago Sul ==== SEM CHAVE (PACTO_KEY_LAGOSUL)
+
+===== RESUMO ATIVOS POR UNIDADE =====
+  REDE (5)     0
+
+[rede] fim.
