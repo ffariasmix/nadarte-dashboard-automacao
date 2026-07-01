@@ -1,9 +1,9 @@
-[diag] len=74
-[diag] matricula ATIVO encontrada: sim (pagina 0)
+[build] unidade=716NORTE sample=25
+[roster] ATIVOS totais (716N) = 882
+[amostra] n=25 | com_acesso=13 | com_demografico=13 | com_contrato=25
+[grupo]  {"Fitness": 15, "Água": 10}
+[sexo]   {"F": 7, "M": 6}
+[faixa]  {"18–29": 2, "0–11": 1, "30–44": 6, "60+": 2, "45–59": 2}
+[acessos] cobertura(datas 1o acesso amostra) 2016-01..2026-06
 
-=== /v1/contrato/matricula/{ativo} -> HTTP 200 ===
-    itens: 1
-    campos (2): ['codigo', 'descricao']
-    campos modalidade/plano (valor): [('descricao', 'TRANSITO LIVRE - RENOVAÇÃO - (AT) (04-01-2027)')]
-
-[diag] fim.
+[build] fim.
