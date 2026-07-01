@@ -1,22 +1,6 @@
-[roster] total=14000 ATIVO=698
-
-[ponte dados-pessoais] amostra=70
-  dados-pessoais 200: 70  | com codigoPessoa: 70  | com cpf: 70
-
-[validacao id] by-pessoa(codPessoa): confere=69  diverge=0
-    codCli=3144 matr=003144 codPessoa=3146 -> acc.cliente.codigo=3144 OK
-    codCli=19142 matr=019083 codPessoa=19548 -> acc.cliente.codigo=19142 OK
-    codCli=18705 matr=018646 codPessoa=19078 -> acc.cliente.codigo=18705 OK
-    codCli=17802 matr=017744 codPessoa=18106 -> acc.cliente.codigo=17802 OK
-    codCli=19363 matr=019304 codPessoa=19780 -> acc.cliente.codigo=19363 OK
-    codCli=15088 matr=015039 codPessoa=15308 -> acc.cliente.codigo=15088 OK
-
-[cobertura REAL]
-  com >=1 acesso: 69/70 (99%)
-  acesso em 2026: 67/70 (96%)
-  acesso ult.90d: 67/70 (96%)
-  total registros: 9507
-  intervalo: 2015-08-19 -> 2026-07-01
-  meios 2026: {'Reconhecimento Facial': 2168, 'Digitado a senha de acesso na catraca': 141, 'Digitado a matrícula no teclado do computador': 140, 'Inserido manualmente': 4}
-
-[v] fim.
+[t] 716Norte: coleta de 945 ativos em 196s
+[ok] 716Norte: ativos=945 cpf=30% dataMatr=30% acessos=25576 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
+[fim] manifest com 2 arquivos
+--- arquivos gerados (nomes/contagem, sem conteudo) ---
+manifest: {"api0001": "Acessos Catrata Unidade 716 Norte (Nad'Arte)", "api0002": "7. Alunos Ativos Rede (Jul.2026)"}
+bins: 2
