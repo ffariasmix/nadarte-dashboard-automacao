@@ -1,10 +1,9 @@
 [diag] len=74
-[diag] matricula exemplo capturada: sim
+[diag] matricula ATIVO encontrada: sim (pagina 0)
 
-=== /v1/contrato/matricula/{mat} -> HTTP 200 ===
-    campos (1): ['meta']
-
-=== /v1/contrato?page=0&size=3 -> HTTP 500 ===
-    (bulk) sem objeto
+=== /v1/contrato/matricula/{ativo} -> HTTP 200 ===
+    itens: 1
+    campos (2): ['codigo', 'descricao']
+    campos modalidade/plano (valor): [('descricao', 'TRANSITO LIVRE - RENOVAÇÃO - (AT) (04-01-2027)')]
 
 [diag] fim.
