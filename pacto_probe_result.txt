@@ -1,9 +1,10 @@
-[collect] unidade=716NORTE sample=25 maxpages=80
-[pessoa] total=16000 | no mapa=16000 | com nascimento=15659 | com sexo=15116 | com cpf=12173
-[pessoa] sexo distintos (amostra): ['F', 'M', 'None']
-[roster] total lido=16000 | situacao={"VISITANTE": 4670, "INATIVO": 10520, "ATIVO": 797, "TRANCADO": 13} | ATIVOS=797
-[join] ativos amostrados=25 | com demografico (pessoa->/v1/pessoa)=4 (16%)
-[acessos] total na amostra=644 | cobertura=2015-08..2026-06 | meses distintos=50
-[acessos] ult. meses (amostra): 2025-07:21, 2025-08:39, 2025-09:36, 2025-10:32, 2025-11:20, 2025-12:12, 2026-01:25, 2026-02:15, 2026-03:14, 2026-04:10, 2026-05:18, 2026-06:13
-
-[collect] fim.
+[diag] len=74
+[diag] codigoCliente=9649
+[diag] cliente tipo=dict
+[diag] cliente.pessoa tipo=dict
+[diag] cliente.pessoa chaves=['codigo', 'cpf', 'dataNascimento', 'email', 'emails', 'fotoKey', 'nome', 'sexo', 'telefone', 'telefones', 'valorLimiteCaixaAbertoVendaAvulsa']
+[diag] cliente.pessoa ids-numericos={"codigo": 9649, "valorLimiteCaixaAbertoVendaAvulsa": 0.0, "dataNascimento": 198817200000}
+[diag] cliente.codigo=9585 | cliente.codigoMatricula=9580
+[diag] /v1/pessoa.codigo exemplo=19736
+[diag] GET /v1/pessoa/19736 -> HTTP 200 | topo=dict | campos=['content', 'meta']
+[diag] fim.
