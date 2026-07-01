@@ -1,17 +1,18 @@
-[shape] empresaId=1 -> HTTP 200 | cru(220c): {'content': {'lista': [{'idMemcached': '16923;01071421', 'codigoCliente': 16923, 'matricula': 16868, 'hora': '14:21', 'nome': 'marianna goulart araujo barros', 'parq': False, 'parqAssinado': {'chave': 'PARQ_NEGATIVO', 'd
+[shape clientes/simples] HTTP 200 | itens_pg=5
+  chaves: ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
+[shape v1/pessoa] HTTP 200 | itens_pg=3
+  chaves: ['codigo', 'cpf', 'datanasc', 'nome', 'sexo']
 
-[varredura empresaId]
-  empresaId= 1 -> HTTP 200 | itens=0
-  empresaId= 2 -> HTTP 200 | itens=0
-  empresaId= 3 -> HTTP 200 | itens=0
-  empresaId= 4 -> HTTP 200 | itens=0
-  empresaId= 5 -> HTTP 200 | itens=0
-  empresaId= 6 -> HTTP 200 | itens=0
-  empresaId= 7 -> HTTP 200 | itens=0
-  empresaId= 8 -> HTTP 200 | itens=0
-  empresaId= 9 -> HTTP 200 | itens=0
-  empresaId=10 -> HTTP 200 | itens=0
-  empresaId=11 -> HTTP 200 | itens=0
-  empresaId=12 -> HTTP 200 | itens=0
+[roster] ATIVO(ou s/situacao) coletados = 5687
+  ex roster -> codPessoa?=False cpf?=False matricula?=True codigoCliente?=True
+
+[cobertura by-pessoa] amostra=60 (dos ATIVOS)
+  sem_id=0 | erros_http=0
+  com >=1 acesso (qualquer data): 13  (22%)
+  com acesso em 2026:            2  (3%)
+  com acesso nos ultimos 90d:    2  (3%)
+  total registros de acesso amostrados: 942
+  intervalo de datas: 2015-08-19 -> 2026-07-01
+  meios de identificacao: {'12': 389, '1': 292, '5': 171, '2': 90}
 
 [v] fim.
