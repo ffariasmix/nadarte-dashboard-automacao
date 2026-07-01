@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-716N — validacao de TENURE (histórico de contrato / 1o acesso) + MATRIZ DE FREQUENCIA (18m).
-PII-safe (contagens, anos, totais mensais). Env: PACTO_KEY_716NORTE, SAMPLE(=30)
-"""
-import os, sys, re, json, datetime
+"""PROBE 716N — Data Matricula + histórico de contrato (tenure/vencimentos). PII-safe."""
+import os, sys, re, json
 import urllib.request, urllib.error
-from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
-SAMPLE = int(os.environ.get("SAMPLE", "30"))
+KEYWORDS = re.compile(r"matric|data|nasc|plano|modalidade|venc|inicio|fim|contrato|situac|cadastr|desde|termin", re.I)
+PII = re.compile(r"nome|cpf|email|telefone|rg|foto|senha", re.I)
 
 
-def http_get(path, timeout=50):
+def http_get(path, timeout=45):
     req = urllib.request.Request(BASE + path, method="GET")
-    req.add_header("Authorization", "Bearer " + KEY)
-    req.add_header("Accept", "application/json")
+    req.add_header("Authorization", "Bearer " + KEY); req.add_header("Accept", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, r.read().decode("utf-8", "replace")
@@ -27,92 +23,84 @@ def http_get(path, timeout=50):
 
 
 def gj(path):
-    st, body = http_get(path)
+    st, b = http_get(path)
     try:
-        return json.loads(body)
+        return st, json.loads(b)
     except Exception:
-        return None
+        return st, b
 
 
-def content(o):
-    if isinstance(o, list):
-        return o
-    if isinstance(o, dict):
-        for k in ("content", "data", "rows", "list", "items", "result", "results"):
-            if isinstance(o.get(k), list):
-                return o[k]
-    return []
+def walk(obj, prefix="", out=None, depth=0):
+    """coleta (chave-caminho, valor) para chaves de interesse, sem PII, ate profundidade 3."""
+    if out is None:
+        out = []
+    if depth > 3:
+        return out
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            p = f"{prefix}.{k}" if prefix else k
+            if KEYWORDS.search(k) and not PII.search(k) and isinstance(v, (str, int, float, bool)):
+                out.append((p, str(v)[:40]))
+            walk(v, p, out, depth + 1)
+    elif isinstance(obj, list) and obj:
+        walk(obj[0], prefix + "[0]", out, depth + 1)
+    return out
 
 
-def ym(s):
-    m = re.search(r"(\d{4})-(\d{2})", s or "") if isinstance(s, str) else None
-    return f"{m.group(1)}-{m.group(2)}" if m else None
+def keys_top(obj):
+    if isinstance(obj, dict):
+        for kk in ("content", "data", "result", "results"):
+            if isinstance(obj.get(kk), list) and obj[kk]:
+                return sorted(obj[kk][0].keys()) if isinstance(obj[kk][0], dict) else "list"
+        return sorted(obj.keys())
+    if isinstance(obj, list) and obj and isinstance(obj[0], dict):
+        return sorted(obj[0].keys())
+    return type(obj).__name__
+
+
+def probe(mat, cc):
+    eps = [
+        ("aluno_completo",   f"/psec/alunos/obter-aluno-completo-por-matricula/{mat}"),
+        ("dados_pessoais",   f"/clientes/{mat}/dados-pessoais"),
+        ("dados_plano",      f"/clientes/{mat}/dados-plano"),
+        ("linha_contratos",  f"/clientes/{mat}/linha-tempo/contratos"),
+        ("contratos_bymat",  f"/contratos/by-matricula/{mat}"),
+        ("aluno_simples",    f"/psec/alunos/{mat}/obter-aluno-simples"),
+    ]
+    for label, path in eps:
+        st, obj = gj(path)
+        print(f"\n=== {label}  GET {path[:60]} -> HTTP {st} ===")
+        if st == 200 and not isinstance(obj, str):
+            print(f"   chaves: {keys_top(obj)}")
+            hits = walk(obj)
+            # dedup
+            seen = set(); uniq = []
+            for k, v in hits:
+                if k not in seen:
+                    seen.add(k); uniq.append((k, v))
+            print(f"   campos-chave (nao-PII): {uniq[:25]}")
+        else:
+            print(f"   corpo(120c): {str(obj)[:120]}")
 
 
 def main():
     if not KEY:
-        print("[t] sem chave 716N"); sys.exit(1)
-    # roster -> ativos
-    ativos = []
-    for pg in range(120):
-        rows = content(gj(f"/clientes/simples?page={pg}&size=200"))
-        if not rows:
-            break
-        ativos += [r for r in rows if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO"]
-        if len(rows) < 200:
-            break
-    print(f"[716N] ativos={len(ativos)} | amostrando {min(SAMPLE,len(ativos))}")
-
-    contratos_len = Counter()
-    anos_contrato = Counter()
-    ano_1acesso = Counter()
-    com_acesso = 0
-    mensal = Counter()
-    hoje = datetime.date(2026, 6, 1)
-    janela = set()
-    for i in range(18):
-        y = hoje.year; m = hoje.month - i
-        while m <= 0:
-            m += 12; y -= 1
-        janela.add(f"{y}-{m:02d}")
-
-    for r in ativos[:SAMPLE]:
-        cc = r.get("codigoCliente"); mat = r.get("matricula")
-        # contrato: quantos + anos citados
+        print("[p] sem chave 716N"); sys.exit(1)
+    # acha um ATIVO
+    mat = cc = None
+    for pg in range(30):
+        st, o = gj(f"/clientes/simples?page={pg}&size=50")
+        rows = o.get("content") if isinstance(o, dict) else (o if isinstance(o, list) else [])
+        rows = rows or (o if isinstance(o, list) else [])
+        for r in (rows or []):
+            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO":
+                mat = r.get("matricula"); cc = r.get("codigoCliente"); break
         if mat:
-            ct = content(gj(f"/v1/contrato/matricula/{mat}"))
-            contratos_len[len(ct)] += 1
-            for c in ct:
-                if isinstance(c, dict):
-                    for yy in re.findall(r"(\d{4})", str(c.get("descricao") or "")):
-                        if 1985 <= int(yy) <= 2027:
-                            anos_contrato[int(yy)] += 1
-        # acessos: 1o acesso (ano) + matriz mensal (18m)
-        if cc:
-            acc = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=200"))
-            # paginar ate acabar (historico completo p/ 1o acesso)
-            pg = 1
-            allacc = list(acc)
-            while len(acc) == 200 and pg < 40:
-                acc = content(gj(f"/acessos-cliente/by-pessoa/{cc}?page={pg}&size=200"))
-                allacc += acc; pg += 1
-            meses = [ym(a.get("dtHrEntrada")) for a in allacc if isinstance(a, dict)]
-            meses = [x for x in meses if x]
-            if meses:
-                com_acesso += 1
-                ano_1acesso[min(meses)[:4]] += 1
-                for mm in meses:
-                    if mm in janela:
-                        mensal[mm] += 1
-
-    print(f"[contrato] itens por aluno (len): {dict(contratos_len)}")
-    print(f"[contrato] anos citados nas descricoes (top): {sorted(anos_contrato.items())}")
-    print(f"[tenure] 1o acesso por ANO (amostra): {dict(sorted(ano_1acesso.items()))}")
-    print(f"[freq] com >=1 acesso: {com_acesso}/{min(SAMPLE,len(ativos))}")
-    print(f"[freq] MATRIZ mensal 18m (soma amostra):")
-    for mm in sorted(janela):
-        print(f"    {mm}: {mensal.get(mm,0)}")
-    print("\n[t] fim.")
+            break
+    print(f"[p] matricula ATIVO ok={bool(mat)}")
+    if mat:
+        probe(mat, cc)
+    print("\n[p] fim.")
 
 
 if __name__ == "__main__":
