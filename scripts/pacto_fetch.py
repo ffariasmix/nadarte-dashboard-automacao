@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""716N — cobertura de catraca: 2025+ vs 2026 (estado atual). PII-safe.
-Env: PACTO_KEY_716NORTE, SAMPLE(=200)"""
-import os, sys, re, json
+"""716N — achar a fonte de acesso COMPLETA (facial+catraca+chamada), como o export.
+Testa /clientes/listar-registro-de-acesso/{matricula} e /psec/alunos/lista-rapida-acessos.
+PII-safe. Env: PACTO_KEY_716NORTE"""
+import os, sys, re, json, urllib.parse
 import urllib.request, urllib.error
-from collections import Counter
 
 BASE = "https://apigw.pactosolucoes.com.br"
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
-SAMPLE = int(os.environ.get("SAMPLE", "200"))
 
 
 def http_get(path, timeout=45):
@@ -26,78 +25,81 @@ def http_get(path, timeout=45):
 def gj(path):
     st, b = http_get(path)
     try:
-        return json.loads(b)
+        return st, json.loads(b)
     except Exception:
-        return None
+        return st, b
 
 
-def rows_meta(o):
+def content(o):
     if isinstance(o, list):
-        return o, {}
+        return o
     if isinstance(o, dict):
-        meta = {k: o.get(k) for k in ("totalElements", "totalPages") if k in o}
         for k in ("content", "data", "result", "results", "rows", "list", "items"):
             if isinstance(o.get(k), list):
-                return o[k], meta
-    return [], {}
+                return o[k]
+    return []
 
 
-def ym(s):
-    m = re.search(r"(\d{4}-\d{2})", str(s or ""))
-    return m.group(1) if m else None
-
-
-def meses_recentes(cc):
-    o = gj(f"/acessos-cliente/by-pessoa/{cc}?page=0&size=200")
-    rows0, meta = rows_meta(o)
-    total = meta.get("totalElements") or len(rows0)
-    lastpage = max(0, (int(total) - 1) // 200)
-    meses = Counter()
-    pages = [0] if lastpage == 0 else list(range(lastpage, max(-1, lastpage - 3), -1))
-    for p in pages:
-        rows = rows0 if p == 0 else rows_meta(gj(f"/acessos-cliente/by-pessoa/{cc}?page={p}&size=200"))[0]
-        for a in rows:
-            if isinstance(a, dict):
-                m = ym(a.get("dtHrEntrada"))
-                if m and m >= "2025-01":
-                    meses[m] += 1
-    return meses
+def descreve(o):
+    rows = content(o)
+    if not rows:
+        return f"vazio/estrutura: {str(o)[:120]}"
+    r = rows[0] if isinstance(rows[0], dict) else None
+    if not r:
+        return f"itens={len(rows)} (nao-dict)"
+    campos = sorted(r.keys())
+    # valores nao-PII de interesse (meio, data, coletor)
+    amostra = {}
+    for k, v in r.items():
+        if re.search(r"meio|ident|data|entrada|hora|coletor|sentido|situac|acesso", k, re.I) and isinstance(v, (str, int, float, bool)):
+            amostra[k] = str(v)[:35]
+    return f"itens={len(rows)} | campos={campos} | amostra={json.dumps(amostra, ensure_ascii=False)}"
 
 
 def main():
     if not KEY:
-        print("[26] sem chave"); sys.exit(1)
-    ativos = []
-    for pg in range(120):
-        rows, _ = rows_meta(gj(f"/clientes/simples?page={pg}&size=200"))
-        if not rows:
+        print("[x] sem chave"); sys.exit(1)
+    # matricula ATIVA
+    mat = None
+    for pg in range(30):
+        st, o = gj(f"/clientes/simples?page={pg}&size=50")
+        for r in content(o):
+            if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO" and r.get("matricula"):
+                mat = r["matricula"]; break
+        if mat:
             break
-        ativos += [r for r in rows if isinstance(r, dict) and (r.get("situacao") or "").upper() == "ATIVO"]
-        if len(rows) < 200:
-            break
-    print(f"[716N] ativos={len(ativos)} | amostra={min(SAMPLE,len(ativos))}")
+    print(f"[x] matricula ativa: {'ok' if mat else 'nao'}")
+    if not mat:
+        return
+    matq = urllib.parse.quote(str(mat))
 
-    n = 0; c25 = 0; c26 = 0
-    m26 = Counter(); freq26 = Counter()  # freq26: nº de meses de 2026 com acesso, por aluno
-    for r in ativos[:SAMPLE]:
-        cc = r.get("codigoCliente")
-        if not cc:
-            continue
-        n += 1
-        meses = meses_recentes(cc)
-        if any(k >= "2025-01" for k in meses):
-            c25 += 1
-        m2026 = [k for k in meses if k >= "2026-01"]
-        if m2026:
-            c26 += 1
-            for k in m2026:
-                m26[k] += meses[k]
-            freq26[min(len(m2026), 7)] += 1
-    print(f"[cobertura 2025+] com >=1 acesso: {c25}/{n} ({round(100*c25/n) if n else 0}%)")
-    print(f"[cobertura 2026 ] com >=1 acesso: {c26}/{n} ({round(100*c26/n) if n else 0}%)")
-    print(f"[2026] distrib de meses-ativos/aluno (1..7): {json.dumps(dict(sorted(freq26.items())), ensure_ascii=False)}")
-    print(f"[2026] acessos/mes (amostra): {json.dumps(dict(sorted(m26.items())), ensure_ascii=False)}")
-    print("\n[26] fim.")
+    di, df = "2026-01-01", "2026-06-30"
+    dib, dfb = "01/01/2026", "30/06/2026"
+    variantes = [
+        "",
+        f"?dataInicial={di}&dataFinal={df}",
+        f"?dataInicio={di}&dataFim={df}",
+        f"?inicio={di}&fim={df}",
+        f"?dataInicial={urllib.parse.quote(dib)}&dataFinal={urllib.parse.quote(dfb)}",
+        f"?dtInicio={di}&dtFim={df}",
+    ]
+    print("\n### /clientes/listar-registro-de-acesso/{matricula} ###")
+    for qs in variantes:
+        st, o = gj(f"/clientes/listar-registro-de-acesso/{matq}{qs}")
+        tag = "OK" if (st == 200 and content(o)) else ""
+        print(f"  {qs or '(sem qs)':45} HTTP {st} {tag}")
+        if st == 200 and content(o):
+            print("     -> " + descreve(o)); break
+
+    print("\n### /psec/alunos/lista-rapida-acessos (em massa) ###")
+    for qs in variantes[1:]:
+        st, o = gj(f"/psec/alunos/lista-rapida-acessos{qs}")
+        tag = "OK" if (st == 200 and content(o)) else ""
+        print(f"  {qs:45} HTTP {st} {tag}")
+        if st == 200 and content(o):
+            print("     -> " + descreve(o)); break
+
+    print("\n[x] fim.")
 
 
 if __name__ == "__main__":
