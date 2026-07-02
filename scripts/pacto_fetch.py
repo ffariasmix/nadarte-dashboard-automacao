@@ -179,38 +179,38 @@ def to_date(v):
 # ------------------------- COLETA -------------------------
 def roster_full(key):
     """TODOS os clientes (ativos+inativos+visitantes), dedup por codigoCliente.
-    ROBUSTO: le totalElements e VARRE em ate 4 passadas ate atingir o total (a paginacao
-    da PACTO as vezes devolve paginas curtas/instaveis; varrer de novo preenche as lacunas)."""
+    RAPIDO + ROBUSTO: le totalElements e pagina direcionado por esse total, re-tentando
+    apenas as paginas que a PACTO devolve vazias (paginacao instavel). 2 passadas no maximo."""
     seen = set(); out = []
     total = None
-    for sweep in range(4):
-        added = 0
-        empties = 0
-        for pg in range(0, 600):
-            st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
-            if isinstance(o, dict) and total is None:
-                total = gv(o, "totalElements", "total", "totalRegistros", "totalRows")
-            r = lst(o)
-            if not r:
-                empties += 1
-                if empties >= 2:
-                    break            # 2 paginas vazias seguidas -> fim desta passada
+
+    def add(o):
+        n = 0
+        for c in lst(o):
+            if not isinstance(c, dict):
                 continue
-            empties = 0
-            for c in r:
-                if not isinstance(c, dict):
-                    continue
-                cc = gv(c, "codigoCliente", "codigo")
-                if cc is None or cc in seen:
-                    continue
-                seen.add(cc); out.append(c); added += 1
+            cc = gv(c, "codigoCliente", "codigo")
+            if cc is not None and cc not in seen:
+                seen.add(cc); out.append(c); n += 1
+        return n
+
+    st, o = gj(key, "/clientes/simples?page=0&size=200")
+    if isinstance(o, dict):
+        total = gv(o, "totalElements", "total", "totalRegistros", "totalRows")
+    add(o)
+    npages = (int(total) // 200 + 3) if total else 300
+    for sweep in range(2):
+        for pg in range(1, npages):
             if total and len(out) >= int(total):
                 break
+            st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
+            r = lst(o)
+            if not r:  # pagina instavel -> 1 re-tentativa
+                st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
+            add(o)
         if total and len(out) >= int(total):
             break
-        if added == 0:
-            break
-    print(f"[roster] {len(out)} clientes (total informado={total})", file=sys.stderr)
+    print(f"[roster] {len(out)}/{total} clientes coletados", file=sys.stderr)
     return out
 
 def fetch_client_full(key, c, wmonths):
