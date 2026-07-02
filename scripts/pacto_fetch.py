@@ -48,16 +48,24 @@ def window_months(start, end):
     return out
 
 def active_in_month(ini, fim, yr, mn, situacao=""):
-    """ATIVO no mes = contrato cobre o mes (inicio<=fim do mes E fim>=inicio do mes)."""
+    """ATIVO no mes, alinhado ao criterio da PACTO (mesmo do painel Drive):
+    - quem esta ATIVO hoje conta em todo mes desde que ja era cliente (nao importa se o
+      contrato "venceu" — inclui vencidos/a vencer, como o flag ATIVO faz);
+    - quem NAO esta mais ativo (saiu) e reconstruido pelo contrato (meses que o contrato cobriu),
+      para o churn/retencao do passado ficar sem vies.
+    """
     first = datetime.date(yr, mn, 1)
     last = datetime.date(yr, mn, calendar.monthrange(yr, mn)[1])
+    # ainda nao era cliente naquele mes (entrou depois)
     if ini and ini > last:
         return False
+    if str(situacao).upper() == "ATIVO":
+        return True   # membro ativo hoje e ja era cliente em M
+    # inativo/saiu -> usa o contrato para saber ate quando esteve ativo
     if fim and fim < first:
         return False
     if not ini and not fim:
-        # sem datas de contrato: so conta no mes corrente se estiver ATIVO hoje
-        return str(situacao).upper() == "ATIVO" and (yr, mn) == (NOW.year, NOW.month)
+        return False
     return True
 
 BASE = "https://apigw.pactosolucoes.com.br"
