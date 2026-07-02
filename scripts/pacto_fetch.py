@@ -377,6 +377,38 @@ def main():
         print(f"[selftest] escrito {len(manifest)} arquivos em {DATA_DIR}", file=sys.stderr)
         return
 
+    # =================== SITPROBE: so cadastro (rapido) p/ achar o criterio de "ativo" ===================
+    if os.environ.get("PACTO_SITPROBE") == "1":
+        from collections import Counter
+        ye, me = WINDOW_END
+        first = datetime.date(ye, me, 1); last = datetime.date(ye, me, calendar.monthrange(ye, me)[1])
+        def cov(c):  # contrato cobre o mes de referencia
+            i = to_date(gv(c, "inicioContrato")); f = to_date(gv(c, "fimContrato"))
+            if i and i > last: return False
+            if f and f < first: return False
+            return bool(i or f)
+        def analyze(t):
+            uk, ulabel, secret = t
+            key = os.environ.get(secret, "").strip()
+            if not key:
+                print(f"[sit skip] {uk}: sem secret", file=sys.stderr); return None
+            full = roster_full(key)
+            dist = Counter(str(gv(c, "situacao") or "?").upper() for c in full)
+            atv   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO")
+            atr   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() in ("ATIVO", "TRANCADO"))
+            contr = sum(1 for c in full if cov(c))
+            aoc   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO" or cov(c))
+            print(f"[sit] {uk}: total={len(full)} dist={dict(dist)} | ATIVO={atv} ATIVO+TRANC={atr} contrato={contr} ATIVO|contrato={aoc}", file=sys.stderr)
+            return (uk, atv, atr, contr, aoc)
+        res = []
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            for r in ex.map(analyze, UNITS):
+                if r: res.append(r)
+        labels = ["ATIVO", "ATIVO+TRANC", "contrato(cobre Jun)", "ATIVO|contrato"]
+        for i, name in enumerate(labels):
+            print(f"[REDE {name}] = {sum(x[i+1] for x in res)}  (alvo Drive Jun/26 = 3956)", file=sys.stderr)
+        return
+
     # =================== FULL-API: reconstrucao por CONTRATO ===================
     # "Ativos por mes" reconstruidos pelo CONTRATO (inclui quem ja saiu) -> churn SEM vies.
     # Frequencia (facial) de TODOS que estiveram ativos na janela. Drive vira so fallback.
