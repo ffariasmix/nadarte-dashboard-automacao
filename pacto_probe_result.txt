@@ -1,14 +1,12 @@
-[t] LagoSul: coleta de 630 ativos em 1161s
-[t] 716Norte: coleta de 663 ativos em 1292s
-[t] 604Norte: coleta de 717 ativos em 1315s
-[t] LagoNorte: coleta de 886 ativos em 1416s
-[t] 905Sul: coleta de 902 ativos em 1480s
-[ok] 716Norte: ativos=663 cpf=83% dataMatr=82% acessos=50177 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
-[ok] 905Sul: ativos=902 cpf=62% dataMatr=87% acessos=70418 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
-[ok] 604Norte: ativos=717 cpf=81% dataMatr=84% acessos=43386 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
-[ok] LagoNorte: ativos=886 cpf=87% dataMatr=86% acessos=45068 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
-[ok] LagoSul: ativos=630 cpf=86% dataMatr=86% acessos=34302 meses=[(2025, 1), (2025, 2), (2025, 3), (2025, 4), (2025, 5), (2025, 6), (2025, 7), (2025, 8), (2025, 9), (2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3), (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
-[fim] manifest com 6 arquivos
+[sit] LagoNorte: total=5600 dist={'VISITANTE': 2890, 'INATIVO': 2359, 'ATIVO': 343, 'TRANCADO': 8} | ATIVO=343 ATIVO+TRANC=351 contrato=365 ATIVO|contrato=365
+[sit] 905Sul: total=5800 dist={'INATIVO': 3300, 'VISITANTE': 2170, 'ATIVO': 322, 'TRANCADO': 8} | ATIVO=322 ATIVO+TRANC=330 contrato=346 ATIVO|contrato=346
+[sit] LagoSul: total=6200 dist={'VISITANTE': 1738, 'INATIVO': 3897, 'ATIVO': 558, 'TRANCADO': 7} | ATIVO=558 ATIVO+TRANC=565 contrato=583 ATIVO|contrato=585
+[sit] 716Norte: total=5600 dist={'VISITANTE': 1645, 'INATIVO': 3699, 'ATIVO': 249, 'TRANCADO': 7} | ATIVO=249 ATIVO+TRANC=256 contrato=269 ATIVO|contrato=273
+[sit] 604Norte: total=6800 dist={'VISITANTE': 2913, 'INATIVO': 3504, 'ATIVO': 377, 'TRANCADO': 6} | ATIVO=377 ATIVO+TRANC=383 contrato=400 ATIVO|contrato=401
+[REDE ATIVO] = 1849  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO+TRANC] = 1885  (alvo Drive Jun/26 = 3956)
+[REDE contrato(cobre Jun)] = 1963  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO|contrato] = 1970  (alvo Drive Jun/26 = 3956)
 --- arquivos gerados (nomes/contagem, sem conteudo) ---
-manifest: {"api0001": "Acessos Catrata Unidade 716 Norte (Nad'Arte)", "api0002": "Acessos Catrata Unidade 905 Sul (Nad'Arte)", "api0003": "Acessos Catrata Unidade 604 Norte (Nad'Arte)", "api0004": "Acessos Catrata Unidade Lago Norte (Nad'Arte)", "api0005": "Acessos Catrata Unidade Lago Sul (Nad'Arte)", "api0006": "7. Alunos Ativos Rede (Jul.2026)"}
-bins: 6
+sem manifest: [Errno 2] No such file or directory: 'data/manifest.json'
+bins: 0
