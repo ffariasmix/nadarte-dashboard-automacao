@@ -178,23 +178,39 @@ def to_date(v):
 
 # ------------------------- COLETA -------------------------
 def roster_full(key):
-    """TODOS os clientes (ativos+inativos+visitantes), dedup por codigoCliente."""
+    """TODOS os clientes (ativos+inativos+visitantes), dedup por codigoCliente.
+    ROBUSTO: le totalElements e VARRE em ate 4 passadas ate atingir o total (a paginacao
+    da PACTO as vezes devolve paginas curtas/instaveis; varrer de novo preenche as lacunas)."""
     seen = set(); out = []
-    for pg in range(0, 300):
-        st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
-        r = lst(o)
-        if not r:
-            break
-        novos = 0
-        for c in r:
-            if not isinstance(c, dict):
+    total = None
+    for sweep in range(4):
+        added = 0
+        empties = 0
+        for pg in range(0, 600):
+            st, o = gj(key, f"/clientes/simples?page={pg}&size=200")
+            if isinstance(o, dict) and total is None:
+                total = gv(o, "totalElements", "total", "totalRegistros", "totalRows")
+            r = lst(o)
+            if not r:
+                empties += 1
+                if empties >= 2:
+                    break            # 2 paginas vazias seguidas -> fim desta passada
                 continue
-            cc = gv(c, "codigoCliente", "codigo")
-            if cc is None or cc in seen:
-                continue
-            seen.add(cc); novos += 1; out.append(c)
-        if novos == 0 or len(r) < 200:
+            empties = 0
+            for c in r:
+                if not isinstance(c, dict):
+                    continue
+                cc = gv(c, "codigoCliente", "codigo")
+                if cc is None or cc in seen:
+                    continue
+                seen.add(cc); out.append(c); added += 1
+            if total and len(out) >= int(total):
+                break
+        if total and len(out) >= int(total):
             break
+        if added == 0:
+            break
+    print(f"[roster] {len(out)} clientes (total informado={total})", file=sys.stderr)
     return out
 
 def fetch_client_full(key, c, wmonths):
