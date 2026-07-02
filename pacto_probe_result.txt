@@ -1,17 +1,17 @@
-[roster] 7591 clientes (total informado=None)
-[sit] LagoSul: total=7591 dist={'VISITANTE': 2149, 'INATIVO': 4753, 'ATIVO': 682, 'TRANCADO': 7} | ATIVO=682 ATIVO+TRANC=689 contrato=710 ATIVO|contrato=713
-[roster] 17207 clientes (total informado=None)
-[sit] 905Sul: total=17207 dist={'INATIVO': 9951, 'VISITANTE': 6283, 'ATIVO': 942, 'TRANCADO': 31} | ATIVO=942 ATIVO+TRANC=973 contrato=1023 ATIVO|contrato=1025
-[roster] 14312 clientes (total informado=None)
+[roster] 14312/None clientes coletados
 [sit] LagoNorte: total=14312 dist={'VISITANTE': 7403, 'INATIVO': 6006, 'ATIVO': 888, 'TRANCADO': 15} | ATIVO=888 ATIVO+TRANC=903 contrato=937 ATIVO|contrato=945
-[roster] 20468 clientes (total informado=None)
-[sit] 604Norte: total=20468 dist={'VISITANTE': 8585, 'INATIVO': 10757, 'ATIVO': 1096, 'TRANCADO': 30} | ATIVO=1096 ATIVO+TRANC=1126 contrato=1180 ATIVO|contrato=1183
-[roster] 19298 clientes (total informado=None)
+[roster] 7791/None clientes coletados
+[sit] LagoSul: total=7791 dist={'VISITANTE': 2210, 'INATIVO': 4870, 'ATIVO': 704, 'TRANCADO': 7} | ATIVO=704 ATIVO+TRANC=711 contrato=733 ATIVO|contrato=736
+[roster] 20466/None clientes coletados
+[sit] 604Norte: total=20466 dist={'VISITANTE': 8583, 'INATIVO': 10757, 'ATIVO': 1096, 'TRANCADO': 30} | ATIVO=1096 ATIVO+TRANC=1126 contrato=1180 ATIVO|contrato=1183
+[roster] 17207/None clientes coletados
+[sit] 905Sul: total=17207 dist={'INATIVO': 9951, 'VISITANTE': 6283, 'ATIVO': 942, 'TRANCADO': 31} | ATIVO=942 ATIVO+TRANC=973 contrato=1023 ATIVO|contrato=1025
+[roster] 19298/None clientes coletados
 [sit] 716Norte: total=19298 dist={'VISITANTE': 5639, 'INATIVO': 12701, 'ATIVO': 943, 'TRANCADO': 15} | ATIVO=943 ATIVO+TRANC=958 contrato=1014 ATIVO|contrato=1021
-[REDE ATIVO] = 4551  (alvo Drive Jun/26 = 3956)
-[REDE ATIVO+TRANC] = 4649  (alvo Drive Jun/26 = 3956)
-[REDE contrato(cobre Jun)] = 4864  (alvo Drive Jun/26 = 3956)
-[REDE ATIVO|contrato] = 4887  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO] = 4573  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO+TRANC] = 4671  (alvo Drive Jun/26 = 3956)
+[REDE contrato(cobre Jun)] = 4887  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO|contrato] = 4910  (alvo Drive Jun/26 = 3956)
 --- arquivos gerados (nomes/contagem, sem conteudo) ---
 sem manifest: [Errno 2] No such file or directory: 'data/manifest.json'
 bins: 0
