@@ -24,7 +24,8 @@ import urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
 import openpyxl
 
-WORKERS = int(os.environ.get("PACTO_WORKERS", "4"))
+WORKERS = int(os.environ.get("PACTO_WORKERS", "2"))   # gentil por chave (evita rate-limit)
+RETRY_ROUNDS = int(os.environ.get("PACTO_RETRY_ROUNDS", "4"))
 DRIVE_MONTHS = set()   # meses (yr,mn) que o Drive JA cobre em catraca (API nao repete)
 _SHEET_MONTH = re.compile(r"^\s*(\d{1,2})\.\s*\w+\.?(\d{4})?")
 
@@ -67,6 +68,17 @@ DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
 WINDOW_START = tuple(int(x) for x in os.environ.get("PACTO_WINDOW_START", "2026-01").split("-"))
 NOW = datetime.date.today()
 ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+
+def _prev_month(ym):
+    y, m = ym
+    return (y - 1, 12) if m == 1 else (y, m - 1)
+
+# fim da janela = ULTIMO MES COMPLETO (o mes corrente e' parcial -> fica de fora do gate).
+# override por env PACTO_WINDOW_END=YYYY-MM se quiser.
+if os.environ.get("PACTO_WINDOW_END"):
+    WINDOW_END = tuple(int(x) for x in os.environ["PACTO_WINDOW_END"].split("-"))
+else:
+    WINDOW_END = _prev_month((NOW.year, NOW.month))
 
 # unidade -> (label do motor, nome do Secret). Natal fora ate ago/2026 (confirmar).
 UNITS = [
@@ -185,7 +197,8 @@ def fetch_client_full(key, c, wmonths):
         ini = to_date(gv(c, "inicioContrato")); fim = to_date(gv(c, "fimContrato"))
         modc = gv(c, "categoria") or ""
         st, o = gj(key, f"/clientes/{M}/dados-pessoais")
-        dp = unwrap(o) if st == 200 else {}
+        dp_ok = (st == 200)
+        dp = unwrap(o) if dp_ok else {}
         cp = gv(dp, "codigoPessoa", "codPessoa"); cpf = gv(dp, "cpf") or ""
         rec = {
             "ulabel": None, "mat": M, "nome": nome, "cpf": cpf,
@@ -196,33 +209,56 @@ def fetch_client_full(key, c, wmonths):
             "ini": ini, "fim": fim, "sit": sit,
         }
         dates = []
+        acc_ok = True
         if cp:
-            st, o = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
-            for a in (lst(o) if st == 200 else []):
+            st2, o2 = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
+            acc_ok = (st2 == 200)
+            for a in (lst(o2) if acc_ok else []):
                 d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
                 if d and (d.year, d.month) in wmonths:
                     dates.append(d)
-        return rec, dates
+        ok = dp_ok and acc_ok          # se qualquer chamada falhou -> re-tentar depois
+        return rec, dates, ok
     except Exception:
         return {"ulabel": None, "mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
                 "nasc": None, "sexo": "", "mod": "", "dm": None,
                 "ini": to_date(gv(c, "inicioContrato")), "fim": to_date(gv(c, "fimContrato")),
-                "sit": str(gv(c, "situacao") or "")}, []
+                "sit": str(gv(c, "situacao") or "")}, [], False
 
 def coleta_unidade(unit_key, unit_label, key):
-    """FULL-API: retorna lista de (rec, [datas]) dos clientes ATIVOS em >=1 mes da janela
-    (por contrato) — inclui quem ja saiu. Coleta PARALELA (I/O bound)."""
-    wmonths = set(window_months(WINDOW_START, (NOW.year, NOW.month)))
+    """FULL-API com FILA DE RE-TENTATIVA: quem falha (rate-limit) volta pra fila e e
+    recoletado em ate RETRY_ROUNDS rodadas. Nada e descartado silenciosamente."""
+    wmonths = set(window_months(WINDOW_START, WINDOW_END))
     full = roster_full(key)
     win = [c for c in full
            if any(active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), y, m, gv(c, "situacao"))
                   for (y, m) in wmonths)]
-    t0 = time.time(); recs = []
-    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        for rec, dates in ex.map(lambda c: fetch_client_full(key, c, wmonths), win):
-            rec["ulabel"] = unit_label
-            recs.append((rec, dates))
-    print(f"[t] {unit_key}: base={len(full)} janela={len(win)} coletados em {time.time()-t0:.0f}s", file=sys.stderr)
+    t0 = time.time()
+    recs = []
+    pending = list(win)
+    rounds = 0
+    while pending and rounds < RETRY_ROUNDS:
+        rounds += 1
+        failed = []
+        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            for (rec, dates, ok), c in zip(ex.map(lambda c: fetch_client_full(key, c, wmonths), pending), pending):
+                if ok:
+                    rec["ulabel"] = unit_label
+                    recs.append((rec, dates))
+                else:
+                    failed.append(c)
+        print(f"[t] {unit_key} rodada {rounds}: ok_acum={len(recs)} falhas={len(failed)} (base={len(full)} janela={len(win)})", file=sys.stderr)
+        pending = failed
+        if pending:
+            time.sleep(8 * rounds)   # respira antes de re-tentar (rate-limit)
+    # ultima tentativa p/ os que restaram: inclui o aluno (roster) mesmo sem acesso, p/ nao sumir do mes
+    for c in pending:
+        rec, dates, ok = fetch_client_full(key, c, wmonths)
+        rec["ulabel"] = unit_label
+        recs.append((rec, dates))
+    if pending:
+        print(f"[t] {unit_key}: RESTARAM {len(pending)} sem coleta completa apos {rounds} rodadas", file=sys.stderr)
+    print(f"[t] {unit_key}: FIM base={len(full)} janela={len(win)} recs={len(recs)} em {time.time()-t0:.0f}s", file=sys.stderr)
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
@@ -336,7 +372,7 @@ def main():
     # =================== FULL-API: reconstrucao por CONTRATO ===================
     # "Ativos por mes" reconstruidos pelo CONTRATO (inclui quem ja saiu) -> churn SEM vies.
     # Frequencia (facial) de TODOS que estiveram ativos na janela. Drive vira so fallback.
-    wmonths = window_months(WINDOW_START, (NOW.year, NOW.month))
+    wmonths = window_months(WINDOW_START, WINDOW_END)
     only = os.environ.get("PACTO_ONLY", "").strip()
     targets = [(uk, ulabel, secret) for (uk, ulabel, secret) in UNITS if not only or uk == only]
 

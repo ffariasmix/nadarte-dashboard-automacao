@@ -1,0 +1,1105 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ABB Control Center</title><style>/* ABB Control Center — v2. Identidade visual Banco do Brasil.
+   Azul BB #002D4B (Pantone 2955C) · Branco · acento amarelo BB. */
+:root {
+  --bb-blue: #002D4B;        /* azul corporativo BB */
+  --bb-blue-2: #124a72;
+  --bb-blue-3: #1f5f8b;
+  --bb-yellow: #FADf00;      /* amarelo BB (acento) */
+  --bb-yellow-soft: #FFF4C2;
+  --accent: #0A6BB3;
+  --sev-alta: #E5484D;
+  --sev-media: #F2A007;
+  --sev-baixa: #2F9E52;
+  --ok: #2F9E52;
+  --warn: #F2A007;
+  --grey: #6B7280;
+  --bg: #eef2f7;
+  --surface: rgba(255,255,255,0.82);
+  --surface-solid: #ffffff;
+  --border: rgba(15,23,42,0.09);
+  --text: #0e1f30;
+  --text-soft: #5b6672;
+  --radius: 16px;
+  --shadow: 0 8px 30px rgba(0,45,75,0.12);
+  --shadow-sm: 0 2px 10px rgba(0,45,75,0.07);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, #d6e6f5 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #e9eef6 0%, transparent 45%),
+    var(--bg);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ---------- Login ---------- */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login-card {
+  width: 100%; max-width: 430px; background: var(--surface); backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.6); border-radius: 22px; box-shadow: var(--shadow);
+  padding: 34px 30px;
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.brand img.logo-img { height: 42px; width: auto; }
+.brand h1 { font-size: 19px; margin: 0; letter-spacing: -0.02em; color: var(--bb-blue); }
+.brand .sys { display:flex; flex-direction:column; }
+.muted { color: var(--text-soft); font-size: 13.5px; }
+.field { margin-top: 16px; }
+.field label { display: block; font-size: 12.5px; color: var(--text-soft); margin-bottom: 6px; font-weight: 600; }
+.input, textarea.input, select.input {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.95); font-size: 15px; outline: none; transition: box-shadow .15s, border-color .15s; color: var(--text);
+}
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,107,179,0.15); }
+.btn {
+  width: 100%; margin-top: 18px; padding: 12px 16px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+  color: #fff; background: linear-gradient(135deg, var(--bb-blue), var(--bb-blue-2));
+  box-shadow: 0 8px 18px rgba(0,45,75,0.28); transition: transform .06s, filter .15s;
+}
+.btn:hover { filter: brightness(1.1); } .btn:active { transform: translateY(1px); }
+.btn.secondary { background: rgba(255,255,255,0.9); color: var(--bb-blue); border: 1px solid var(--border); box-shadow: none; }
+.btn.small { width: auto; padding: 8px 14px; margin: 0; font-size: 13px; }
+.btn.warn { background: linear-gradient(135deg,#c62d31,#e5484d); box-shadow:none; }
+.hint { font-size: 12px; color: var(--text-soft); margin-top: 12px; }
+.error-msg { color: var(--sev-alta); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+/* ---------- App layout ---------- */
+.app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+.sidebar {
+  background: linear-gradient(180deg, #002d4b, #013a5f);
+  color: #eaf1f8; padding: 16px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.side-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:8px;}
+.side-brand img { height: 30px; width:auto; }
+.side-brand b { font-size: 13.5px; letter-spacing: 0.01em; color:#fff; line-height:1.15; }
+.nav { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.nav a {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #dbe7f2;
+  font-size: 14px; font-weight: 500; transition: background .12s;
+}
+.nav a .ic { width: 18px; text-align: center; opacity: .85; }
+.nav a:hover { background: rgba(255,255,255,0.08); color:#fff; }
+.nav a.active { background: rgba(255,255,255,0.14); color: #fff; font-weight: 600; box-shadow: inset 3px 0 0 var(--bb-yellow); }
+.nav-sep { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8fb0c9; padding: 14px 12px 4px; }
+
+.main { padding: 24px 30px 60px; overflow-x: hidden; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
+.topbar h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; color: var(--bb-blue); }
+.topbar .sub { color: var(--text-soft); font-size: 13px; margin-top: 2px; }
+.user-chip { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--bb-blue); display: grid; place-items: center; font-weight: 700; color: #fff; }
+.lang { display:flex; gap:2px; background:rgba(0,45,75,0.06); border-radius:9px; padding:3px; }
+.lang button { border:none; background:transparent; padding:4px 8px; border-radius:7px; font-size:12px; font-weight:600; color:var(--text-soft); }
+.lang button.on { background:#fff; color:var(--bb-blue); box-shadow:var(--shadow-sm); }
+
+/* mode banner */
+.mode-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 14px; border-radius: 12px; margin-bottom: 16px;
+  background: var(--bb-yellow-soft); border: 1px solid rgba(245,200,0,0.4); font-size: 13px; color: #7a5a00;
+}
+.mode-banner.live { background: rgba(47,158,82,0.12); border-color: rgba(47,158,82,0.3); color: #1e5c2e; }
+
+/* cards / grid */
+.grid { display: grid; gap: 16px; }
+.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.card {
+  background: var(--surface-solid);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px;
+}
+.card h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-soft); font-weight: 600; }
+.card h3 .cnt { color: var(--bb-blue); }
+.kpi { position:relative; overflow:hidden; }
+.kpi .label { font-size: 13px; color: var(--text-soft); font-weight: 600; }
+.kpi .value { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-top: 4px; color:var(--bb-blue); }
+.kpi .value small { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.kpi .foot { margin-top: 8px; font-size: 12.5px; color: var(--text-soft); }
+.kpi .spark { position:absolute; right:14px; bottom:12px; opacity:.85; }
+
+/* bars */
+.bar-row { display: grid; grid-template-columns: 160px 1fr 60px; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; }
+.bar-track { background: rgba(0,45,75,0.07); border-radius: 8px; height: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--bb-blue), var(--bb-blue-3)); }
+.bar-row .num { text-align: right; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+/* urgent + insights */
+.panel-dark { background: linear-gradient(180deg,#04263f,#062f4d); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius); padding:18px; color:#eaf1f8; }
+.panel-dark h3 { color:#cfe0ef; display:flex; align-items:center; gap:8px; }
+.urgent { border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:14px; margin-top:10px; background:rgba(255,255,255,0.03); }
+.urgent .tag { display:inline-block; font-size:11px; font-weight:800; letter-spacing:.04em; padding:2px 8px; border-radius:6px; background:rgba(229,72,77,0.22); color:#ff9b9e; }
+.urgent .tt { font-weight:700; margin-left:8px; }
+.urgent .ds { color:#b9cbdb; font-size:13.5px; margin-top:8px; }
+.urgent .mt { color:#8fb0c9; font-size:12.5px; margin-top:8px; }
+.insight { border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:14px 16px; margin-top:10px; background:rgba(255,255,255,0.03); }
+.insight .it { font-weight:700; } .insight .id { color:#b9cbdb; font-size:13.5px; margin-top:4px; }
+.pager { display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:12px; color:var(--text-soft); font-size:13px; }
+.pager.dark { color:#9fbdd6; }
+.pager button { border:1px solid var(--border); background:#fff; border-radius:8px; padding:6px 12px; font-size:13px; color:var(--bb-blue); }
+.pager.dark button { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15); color:#eaf1f8; }
+.pager button:disabled { opacity:.4; cursor:default; }
+
+/* toolbar / filters */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.select, .search {
+  padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; font-size: 13.5px; outline: none; color:var(--text);
+}
+.search { min-width: 220px; }
+
+/* tables */
+table.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+.tbl th { text-align: left; color: var(--text-soft); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; padding: 0 12px 10px; white-space:nowrap; cursor: default; }
+.tbl th.sortable { cursor: pointer; user-select:none; }
+.tbl th.sortable:hover { color: var(--bb-blue); }
+.tbl th .arrow { opacity:.5; font-size:10px; }
+.tbl th.sorted { color: var(--bb-blue); } .tbl th.sorted .arrow { opacity:1; }
+.tbl td { padding: 11px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
+.tbl tr:hover td { background: rgba(0,45,75,0.035); cursor:pointer; }
+.tbl .id { color: var(--text-soft); font-variant-numeric: tabular-nums; font-weight:600; }
+.tbl .title { font-weight: 500; max-width: 380px; }
+.tbl.trn td { border-color: rgba(255,255,255,0.06); }
+
+/* chips */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .9; }
+.chip.sev-alta { background: rgba(229,72,77,0.12); color: #b32b30; }
+.chip.sev-media { background: rgba(242,160,7,0.16); color: #8a5a00; }
+.chip.sev-baixa { background: rgba(47,158,82,0.14); color: #1e6b34; }
+.chip.st-open { background: rgba(10,107,179,0.12); color: #0a5b96; }
+.chip.st-done { background: rgba(47,158,82,0.14); color: #1e6b34; }
+.chip.st-cancel { background: rgba(107,114,128,0.15); color: #4b5563; }
+.chip.cat { background: rgba(0,45,75,0.08); color: var(--bb-blue); }
+.chip.tiny { font-size:11px; padding:2px 8px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 8px; background: rgba(0,45,75,0.06); color: var(--bb-blue); font-size: 12px; font-weight:600; margin:1px 2px 1px 0; }
+.badge.grey { background: rgba(15,23,42,0.06); color: var(--text-soft); }
+.ok-ic { color: var(--ok); font-weight:800; } .no-ic { color:#cbd5e1; } .warn-ic{ color:var(--warn); }
+
+/* evidence gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.ev-card { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface-solid); box-shadow: var(--shadow-sm); display:flex; flex-direction:column; }
+.ev-thumb { height: 120px; background: linear-gradient(135deg,#e4edf6,#eef2f8); display: grid; place-items: center; color: var(--bb-blue-3); font-size: 26px; }
+.ev-meta { padding: 12px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.ev-meta .t { font-size: 13.5px; font-weight: 600; line-height:1.25; }
+.ev-meta .s { font-size: 11.5px; color: var(--text-soft); }
+.ev-links { display:flex; flex-wrap:wrap; gap:4px; }
+
+/* timeline */
+.timeline { position: relative; margin-left: 8px; }
+.tl-item { position: relative; padding: 0 0 16px 22px; border-left: 2px solid var(--border); }
+.tl-item::before { content:''; position: absolute; left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--bb-blue-3); box-shadow: 0 0 0 3px rgba(31,95,139,0.15); }
+.tl-item .act { font-weight: 600; font-size: 13.5px; } .tl-item .meta { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+
+/* modal */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,20,35,0.4); backdrop-filter: blur(3px); display: grid; place-items: center; z-index: 50; padding: 20px; }
+.modal { width: 100%; max-width: 660px; background: var(--surface-solid); border-radius: 18px; box-shadow: var(--shadow); max-height: 88vh; overflow: auto; }
+.modal.wide { max-width: 820px; }
+.modal .mhead { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 22px 6px; }
+.modal .mhead h3 { margin: 0; font-size: 17px; color:var(--bb-blue); }
+.modal .mbody { padding: 8px 22px 22px; }
+.close { border: none; background: transparent; font-size: 20px; color: var(--text-soft); cursor: pointer; }
+.kv { display: grid; grid-template-columns: 160px 1fr; gap: 8px 12px; font-size: 13.5px; margin-top: 8px; }
+.kv .k { color: var(--text-soft); }
+.tabs { display: flex; gap: 4px; margin: 14px 0; border-bottom: 1px solid var(--border); flex-wrap:wrap; }
+.tabs button { border: none; background: transparent; padding: 8px 12px; font-size: 13px; color: var(--text-soft); border-bottom: 2px solid transparent; }
+.tabs button.active { color: var(--bb-blue); border-color: var(--bb-blue); font-weight: 600; }
+.checklist { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:8px; }
+.checklist label { display:flex; align-items:center; gap:8px; font-size:13px; padding:4px; border-radius:8px; }
+.checklist label:hover { background:rgba(0,45,75,0.04); }
+.danger-box { border:1px solid rgba(229,72,77,0.3); background:rgba(229,72,77,0.06); border-radius:12px; padding:12px 14px; font-size:13px; color:#8a2a2d; margin-top:12px; }
+
+.empty { text-align: center; color: var(--text-soft); padding: 40px; font-size: 14px; }
+.skeleton { background: linear-gradient(90deg,#eef2f7,#e1e9f2,#eef2f7); background-size: 200% 100%; animation: sh 1.2s infinite; border-radius: 8px; height: 14px; }
+@keyframes sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.fade { animation: fade .25s ease; } @keyframes fade { from{opacity:0; transform: translateY(4px)} to{opacity:1; transform:none} }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; }
+
+/* responsive */
+@media (max-width: 1024px) {
+  .cols-4 { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; z-index: 40; left: -270px; transition: left .2s; width: 250px; box-shadow: var(--shadow); }
+  .sidebar.open { left: 0; }
+  .cols-4, .cols-3, .cols-2 { grid-template-columns: 1fr; }
+  .main { padding: 18px 16px 60px; }
+  .menu-btn { display: inline-flex !important; }
+  .tbl-wrap { overflow-x:auto; }
+  .kv { grid-template-columns: 1fr; gap:2px 0; }
+  .kv .k { margin-top:8px; }
+}
+.menu-btn { display: none; }
+.tbl-wrap { overflow-x: auto; }
+</style></head><body>
+<script>window.ABB_LOGO='data:image/png;base64,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';window.ABB_LOGO_WHITE='data:image/png;base64,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';</script>
+<script>// Dados de demonstração v2 — derivados/inspirados na planilha real do ABB.
+// Gerados por template para ter volume (paginação, ordenação, série histórica).
+(function () {
+  const CATS = [
+    { id: 'guardrail', name: 'Guardrail / bloqueio indevido' },
+    { id: 'roteamento', name: 'Roteamento de agente' },
+    { id: 'resposta', name: 'Resposta fora do padrão' },
+    { id: 'caracteres', name: 'Caracteres / renderização' },
+    { id: 'latencia', name: 'Latência / timeout' },
+    { id: 'fallback', name: 'Fallback / perda de contexto' },
+    { id: 'integracao', name: 'Integração com ferramenta/API' },
+    { id: 'rag', name: 'Base de conhecimento / RAG' },
+    { id: 'prompt', name: 'Prompt / instrução sistêmica' },
+    { id: 'apphost', name: 'App Host / front mobile' },
+    { id: 'seguranca', name: 'Segurança / vazamento' },
+    { id: 'evidencia', name: 'Evidência / massa de teste' },
+    { id: 'outros', name: 'Outros' },
+  ];
+  const TEAMS = [
+    { id: 'ibm', name: 'IBM' }, { id: 'squad_app', name: 'SQUAD APP' },
+    { id: 'squad_app_front', name: 'SQUAD APP FRONT' }, { id: 'squad_app_backend', name: 'SQUAD APP BACKEND' },
+    { id: 'squad_assist_plt', name: 'SQUAD ASSISTENTES PLT' }, { id: 'squad_assist_jornada', name: 'SQUAD ASSISTENTES JORNADA' },
+    { id: 'nec', name: 'NEC' }, { id: 'nia', name: 'NIA' },
+  ];
+  const SEV = ['alta', 'media', 'baixa'];
+  const STATUSES = ['novo', 'em_analise', 'backlog', 'desenvolvimento', 'em_validacao', 'reaberto', 'resolvido', 'cancelado'];
+  const ENVS = ['desenvolvimento', 'homologacao', 'producao'];
+  const ENV_NAME = { desenvolvimento: 'Desenvolvimento', homologacao: 'Homologação', producao: 'Produção' };
+  const PEOPLE = ['Camila', 'Aron', 'Valbert', 'Renato', 'Sérgio', 'Danilo', 'Laline', 'Etiene', 'Lucas', 'Rubens', 'CAD'];
+  const TITLES = [
+    'Guardrail bloqueando inputs indevidamente', 'Resposta alucinada ao pedir para falar com o gerente',
+    'Emojis não funcionam nas bolhas do assistente no App BB', 'Erros de caracteres inválidos na resposta',
+    'Rota de fuga retornando JSON inválido com parâmetros expostos', 'Latência elevada em consultas de saldo',
+    'Assistente perde contexto após transferência de agente', 'Roteamento incorreto entre agente Pix e Pagamentos',
+    'Resposta fora do padrão em pergunta sobre investimentos', 'Fallback genérico acionado indevidamente em saudação',
+    'Timeout na integração com base de crédito', 'Renderização quebrada de tabela de tarifas',
+    'Vazamento de prompt sistêmico em input malicioso', 'Base de conhecimento desatualizada sobre limite Pix',
+    'App Host não exibe carrossel de opções', 'Erro de websocket ao retornar para o app depois de trocar de aplicativo',
+    'Envio do Pix com erro quando envia a chave junto do input', 'Pergunta mapeada não considerada nos conteúdos recuperados',
+    'Sanitização remove acentos de respostas longas', 'Massa de teste de cartão insuficiente para reteste',
+    'Guardrail bloqueando pergunta legítima sobre golpe', 'Resposta duplicada ao consultar fatura',
+    'Agente não reconhece variação da pergunta de renegociação', 'Quebra de bolhas de resposta não funciona corretamente',
+  ];
+  const RETEST = ['ok', 'parcialmente', 'nao_resolvido', 'pendente_bb', 'correcao_futura'];
+
+  function d(daysAgo) { const x = new Date('2026-07-01T12:00:00Z'); x.setDate(x.getDate() - daysAgo); return x.toISOString().slice(0, 10); }
+  function pick(arr, i) { return arr[i % arr.length]; }
+
+  const bugs = [];
+  let seed = 7;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  for (let i = 1; i <= 78; i++) {
+    const sev = SEV[Math.floor(rnd() * 3)];
+    const st = STATUSES[Math.floor(rnd() * STATUSES.length)];
+    const open = !['resolvido', 'cancelado'].includes(st);
+    const occ = Math.floor(rnd() * 40) + 1;
+    const nTeams = rnd() > 0.7 ? 2 : 1;
+    const teams = []; for (let t = 0; t < nTeams; t++) { const tm = pick(TEAMS, Math.floor(rnd() * TEAMS.length)); if (!teams.find(x => x.id === tm.id)) teams.push(tm); }
+    const hasRetest = rnd() > 0.55;
+    const rt = hasRetest ? RETEST[Math.floor(rnd() * RETEST.length)] : null;
+    const resolved = st === 'resolvido';
+    bugs.push({
+      original_id: i,
+      title: pick(TITLES, i - 1),
+      category: CATS[Math.floor(rnd() * CATS.length)].id,
+      severity: sev,
+      status: st,
+      environment: (function () { const r = rnd(); return r > 0.85 ? 'producao' : (r > 0.15 ? 'homologacao' : 'desenvolvimento'); })(),
+      teams,
+      focal: pick(PEOPLE, Math.floor(rnd() * PEOPLE.length)),
+      occurrence_date: d(occ),
+      conclusion_date: resolved ? d(Math.max(0, occ - Math.floor(rnd() * 10))) : null,
+      inputs: rnd() > 0.6 ? "ex.: 'golpe pix'" : null,
+      resolved_by: resolved ? pick(PEOPLE, Math.floor(rnd() * PEOPLE.length)) : null,
+      validated_by: (resolved && rnd() > 0.4) ? pick(PEOPLE, Math.floor(rnd() * PEOPLE.length)) : null,
+      last_retest_status: rt,
+      retests: hasRetest ? [{ status_id: rt, result_comment: 'Reteste executado em HM', created_at: d(occ - 2) + 'T14:00:00Z', performed_by: pick(PEOPLE, i) }] : [],
+    });
+  }
+
+  const openBugs = bugs.filter(b => !['resolvido', 'cancelado'].includes(b.status));
+  const urgent = openBugs.filter(b => b.severity === 'alta').map(b => ({
+    id: b.original_id, title: b.title,
+    days: Math.round((new Date('2026-07-01') - new Date(b.occurrence_date)) / 86400000),
+    team: (b.teams[0] || {}).name, focal: b.focal,
+  })).sort((a, b) => b.days - a.days);
+
+  // série histórica (últimas 8 semanas)
+  const series = [];
+  for (let w = 7; w >= 0; w--) {
+    series.push({
+      label: 'Sem -' + w,
+      abertos: 55 + Math.round(Math.sin(w) * 6) + w,
+      resolvidos: 3 + Math.round(Math.cos(w) * 2) + (7 - w),
+      correcoes: 1 + ((7 - w) % 3),
+    });
+  }
+
+  window.ABB_DEMO = {
+    me: { id: 'demo-master', name: 'Fernando Farias', email: 'ffariasmix@gmail.com', role: 'master', permissions: ['*'], team: 'IBM' },
+    lookups: {
+      severities: [{ id: 'alta', name: 'Alta', color: '#E5484D' }, { id: 'media', name: 'Média', color: '#F2A007' }, { id: 'baixa', name: 'Baixa', color: '#2F9E52' }],
+      bug_statuses: STATUSES.map(id => ({ id, name: { novo: 'Novo', em_analise: 'Em Análise', backlog: 'Backlog', desenvolvimento: 'Desenvolvimento', em_validacao: 'Em Validação', reaberto: 'Reaberto', resolvido: 'Resolvido', cancelado: 'Cancelado' }[id] })),
+      environments: ENVS.map(id => ({ id, name: ENV_NAME[id] })),
+      teams: TEAMS,
+      bug_categories: CATS,
+    },
+    bugs,
+    dashboard_executive: {
+      bugs: { total: bugs.length, abertos: openBugs.length, resolvidos: bugs.filter(b => b.status === 'resolvido').length, alta_aberta: openBugs.filter(b => b.severity === 'alta').length },
+      journeys: { total: 43, em_producao: 18, validadas: 13 },
+      validations: { total: 504, aprovados: 158, responsavel: 284 },
+      fixes: { total: 12, implantadas: 7 },
+      tests: { executados: 340, ok: 231, falha: 62, pendentes: 47 },
+      aging: { avg_days: 18.4, max_days: 36 },
+    },
+    urgent,
+    insights: [
+      { icon: '🔧', title: openBugs.length + ' bugs seguem em aberto', desc: openBugs.filter(b => b.severity === 'alta').length + ' são de alta criticidade. O mais antigo está parado há 36 dias.' },
+      { icon: '⚙️', title: 'TRNs: 13/20 prontas', desc: '5 pendentes e 2 não iniciadas.' },
+      { icon: '📚', title: 'Bases RAG: 158/504 chunks aprovados', desc: '284 chunks com responsável definido.' },
+      { icon: '🔁', title: bugs.filter(b => b.retests.length).length + ' bugs têm reteste registrado', desc: bugs.filter(b => b.last_retest_status === 'ok').length + ' com status OK; ' + openBugs.length + ' abertos ainda sem OK.' },
+    ],
+    series,
+    dashboard_bugs: {
+      by_status: STATUSES.map(s => ({ label: s, n: bugs.filter(b => b.status === s).length })).filter(x => x.n),
+      by_severity: SEV.map(s => ({ label: { alta: 'Alta', media: 'Média', baixa: 'Baixa' }[s], n: bugs.filter(b => b.severity === s).length })),
+      by_category: CATS.map(c => ({ label: c.name, n: bugs.filter(b => b.category === c.id).length })).filter(x => x.n).sort((a, b) => b.n - a.n),
+      by_team: TEAMS.map(t => ({ label: t.name, n: bugs.filter(b => b.teams.some(x => x.id === t.id)).length })).filter(x => x.n).sort((a, b) => b.n - a.n),
+    },
+    journeys_trn: buildTRN(),
+    validation_summary: [
+      { domain: 'Pix', total: 48, aprovados: 48 }, { domain: 'MF', total: 10, aprovados: 10 },
+      { domain: 'Conta PF', total: 98, aprovados: 39 }, { domain: 'Conta PJ', total: 61, aprovados: 0 },
+      { domain: 'Crédito', total: 50, aprovados: 41 }, { domain: 'Crédito PJ', total: 38, aprovados: 0 },
+      { domain: 'Pagamento', total: 27, aprovados: 20 }, { domain: 'Cartão', total: 68, aprovados: 0 },
+      { domain: 'Renegociação', total: 22, aprovados: 0 }, { domain: 'Investimentos', total: 52, aprovados: 0 },
+      { domain: 'Segurança', total: 30, aprovados: 0 },
+    ],
+    fixes: [
+      { id: 'fix-1', title: 'Ajuste no guardrail para liberar perguntas legítimas sobre golpes', type: 'correcao', team: 'IBM', status: 'implantada', planned_release: '2026-05-14', deployed_at: '2026-05-14', bugs: [3, 21] },
+      { id: 'fix-2', title: 'Sanitização de caracteres inválidos na renderização', type: 'correcao', team: 'SQUAD ASSISTENTES PLT', status: 'implantada', planned_release: '2026-05-28', deployed_at: '2026-05-28', bugs: [4] },
+      { id: 'fix-3', title: 'Correção da rota de fuga (JSON inválido)', type: 'correcao', team: 'IBM', status: 'em_andamento', planned_release: '2026-07-10', deployed_at: null, bugs: [5] },
+      { id: 'ev-1', title: 'Evolução: novo fluxo de renegociação PJ', type: 'evolucao', team: 'SQUAD ASSISTENTES JORNADA', status: 'planejada', planned_release: '2026-07-25', deployed_at: null, bugs: [], spec: 'Criar jornada transacional de renegociação para PJ, com nova base e agente dedicado.' },
+    ],
+    evidences: (function () {
+      const items = [];
+      const srcs = [['Evidências', 'guardrail'], ['Evidências', 'resposta'], ['Evidências', 'caracteres'], ['Bugs - Fix IBM', 'integracao'], ['Bugs - Fix IBM', 'rag'], ['Pix', 'roteamento'], ['Evidências', 'seguranca'], ['Bugs - Fix IBM', 'apphost']];
+      const names = ['Guardrail bloqueando input', 'Resposta fora do padrão', 'Caracteres inválidos', 'BUG FIX ID 39 — screenshot', 'BUG FIX ID 32 — screenshot', 'Pix — evidência de teste', 'Vazamento de prompt', 'Carrossel não exibido'];
+      for (let i = 0; i < 8; i++) items.push({ id: 'ev' + (i + 1), title: names[i], source_sheet: srcs[i][0], category: srcs[i][1], entity_type: 'pending', bug_ids: [] });
+      return items;
+    })(),
+    audit: (function () {
+      const acts = ['login', 'create', 'update', 'status_change', 'comment', 'upload', 'import', 'soft_delete'];
+      const ents = ['bug', 'fix', 'journey', 'base_validation', 'user', 'evidence'];
+      const arr = [];
+      let s = 3;
+      for (let i = 0; i < 60; i++) {
+        s = (s * 9301 + 49297) % 233280; const r = s / 233280;
+        arr.push({ actor_email: pick(['ffariasmix@gmail.com', 'sergio@bb.com.br', 'renato@bb.com.br', 'laline@bb.com.br'], i), action: acts[Math.floor(r * acts.length)], entity_type: ents[Math.floor(r * ents.length)], entity_id: String(Math.floor(r * 78) + 1), created_at: d(Math.floor(r * 30)) + 'T' + String(8 + Math.floor(r * 10)).padStart(2, '0') + ':' + String(Math.floor(r * 59)).padStart(2, '0') + ':00Z' });
+      }
+      return arr.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    })(),
+    users: [
+      { id: 'u1', name: 'Fernando Farias', email: 'ffariasmix@gmail.com', role: 'master', role_name: 'Master', team: 'IBM', status: 'active', last_login_at: '2026-07-01T12:03:00Z', history: [{ when: '2026-05-01', what: 'Criado como Master' }, { when: '2026-06-01', what: 'Time alterado: Jornadas → IBM' }] },
+      { id: 'u2', name: 'Sérgio', email: 'sergio@bb.com.br', role: 'editor', role_name: 'Editor', team: 'SQUAD ASSISTENTES PLT', status: 'active', last_login_at: '2026-06-30T17:00:00Z', history: [{ when: '2026-05-10', what: 'Criado como Editor · SQUAD ASSISTENTES PLT' }] },
+      { id: 'u3', name: 'Renato', email: 'renato@bb.com.br', role: 'editor', role_name: 'Editor', team: 'SQUAD ASSISTENTES JORNADA', status: 'active', last_login_at: '2026-06-29T10:12:00Z', history: [{ when: '2026-05-12', what: 'Criado como Editor' }] },
+      { id: 'u4', name: 'Laline', email: 'laline@bb.com.br', role: 'leitor', role_name: 'Leitor', team: 'Jornadas', status: 'active', last_login_at: '2026-06-25T09:00:00Z', history: [{ when: '2026-05-20', what: 'Criado como Leitor' }] },
+    ],
+    roles: [
+      { id: 'master', name: 'Master', desc: 'Acesso total, governança, parametrizações e exclusões (com 2ª confirmação de outro Master).' },
+      { id: 'admin', name: 'Administrador', desc: 'Gerencia usuários, times e listas padronizadas. Operação completa, sem os controles sensíveis exclusivos do Master.' },
+      { id: 'editor', name: 'Editor', desc: 'Registra e valida: bugs, correções, evidências, testes e bases. "Validar" é permissão, não papel separado.' },
+      { id: 'leitor', name: 'Leitor', desc: 'Somente leitura: painéis, registros e auditoria. Sem edição.' },
+    ],
+  };
+
+  function buildTRN() {
+    const bases = ['Pix', 'Cartão', 'Conta', 'Pagamento', 'Crédito', 'Investimentos'];
+    const names = ['Transferência via PIX', 'Cadastra chave Pix', 'Consulta Movimentação PIX', 'Solicita Pagamento PIX', 'Consulta Chave PIX', 'Cobrança com PIX', 'Consulta Limite do Cartão', 'Autogestão de Limite do Cartão', 'Consulta Fatura do Cartão', 'Solicitação de Segunda Via', 'Rastreamento de Envio do Cartão', 'Desbloqueio de Novo Cartão', 'Bloqueio Temporário do Cartão', 'Consulta Saldo', 'Extrato dos últimos 30 dias', 'Pagamento de Boleto', 'Simulação de Crédito', 'Contratação de Crédito', 'Consulta de Investimentos', 'Resgate de Investimento'];
+    const arr = [];
+    for (let i = 0; i < names.length; i++) {
+      const pronto = i % 4 !== 2;
+      arr.push({
+        trn: 'TRN' + String(1 + i * (i % 3 === 0 ? 53 : 1)).padStart(4, '0'),
+        name: 'Transação ' + names[i],
+        agent: i % 5 === 0 ? 'Agente ' + bases[i % bases.length] + ' - Transacional' : null,
+        base: bases[i % bases.length],
+        mapeado: true, nia: true, ibm: true,
+        integracao: pronto,
+        status: pronto ? 'pronto' : 'pendente',
+        validada: pronto && i % 3 === 0,
+        obs: pronto ? '—' : 'Integração ou etapa pendente',
+      });
+    }
+    return arr;
+  }
+})();
+</script><script>// Camada de dados v2. Modo demo (local) <-> API real (/api/v1) com conversão de shapes.
+const ABB = {
+  cfg: {
+    get apiBase() { return localStorage.getItem('abb_api_base') || ''; },
+    set apiBase(v) { localStorage.setItem('abb_api_base', v || ''); },
+    get token() { return localStorage.getItem('abb_token') || ''; },
+    set token(v) { v ? localStorage.setItem('abb_token', v) : localStorage.removeItem('abb_token'); },
+    // Servido na URL real (workers.dev) → modo real + Access por padrão.
+    // Aberto localmente (file:// / localhost) → modo demonstração.
+    get _served() { try { return /workers\.dev$/i.test(location.hostname); } catch (e) { return false; } },
+    get demo() { const v = localStorage.getItem('abb_demo'); if (v !== null) return v !== '0'; return !ABB.cfg._served; },
+    set demo(v) { localStorage.setItem('abb_demo', v ? '1' : '0'); },
+    get accessMode() { const v = localStorage.getItem('abb_authmode'); if (v) return v === 'access'; return ABB.cfg._served; },
+    set accessMode(v) { localStorage.setItem('abb_authmode', v ? 'access' : 'otp'); },
+    get lang() { return localStorage.getItem('abb_lang') || 'pt'; },
+    set lang(v) { localStorage.setItem('abb_lang', v); },
+  },
+  async request(method, path, body) {
+    const base = ABB.cfg.apiBase.replace(/\/$/, '');
+    const headers = { 'Content-Type': 'application/json' };
+    if (ABB.cfg.token) headers['Authorization'] = 'Bearer ' + ABB.cfg.token;
+    const res = await fetch(base + '/api/v1' + path, { method, headers, body: body ? JSON.stringify(body) : undefined, credentials: ABB.cfg.accessMode ? 'include' : 'same-origin' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(json?.error?.message || res.statusText), { status: res.status });
+    return json.data ?? json;
+  },
+  D() { return window.ABB_DEMO; },
+
+  async requestCode(email) { if (ABB.cfg.demo) return { message: 'demo' }; return ABB.request('POST', '/auth/request-code', { email }); },
+  async verifyCode(email, code) { if (ABB.cfg.demo) { ABB.cfg.token = 'demo-token'; return { token: 'demo-token' }; } const r = await ABB.request('POST', '/auth/verify-code', { email, code }); ABB.cfg.token = r.token; return r; },
+  async me() { if (ABB.cfg.demo) return ABB.D().me; const u = await ABB.request('GET', '/auth/me'); return { ...u, team: u.team || null }; },
+  logout() { ABB.cfg.token = ''; },
+
+  async lookups() { if (ABB.cfg.demo) return ABB.D().lookups; return ABB.request('GET', '/lookups'); },
+  async roles() { if (ABB.cfg.demo) return { items: ABB.D().roles }; const r = await ABB.request('GET', '/roles'); return { items: (r.items || r).map(x => ({ id: x.id, name: x.name, desc: x.description || '' })) }; },
+
+  // ---- conversão de bug backend -> front ----
+  _bug(b) {
+    return {
+      original_id: b.original_id ?? b.id, title: b.title, category: b.category_id, severity: b.severity_id, status: b.status_id,
+      environment: b.environment_id, teams: b.responsible_team_id ? [{ id: b.responsible_team_id, name: b.team_name || b.responsible_team_id }] : [],
+      focal: b.focal_point_text || null, occurrence_date: b.occurrence_date, conclusion_date: b.conclusion_date,
+      inputs: b.inputs, resolved_by: b.status_id === 'resolvido' ? (b.focal_point_text || '—') : null,
+      validated_by: b.last_retest_status_id === 'ok' ? (b.focal_point_text || '—') : null,
+      last_retest_status: b.last_retest_status_id, retests: [],
+    };
+  },
+  async bugs() {
+    if (ABB.cfg.demo) return { items: ABB.D().bugs };
+    const r = await ABB.request('GET', '/bugs?limit=200');
+    return { items: (r.items || []).map(ABB._bug), total: r.total };
+  },
+  async dashBugs() {
+    if (ABB.cfg.demo) return ABB.D().dashboard_bugs;
+    return ABB.request('GET', '/dashboards/bugs'); // já retorna by_status/by_severity/by_category/by_team
+  },
+  async executive() {
+    if (ABB.cfg.demo) { const D = ABB.D(); return { ...D.dashboard_executive, urgent: D.urgent, insights: D.insights, series: D.series }; }
+    const [ex, bg] = await Promise.all([ABB.request('GET', '/dashboards/executive'), ABB.bugs()]);
+    const bugs = bg.items, open = bugs.filter(b => !['resolvido', 'cancelado'].includes(b.status));
+    const urgent = open.filter(b => b.severity === 'alta').map(b => ({ id: b.original_id, title: b.title, days: Math.max(0, Math.round((Date.now() - new Date(b.occurrence_date)) / 86400000)), team: (b.teams[0] || {}).name, focal: b.focal })).sort((a, b) => b.days - a.days);
+    const s = { abertos: open.length, resolvidos: bugs.filter(b => b.status === 'resolvido').length, correcoes: (ex.fixes?.implantadas ?? 0) };
+    return {
+      bugs: { total: ex.bugs?.total ?? bugs.length, abertos: ex.bugs?.abertos ?? open.length, resolvidos: ex.bugs?.resolvidos ?? 0, alta_aberta: urgent.length },
+      journeys: { total: ex.journeys?.total ?? 0, em_producao: ex.journeys?.em_producao ?? 0, validadas: ex.journeys?.em_producao ?? 0 },
+      validations: { total: ex.validations?.total ?? 0, aprovados: ex.validations?.aprovados ?? 0, responsavel: 0 },
+      fixes: ex.fixes ?? { total: 0, implantadas: 0 },
+      tests: { executados: 0, ok: 0, falha: 0, pendentes: 0 },
+      aging: ex.aging ?? {},
+      urgent,
+      insights: [
+        { icon: '🔧', title: open.length + ' bugs em aberto', desc: urgent.length + ' de alta criticidade.' },
+        { icon: '📚', title: (ex.validations?.aprovados ?? 0) + '/' + (ex.validations?.total ?? 0) + ' chunks aprovados', desc: 'Validação de bases por domínio.' },
+      ],
+      series: [{ label: 'Atual', ...s }],
+    };
+  },
+  async fixes() {
+    if (ABB.cfg.demo) return { items: ABB.D().fixes };
+    const r = await ABB.request('GET', '/fixes');
+    return { items: (r.items || []).map(f => ({ id: f.id, title: f.title, type: 'correcao', team: f.team_name || '—', status: f.status, planned_release: f.planned_release, deployed_at: f.deployed_at, bugs: [] })) };
+  },
+  async journeysTRN() {
+    if (ABB.cfg.demo) return { items: ABB.D().journeys_trn };
+    const r = await ABB.request('GET', '/journeys');
+    return { items: (r.items || []).map((j, i) => ({ trn: 'JRN' + String(i + 1).padStart(4, '0'), name: j.theme, agent: j.agent_name, base: j.segment || '—', mapeado: !!j.hu_rag, nia: false, ibm: !!j.hu_agent, integracao: j.production_status === 'sim', status: j.production_status === 'sim' ? 'pronto' : 'pendente', validada: false, obs: '—' })) };
+  },
+  async validationSummary() {
+    if (ABB.cfg.demo) return { items: ABB.D().validation_summary };
+    const r = await ABB.request('GET', '/base-validations/summary');
+    return { items: (r.items || []).map(d => ({ domain: d.domain_name || d.domain, total: d.total, aprovados: d.aprovados })) };
+  },
+  async evidences() {
+    if (ABB.cfg.demo) return { items: ABB.D().evidences };
+    const r = await ABB.request('GET', '/evidences?pending=1');
+    return { items: (r.items || []).map(e => ({ id: e.id, title: e.title, source_sheet: e.source_sheet, category: null, entity_type: e.entity_type, bug_ids: [] })) };
+  },
+  async audit() { if (ABB.cfg.demo) return { items: ABB.D().audit }; return ABB.request('GET', '/audit-logs'); },
+  async users() {
+    if (ABB.cfg.demo) return { items: ABB.D().users };
+    const r = await ABB.request('GET', '/users');
+    return { items: (r.items || []).map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role_id, role_name: u.role_name, team: '—', status: u.status, last_login_at: u.last_login_at, history: [] })) };
+  },
+
+  // escrita
+  async createBug(p) { if (ABB.cfg.demo) { const id = Math.max(0, ...ABB.D().bugs.map(b => b.original_id)) + 1; ABB.D().bugs.unshift({ original_id: id, occurrence_date: new Date().toISOString().slice(0, 10), teams: p.teams || [], retests: [], ...p }); return { id }; } return ABB.request('POST', '/bugs', { title: p.title, severity_id: p.severity, status_id: p.status, category_id: p.category, environment_id: p.environment, occurrence_date: p.occurrence_date, responsible_team_id: (p.teams[0] || {}).id, focal_point_text: p.focal, inputs: p.inputs }); },
+  async assocEvidence(id, bugIds) { if (ABB.cfg.demo) { const e = ABB.D().evidences.find(x => x.id === id); if (e) { e.bug_ids = bugIds; e.entity_type = bugIds.length ? 'bug' : 'pending'; } return { ok: true }; } return ABB.request('POST', `/evidences/${id}/associate`, { entity_type: 'bug', entity_id: bugIds[0] }); },
+  async saveFix(p) { if (ABB.cfg.demo) { ABB.D().fixes.unshift({ id: 'fix-' + Date.now(), status: 'planejada', deployed_at: null, ...p }); return { ok: true }; } return ABB.request('POST', '/fixes', { title: p.title }); },
+  async inviteUser(p) { if (ABB.cfg.demo) { ABB.D().users.push({ id: 'u' + Date.now(), status: 'active', last_login_at: null, history: [{ when: new Date().toISOString().slice(0, 10), what: 'Criado como ' + p.role_name + ' · ' + (p.team || '—') }], ...p }); return { ok: true }; } return ABB.request('POST', '/users', { name: p.name, email: p.email, role_id: p.role }); },
+  async createTeam(name) { if (ABB.cfg.demo) { const id = 'team_' + Date.now(); ABB.D().lookups.teams.push({ id, name }); return { id, name }; } return ABB.request('POST', '/teams', { name }); },
+};
+window.ABB = ABB;
+</script><script>// ABB Control Center — app v2.1. Identidade BB + i18n de componentes + ajustes de UX.
+const $ = (s, el = document) => el.querySelector(s);
+const el = (h) => { const t = document.createElement('template'); t.innerHTML = h.trim(); return t.content.firstChild; };
+const esc = (s) => (s == null ? '' : String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
+const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); };
+const fmtDT = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }); };
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const PAGE = 30;
+const LOGO = () => window.ABB_LOGO || '';
+const LOGO_W = () => window.ABB_LOGO_WHITE || window.ABB_LOGO || '';
+let STATE = { me: null, lookups: null };
+
+// ===================== i18n =====================
+const I18N = {
+  pt: {
+    dashboard: 'Visão executiva', bugs: 'Bugs & Ocorrências', fixes: 'Correções', journeys: 'Jornadas', validations: 'Validação de bases', evidences: 'Evidências', audit: 'Auditoria', admin: 'Administração', settings: 'Configurações', gov: 'Governança', system: 'Sistema', logout: 'Sair',
+    sub_dashboard: 'Big numbers, ações urgentes, insights e evolução', sub_bugs: 'Registro e acompanhamento de ocorrências do ABB', sub_fixes: 'Correções e evoluções — sempre vinculadas a bug(s), exceto evolução', sub_journeys: 'Transações (TRNs) — cobertura, integração e validação', sub_validations: 'Cobertura, inclusão e validação de bases por domínio', sub_evidences: 'Anexos importados — associe a um ou mais bugs', sub_audit: 'Trilha de todas as ações · filtros para investigação', sub_admin: 'Usuários, times, papéis — governança (só Master)', sub_settings: 'Conexão e modo de operação (restrito a Master)',
+    k_bugs_total: 'Bugs — total', k_open: 'abertos', k_high: 'alta', k_journeys_val: 'Jornadas validadas', k_in_prod: 'em produção', k_bases_appr: 'Bases aprovadas', k_with_resp: 'com responsável', k_tests_ok: 'Testes OK', k_failures: 'falhas', k_pending: 'pendentes',
+    s_urgent: '🚨 Ações e encaminhamentos urgentes', s_insights: '🔍 Insights do dia', s_series: 'Série histórica — Bugs abertos × resolvidos × correções (8 semanas)', s_by_status: 'Bugs por status', s_by_category: 'Bugs por categoria', s_by_team: 'Bugs por time',
+    charge: 'Cobrar análise do time responsável', no_urgent: 'Nenhuma ação urgente. 🎉',
+    prev: 'Anterior', next: 'Próxima', page: 'Página', bugs_word: 'bugs', per_page: '30/página', events: 'eventos',
+    open_line: 'Abertos', resolved_line: 'Resolvidos', fixes_line: 'Correções',
+    all_cats: 'Todas categorias', all_status: 'Todos status', all_sev: 'Toda criticidade', all_teams: 'Todos os times', env: 'Ambiente', search_bug: 'Buscar por título...', search_trn: 'Buscar TRN ou nome...', search_gen: 'Buscar...',
+    c_id: 'ID', c_title: 'Título', c_category: 'Categoria', c_severity: 'Criticidade', c_status: 'Status', c_teams: 'Times', c_env: 'Ambiente', c_occ: 'Ocorrência', c_resval: 'Resolv./Valid.', c_agent: 'Agente', c_base: 'Base', c_mapped: 'Mapeado', c_integ: 'Integração', c_val: 'Validada', c_name: 'Nome', c_email: 'E-mail', c_role: 'Papel', c_team: 'Time', c_last: 'Último acesso', c_type: 'Tipo', c_release: 'Release', c_linked: 'Bugs vinculados', c_action: 'Ação', c_entity: 'Entidade',
+    b_new_bug: '+ Novo bug', b_new_fix: '+ Nova correção / evolução', b_add_base: '+ Incluir base', b_invite: '+ Convidar usuário', b_send_ev: '+ Enviar evidência', b_validate: 'Validar', b_revert: 'Reverter', b_clear: 'Limpar filtros', b_save: 'Salvar', b_register: 'Registrar bug', b_assoc: 'Associar a bug(s)', b_exclude: 'Excluir', b_reload: 'Recarregar',
+    resolved: 'resolv.', validated: 'valid.', no_resp: 'Sem responsável definido', validated_tag: '✔ validada',
+    trn_ready: 'TRNs prontas', trn_validated: 'Validadas', trn_bases: 'Bases cobertas', trn_pending: 'pendentes', trn_check: 'check por usuário de jornadas',
+    login_sub: '', login_email: 'E-mail corporativo', login_send: 'Enviar código', login_code: 'Código recebido por e-mail', login_enter: 'Entrar', login_back: 'Voltar',
+    demo_b: '● Modo demonstração — dados de exemplo da planilha.', roles_title: 'Papéis de acesso (simplificados para 4)', users_title: 'Usuários',
+    coverage: 'Cobertura por domínio', chunks: 'chunks', del_rule: 'Exclusões e validações registram log/comentário e histórico. Exclusões exigem 2 confirmações de Master.',
+    all_action: 'Toda ação', all_entity: 'Toda entidade', all_user: 'Todo usuário', from: 'De', to: 'Até',
+  },
+  en: {
+    dashboard: 'Executive view', bugs: 'Bugs & Issues', fixes: 'Fixes', journeys: 'Journeys', validations: 'Base validation', evidences: 'Evidence', audit: 'Audit log', admin: 'Administration', settings: 'Settings', gov: 'Governance', system: 'System', logout: 'Sign out',
+    sub_dashboard: 'Big numbers, urgent actions, insights and trends', sub_bugs: 'Logging and tracking of ABB issues', sub_fixes: 'Fixes and enhancements — always linked to bug(s), except enhancements', sub_journeys: 'Transactions (TRNs) — coverage, integration and validation', sub_validations: 'Coverage, inclusion and validation of knowledge bases', sub_evidences: 'Imported attachments — link to one or more bugs', sub_audit: 'Trail of all actions · filters for investigation', sub_admin: 'Users, teams, roles — governance (Master only)', sub_settings: 'Connection and operation mode (Master only)',
+    k_bugs_total: 'Bugs — total', k_open: 'open', k_high: 'high', k_journeys_val: 'Validated journeys', k_in_prod: 'in production', k_bases_appr: 'Approved bases', k_with_resp: 'with owner', k_tests_ok: 'Tests OK', k_failures: 'failures', k_pending: 'pending',
+    s_urgent: '🚨 Urgent actions & escalations', s_insights: '🔍 Insights of the day', s_series: 'Historical series — Open × resolved bugs × fixes (8 weeks)', s_by_status: 'Bugs by status', s_by_category: 'Bugs by category', s_by_team: 'Bugs by team',
+    charge: 'Chase the responsible team', no_urgent: 'No urgent actions. 🎉',
+    prev: 'Previous', next: 'Next', page: 'Page', bugs_word: 'bugs', per_page: '30/page', events: 'events',
+    open_line: 'Open', resolved_line: 'Resolved', fixes_line: 'Fixes',
+    all_cats: 'All categories', all_status: 'All statuses', all_sev: 'All severities', all_teams: 'All teams', env: 'Environment', search_bug: 'Search by title...', search_trn: 'Search TRN or name...', search_gen: 'Search...',
+    c_id: 'ID', c_title: 'Title', c_category: 'Category', c_severity: 'Severity', c_status: 'Status', c_teams: 'Teams', c_env: 'Environment', c_occ: 'Occurrence', c_resval: 'Resolv./Valid.', c_agent: 'Agent', c_base: 'Base', c_mapped: 'Mapped', c_integ: 'Integration', c_val: 'Validated', c_name: 'Name', c_email: 'Email', c_role: 'Role', c_team: 'Team', c_last: 'Last access', c_type: 'Type', c_release: 'Release', c_linked: 'Linked bugs', c_action: 'Action', c_entity: 'Entity',
+    b_new_bug: '+ New bug', b_new_fix: '+ New fix / enhancement', b_add_base: '+ Add base', b_invite: '+ Invite user', b_send_ev: '+ Upload evidence', b_validate: 'Validate', b_revert: 'Revert', b_clear: 'Clear filters', b_save: 'Save', b_register: 'Register bug', b_assoc: 'Link to bug(s)', b_exclude: 'Delete', b_reload: 'Reload',
+    resolved: 'resolv.', validated: 'valid.', no_resp: 'No owner assigned', validated_tag: '✔ validated',
+    trn_ready: 'Ready TRNs', trn_validated: 'Validated', trn_bases: 'Covered bases', trn_pending: 'pending', trn_check: 'checked by a journeys user',
+    login_sub: '', login_email: 'Corporate email', login_send: 'Send code', login_code: 'Code received by email', login_enter: 'Enter', login_back: 'Back',
+    demo_b: '● Demo mode — sample data from the spreadsheet.', roles_title: 'Access roles (simplified to 4)', users_title: 'Users',
+    coverage: 'Coverage by domain', chunks: 'chunks', del_rule: 'Deletions and validations record log/comment and history. Deletions require 2 Master confirmations.',
+    all_action: 'All actions', all_entity: 'All entities', all_user: 'All users', from: 'From', to: 'To',
+  },
+  es: {
+    dashboard: 'Vista ejecutiva', bugs: 'Bugs e incidencias', fixes: 'Correcciones', journeys: 'Jornadas', validations: 'Validación de bases', evidences: 'Evidencias', audit: 'Auditoría', admin: 'Administración', settings: 'Ajustes', gov: 'Gobernanza', system: 'Sistema', logout: 'Salir',
+    sub_dashboard: 'Big numbers, acciones urgentes, insights y evolución', sub_bugs: 'Registro y seguimiento de incidencias del ABB', sub_fixes: 'Correcciones y evoluciones — siempre vinculadas a bug(s), excepto evolución', sub_journeys: 'Transacciones (TRNs) — cobertura, integración y validación', sub_validations: 'Cobertura, inclusión y validación de bases por dominio', sub_evidences: 'Adjuntos importados — asocie a uno o más bugs', sub_audit: 'Registro de todas las acciones · filtros para investigación', sub_admin: 'Usuarios, equipos, roles — gobernanza (solo Master)', sub_settings: 'Conexión y modo de operación (solo Master)',
+    k_bugs_total: 'Bugs — total', k_open: 'abiertos', k_high: 'alta', k_journeys_val: 'Jornadas validadas', k_in_prod: 'en producción', k_bases_appr: 'Bases aprobadas', k_with_resp: 'con responsable', k_tests_ok: 'Pruebas OK', k_failures: 'fallas', k_pending: 'pendientes',
+    s_urgent: '🚨 Acciones y escalaciones urgentes', s_insights: '🔍 Insights del día', s_series: 'Serie histórica — Bugs abiertos × resueltos × correcciones (8 semanas)', s_by_status: 'Bugs por estado', s_by_category: 'Bugs por categoría', s_by_team: 'Bugs por equipo',
+    charge: 'Requerir análisis del equipo responsable', no_urgent: 'Sin acciones urgentes. 🎉',
+    prev: 'Anterior', next: 'Siguiente', page: 'Página', bugs_word: 'bugs', per_page: '30/página', events: 'eventos',
+    open_line: 'Abiertos', resolved_line: 'Resueltos', fixes_line: 'Correcciones',
+    all_cats: 'Todas las categorías', all_status: 'Todos los estados', all_sev: 'Toda criticidad', all_teams: 'Todos los equipos', env: 'Entorno', search_bug: 'Buscar por título...', search_trn: 'Buscar TRN o nombre...', search_gen: 'Buscar...',
+    c_id: 'ID', c_title: 'Título', c_category: 'Categoría', c_severity: 'Criticidad', c_status: 'Estado', c_teams: 'Equipos', c_env: 'Entorno', c_occ: 'Ocurrencia', c_resval: 'Resuel./Valid.', c_agent: 'Agente', c_base: 'Base', c_mapped: 'Mapeado', c_integ: 'Integración', c_val: 'Validada', c_name: 'Nombre', c_email: 'Correo', c_role: 'Rol', c_team: 'Equipo', c_last: 'Último acceso', c_type: 'Tipo', c_release: 'Release', c_linked: 'Bugs vinculados', c_action: 'Acción', c_entity: 'Entidad',
+    b_new_bug: '+ Nuevo bug', b_new_fix: '+ Nueva corrección / evolución', b_add_base: '+ Incluir base', b_invite: '+ Invitar usuario', b_send_ev: '+ Enviar evidencia', b_validate: 'Validar', b_revert: 'Revertir', b_clear: 'Limpiar filtros', b_save: 'Guardar', b_register: 'Registrar bug', b_assoc: 'Asociar a bug(s)', b_exclude: 'Eliminar', b_reload: 'Recargar',
+    resolved: 'resuel.', validated: 'valid.', no_resp: 'Sin responsable definido', validated_tag: '✔ validada',
+    trn_ready: 'TRNs listas', trn_validated: 'Validadas', trn_bases: 'Bases cubiertas', trn_pending: 'pendientes', trn_check: 'verificado por un usuario de jornadas',
+    login_sub: '', login_email: 'Correo corporativo', login_send: 'Enviar código', login_code: 'Código recibido por correo', login_enter: 'Entrar', login_back: 'Volver',
+    demo_b: '● Modo demostración — datos de ejemplo de la planilla.', roles_title: 'Roles de acceso (simplificados a 4)', users_title: 'Usuarios',
+    coverage: 'Cobertura por dominio', chunks: 'chunks', del_rule: 'Eliminaciones y validaciones registran log/comentario e historial. Las eliminaciones exigen 2 confirmaciones de Master.',
+    all_action: 'Toda acción', all_entity: 'Toda entidad', all_user: 'Todo usuario', from: 'Desde', to: 'Hasta',
+  },
+};
+const t = (k) => (I18N[ABB.cfg.lang] || I18N.pt)[k] ?? (I18N.pt[k] ?? k);
+
+const SEV_L = { pt: { alta: 'Alta', media: 'Média', baixa: 'Baixa' }, en: { alta: 'High', media: 'Medium', baixa: 'Low' }, es: { alta: 'Alta', media: 'Media', baixa: 'Baja' } };
+const ST_L = { pt: { novo: 'Novo', em_analise: 'Em Análise', backlog: 'Backlog', desenvolvimento: 'Desenvolvimento', em_validacao: 'Em Validação', reaberto: 'Reaberto', resolvido: 'Resolvido', cancelado: 'Cancelado' }, en: { novo: 'New', em_analise: 'Under review', backlog: 'Backlog', desenvolvimento: 'Development', em_validacao: 'In validation', reaberto: 'Reopened', resolvido: 'Resolved', cancelado: 'Cancelled' }, es: { novo: 'Nuevo', em_analise: 'En análisis', backlog: 'Backlog', desenvolvimento: 'Desarrollo', em_validacao: 'En validación', reaberto: 'Reabierto', resolvido: 'Resuelto', cancelado: 'Cancelado' } };
+const ENT_L = { pt: { bug: 'Bug', fix: 'Correção', journey: 'Jornada', base_validation: 'Validação de base', user: 'Usuário', evidence: 'Evidência', batch: 'Importação' }, en: { bug: 'Bug', fix: 'Fix', journey: 'Journey', base_validation: 'Base validation', user: 'User', evidence: 'Evidence', batch: 'Import' }, es: { bug: 'Bug', fix: 'Corrección', journey: 'Jornada', base_validation: 'Validación de base', user: 'Usuario', evidence: 'Evidencia', batch: 'Importación' } };
+const ACT_L = { pt: { login: 'Login', create: 'Criação', update: 'Atualização', status_change: 'Mudança de status', comment: 'Comentário', import: 'Importação', soft_delete: 'Exclusão', upload: 'Envio de evidência' }, en: { login: 'Login', create: 'Create', update: 'Update', status_change: 'Status change', comment: 'Comment', import: 'Import', soft_delete: 'Deletion', upload: 'Evidence upload' }, es: { login: 'Login', create: 'Creación', update: 'Actualización', status_change: 'Cambio de estado', comment: 'Comentario', import: 'Importación', soft_delete: 'Eliminación', upload: 'Envío de evidencia' } };
+const L = () => ABB.cfg.lang;
+const sevName = s => (SEV_L[L()] || SEV_L.pt)[s] || s;
+const stName = s => (ST_L[L()] || ST_L.pt)[s] || s;
+const entName = s => (ENT_L[L()] || ENT_L.pt)[s] || s;
+const actName = s => (ACT_L[L()] || ACT_L.pt)[s] || s;
+
+const MODULES = [
+  { id: 'dashboard', ic: '▦' }, { id: 'bugs', ic: '⬢' }, { id: 'fixes', ic: '✓' },
+  { id: 'journeys', ic: '⤳' }, { id: 'validations', ic: '≣' }, { id: 'evidences', ic: '▣' },
+  { sep: 'gov', master: true }, { id: 'audit', ic: '◷', master: true }, { id: 'admin', ic: '⚙', master: true },
+  { sep: 'system' }, { id: 'settings', ic: '☰', master: true },
+];
+const isMaster = () => (STATE.me?.permissions || []).includes('*') || STATE.me?.role === 'master';
+const catName = (id) => (STATE.lookups?.bug_categories || []).find(c => c.id === id)?.name || id || '—';
+const sevChip = (s) => `<span class="chip sev-${s}"><span class="dot"></span>${sevName(s)}</span>`;
+const statusChip = (s) => { const c = s === 'resolvido' ? 'st-done' : s === 'cancelado' ? 'st-cancel' : 'st-open'; return `<span class="chip ${c}">${stName(s)}</span>`; };
+const teamBadges = (ts) => (ts || []).map(t => `<span class="badge">${esc(t.name)}</span>`).join('') || '—';
+const envName = (id) => (STATE.lookups?.environments || []).find(e => e.id === id)?.name || id || '—';
+const userNames = () => (window.ABB_DEMO?.users || []).map(u => u.name);
+
+// ===================== LOGIN =====================
+function renderLogin(msg) {
+  document.body.innerHTML = '';
+  const wrap = el(`<div class="login-wrap"><div class="login-card fade">
+    <div class="brand">${LOGO() ? `<img class="logo-img" src="${LOGO()}" alt="Banco do Brasil">` : ''}
+      <div class="sys"><h1>ABB Control Center</h1></div></div>
+    <div id="s1">
+      <div class="field"><label>${t('login_email')}</label><input class="input" id="email" type="email" maxlength="120" placeholder="seu.nome@bb.com.br"></div>
+      <button class="btn" id="send">${t('login_send')}</button><div class="error-msg" id="err">${msg ? esc(msg) : ''}</div>
+    </div>
+    <div id="s2" style="display:none">
+      <div class="field"><label>${t('login_code')}</label><input class="input" id="code" maxlength="6" placeholder="000000"></div>
+      <button class="btn" id="verify">${t('login_enter')}</button><button class="btn secondary" id="back" style="margin-top:8px">${t('login_back')}</button>
+      <div class="error-msg" id="err2"></div>
+    </div>
+    <div class="hint" id="mh"></div>
+  </div></div>`);
+  document.body.appendChild(wrap);
+  const demo = ABB.cfg.demo;
+  $('#mh').innerHTML = demo ? 'Modo demonstração — use qualquer e-mail e qualquer código. Sessão de 24h no sistema real.' : `Login por código · sessão de 24h · API: <b>${esc(ABB.cfg.apiBase || '(não configurada)')}</b>`;
+  $('#send').onclick = async () => { const em = $('#email').value.trim(); if (!em.includes('@')) { $('#err').textContent = 'E-mail inválido.'; return; } try { await ABB.requestCode(em); window.__em = em; $('#s1').style.display = 'none'; $('#s2').style.display = 'block'; if (demo) $('#err2').textContent = 'Demo: digite qualquer código.'; } catch (e) { $('#err').textContent = e.message; } };
+  $('#verify').onclick = async () => { try { await ABB.verifyCode(window.__em, $('#code').value.trim() || '000000'); boot(); } catch (e) { $('#err2').textContent = e.message; } };
+  $('#back').onclick = () => { $('#s2').style.display = 'none'; $('#s1').style.display = 'block'; };
+  $('#email').addEventListener('keydown', e => { if (e.key === 'Enter') $('#send').click(); });
+  $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#verify').click(); });
+}
+
+// ===================== SHELL =====================
+function renderShell() {
+  document.body.innerHTML = '';
+  const nav = MODULES.filter(m => (!m.master || isMaster())).map(m => m.sep ? `<div class="nav-sep">${t(m.sep)}</div>` : `<a href="#${m.id}" data-mod="${m.id}"><span class="ic">${m.ic}</span>${t(m.id)}</a>`).join('');
+  const initials = (STATE.me?.name || 'U').slice(0, 1).toUpperCase();
+  document.body.appendChild(el(`<div class="app">
+    <aside class="sidebar" id="sb"><div class="side-brand">${LOGO_W() ? `<img src="${LOGO_W()}" alt="BB">` : ''}<b>ABB<br>Control Center</b></div><nav class="nav" id="nav">${nav}</nav></aside>
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px"><button class="btn small secondary menu-btn" id="mb">☰</button><div><h2 id="vt"></h2><div class="sub" id="vs"></div></div></div>
+        <div class="user-chip">
+          <div class="lang" id="lang">${['pt', 'en', 'es'].map(l => `<button data-l="${l}" class="${ABB.cfg.lang === l ? 'on' : ''}">${l.toUpperCase()}</button>`).join('')}</div>
+          <div style="text-align:right"><div style="font-size:13px;font-weight:600">${esc(STATE.me?.name)}</div><div class="muted" style="font-size:12px">${esc(roleName(STATE.me?.role))} · ${esc(STATE.me?.team || '')}</div></div>
+          <div class="avatar">${initials}</div><button class="btn small secondary" id="lo">${t('logout')}</button>
+        </div>
+      </div><div id="view"></div>
+    </main></div>`));
+  $('#lo').onclick = () => { ABB.logout(); renderLogin(); };
+  $('#mb').onclick = () => $('#sb').classList.toggle('open');
+  $('#nav').onclick = e => { if (e.target.closest('a')) $('#sb').classList.remove('open'); };
+  $('#lang').onclick = e => { const b = e.target.closest('button'); if (b) { ABB.cfg.lang = b.dataset.l; renderShell(); } };
+  window.addEventListener('hashchange', route);
+  route();
+}
+function roleName(r) { return { master: 'Master', admin: 'Administrador', editor: 'Editor', leitor: 'Leitor' }[r] || r || ''; }
+function setActive(m) { document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.mod === m)); }
+function setTitle(a, b) { $('#vt').textContent = a; $('#vs').textContent = b || ''; }
+function banner() { return ABB.cfg.demo ? `<div class="mode-banner">${t('demo_b')}</div>` : `<div class="mode-banner live">● API: ${esc(ABB.cfg.apiBase)}</div>`; }
+function loading() { $('#view').innerHTML = banner() + `<div class="grid cols-4">${'<div class="card"><div class="skeleton" style="height:60px"></div></div>'.repeat(4)}</div>`; }
+async function route() {
+  const m = location.hash.replace('#', '') || 'dashboard';
+  const conf = MODULES.find(x => x.id === m);
+  if (!conf || (conf.master && !isMaster())) { location.hash = 'dashboard'; return; }
+  setActive(m);
+  try { ({ dashboard: viewDashboard, bugs: viewBugs, fixes: viewFixes, journeys: viewJourneys, validations: viewValidations, evidences: viewEvidences, audit: viewAudit, admin: viewAdmin, settings: viewSettings }[m] || viewDashboard)(); }
+  catch (e) { $('#view').innerHTML = banner() + `<div class="empty">Erro: ${esc(e.message)}</div>`; }
+}
+
+// ===================== EXECUTIVE =====================
+async function viewDashboard() {
+  setTitle(t('dashboard'), t('sub_dashboard')); loading();
+  const ex = await ABB.executive();
+  const kpi = (l, v, f) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="foot">${f}</div></div>`;
+  const testsPct = Math.round(ex.tests.ok / ex.tests.executados * 100);
+  window.__up = 0;
+  $('#view').innerHTML = banner() + `
+    <div class="grid cols-4 fade">
+      ${kpi(t('k_bugs_total'), ex.bugs.total, `${ex.bugs.abertos} ${t('k_open')} · ${ex.bugs.alta_aberta} ${t('k_high')}`)}
+      ${kpi(t('k_journeys_val'), `${ex.journeys.validadas}<small>/${ex.journeys.total}</small>`, `${ex.journeys.em_producao} ${t('k_in_prod')}`)}
+      ${kpi(t('k_bases_appr'), `${ex.validations.aprovados}<small>/${ex.validations.total}</small>`, `${Math.round(ex.validations.aprovados / ex.validations.total * 100)}% · ${ex.validations.responsavel} ${t('k_with_resp')}`)}
+      ${kpi(t('k_tests_ok'), `${testsPct}%`, `${ex.tests.ok}/${ex.tests.executados} · ${ex.tests.falha} ${t('k_failures')} · ${ex.tests.pendentes} ${t('k_pending')}`)}
+    </div>
+    <div class="grid cols-2 fade" style="margin-top:16px">
+      <div class="panel-dark" id="up"></div>
+      <div class="panel-dark"><h3>${t('s_insights')}</h3>${ex.insights.map(i => `<div class="insight"><div class="it">${i.icon} ${esc(i.title)}</div><div class="id">${esc(i.desc)}</div></div>`).join('')}</div>
+    </div>
+    <div class="card fade" style="margin-top:16px"><h3>${t('s_series')}</h3>${seriesChart(ex.series)}</div>
+    <div class="grid cols-2 fade" style="margin-top:16px">
+      <div class="card"><h3>${t('s_by_status')}</h3>${barList((await ABB.dashBugs()).by_status.map(x => ({ label: stName(x.label), n: x.n })))}</div>
+      <div class="card"><h3>${t('s_by_category')}</h3>${barList((await ABB.dashBugs()).by_category)}</div>
+    </div>`;
+  renderUrgent(ex.urgent);
+  $('#view').addEventListener('click', e => { const b = e.target.closest('[data-up]'); if (b) { window.__up += (+b.dataset.up); renderUrgent(ex.urgent); } });
+}
+function renderUrgent(list) {
+  const per = 4, pages = Math.max(1, Math.ceil(list.length / per)), pg = Math.min(Math.max(0, window.__up), pages - 1); window.__up = pg;
+  $('#up').innerHTML = `<h3>${t('s_urgent')}</h3>${list.slice(pg * per, pg * per + per).map(u => `<div class="urgent"><div><span class="tag">BUG</span><span class="tt">Bug #${u.id} · ${u.days}d</span></div><div class="ds">${esc(u.title)}</div><div class="mt">${esc(u.team || '—')} / ${esc(u.focal || '—')} · ${t('charge')}</div></div>`).join('') || `<div class="insight">${t('no_urgent')}</div>`}
+    <div class="pager dark"><button data-up="-1" ${pg === 0 ? 'disabled' : ''}>${t('prev')}</button><span>${t('page')} ${pg + 1}/${pages} · ${list.length}</span><button data-up="1" ${pg >= pages - 1 ? 'disabled' : ''}>${t('next')}</button></div>`;
+}
+function barList(arr, grad) { const mx = Math.max(1, ...arr.map(x => x.n)); return arr.map(x => `<div class="bar-row"><div>${esc(x.label)}</div><div class="bar-track"><div class="bar-fill" style="width:${(x.n / mx * 100).toFixed(0)}%;${grad ? 'background:' + grad : ''}"></div></div><div class="num">${x.n}</div></div>`).join(''); }
+function seriesChart(series) {
+  const w = 760, h = 180, pad = 24, mx = Math.max(...series.map(s => s.abertos)) * 1.1;
+  const x = i => pad + i / (series.length - 1) * (w - pad * 2), y = v => h - pad - (v / mx) * (h - pad * 2);
+  const line = (k, c) => `<polyline fill="none" stroke="${c}" stroke-width="2.5" points="${series.map((s, i) => `${x(i).toFixed(0)},${y(s[k]).toFixed(0)}`).join(' ')}"/>` + series.map((s, i) => `<circle cx="${x(i).toFixed(0)}" cy="${y(s[k]).toFixed(0)}" r="3" fill="${c}"/>`).join('');
+  return `<div class="tbl-wrap"><svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px">${line('abertos', '#0A6BB3')}${line('resolvidos', '#2F9E52')}${line('correcoes', '#F2A007')}${series.map((s, i) => `<text x="${x(i).toFixed(0)}" y="${h - 4}" font-size="10" fill="#6b7280" text-anchor="middle">${s.label}</text>`).join('')}</svg></div>
+  <div style="display:flex;gap:16px;font-size:12px;color:var(--text-soft);margin-top:6px"><span>● <b style="color:#0A6BB3">${t('open_line')}</b></span><span>● <b style="color:#2F9E52">${t('resolved_line')}</b></span><span>● <b style="color:#F2A007">${t('fixes_line')}</b></span></div>`;
+}
+
+// ===================== BUGS =====================
+let bugFilter = { search: '', status: '', severity: '', category: '', team: '', env: '' };
+let bugSort = { key: 'original_id', dir: 'asc' };
+let bugPage = 0;
+async function viewBugs() {
+  setTitle(t('bugs'), t('sub_bugs')); loading();
+  const lk = STATE.lookups, all = (await ABB.bugs()).items;
+  let rows = all.filter(b => (!bugFilter.status || b.status === bugFilter.status) && (!bugFilter.severity || b.severity === bugFilter.severity) && (!bugFilter.category || b.category === bugFilter.category) && (!bugFilter.team || b.teams.some(t => t.id === bugFilter.team)) && (!bugFilter.env || b.environment === bugFilter.env) && (!bugFilter.search || b.title.toLowerCase().includes(bugFilter.search.toLowerCase())));
+  rows.sort((a, b) => { let va = sortVal(a, bugSort.key), vb = sortVal(b, bugSort.key); return (va < vb ? -1 : va > vb ? 1 : 0) * (bugSort.dir === 'asc' ? 1 : -1); });
+  const total = rows.length, pages = Math.max(1, Math.ceil(total / PAGE)); bugPage = Math.min(bugPage, pages - 1);
+  const page = rows.slice(bugPage * PAGE, bugPage * PAGE + PAGE);
+  const opt = (arr, v, ph) => [`<option value="">${ph}</option>`].concat(arr.map(o => `<option value="${o.id}" ${v === o.id ? 'selected' : ''}>${esc(o.name)}</option>`)).join('');
+  const th = (key, label) => `<th class="sortable ${bugSort.key === key ? 'sorted' : ''}" data-sort="${key}">${label} <span class="arrow">${bugSort.key === key ? (bugSort.dir === 'asc' ? '▲' : '▼') : '↕'}</span></th>`;
+  $('#view').innerHTML = banner() + `<div class="card fade">
+    <div class="toolbar">
+      <input class="search" id="q" maxlength="80" placeholder="${t('search_bug')}" value="${esc(bugFilter.search)}">
+      <select class="select" id="fCat">${opt(lk.bug_categories, bugFilter.category, t('all_cats'))}</select>
+      <select class="select" id="fStatus">${opt(lk.bug_statuses.map(s => ({ id: s.id, name: stName(s.id) })), bugFilter.status, t('all_status'))}</select>
+      <select class="select" id="fSev">${opt(lk.severities.map(s => ({ id: s.id, name: sevName(s.id) })), bugFilter.severity, t('all_sev'))}</select>
+      <select class="select" id="fTeam">${opt(lk.teams, bugFilter.team, t('all_teams'))}</select>
+      <select class="select" id="fEnv">${opt(lk.environments, bugFilter.env, t('env'))}</select>
+      <span style="flex:1"></span><button class="btn small" id="newBug">${t('b_new_bug')}</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr>${th('original_id', t('c_id'))}${th('title', t('c_title'))}${th('category', t('c_category'))}${th('severity', t('c_severity'))}${th('status', t('c_status'))}<th>${t('c_teams')}</th><th>${t('c_env')}</th>${th('occurrence_date', t('c_occ'))}<th>${t('c_resval')}</th></tr></thead>
+    <tbody>${page.map(b => `<tr data-id="${b.original_id}"><td class="id">#${b.original_id}</td><td class="title">${esc(b.title)}</td><td><span class="chip cat tiny">${esc(catName(b.category))}</span></td><td>${sevChip(b.severity)}</td><td>${statusChip(b.status)}</td><td>${teamBadges(b.teams)}</td><td>${esc(envName(b.environment))}</td><td>${fmtDate(b.occurrence_date)}</td><td>${b.resolved_by ? `<span class="ok-ic" title="${esc(b.resolved_by)}">✔ ${t('resolved')}</span>` : '<span class="no-ic">—</span>'} ${b.validated_by ? `<span class="ok-ic" title="${esc(b.validated_by)}">✔ ${t('validated')}</span>` : ''}</td></tr>`).join('') || `<tr><td colspan="9"><div class="empty">—</div></td></tr>`}</tbody></table></div>
+    <div class="pager"><button data-page="-1" ${bugPage === 0 ? 'disabled' : ''}>${t('prev')}</button><span>${t('page')} ${bugPage + 1}/${pages} · ${total} ${t('bugs_word')} · ${t('per_page')}</span><button data-page="1" ${bugPage >= pages - 1 ? 'disabled' : ''}>${t('next')}</button></div>
+  </div>`;
+  $('#q').addEventListener('input', debounce(e => { bugFilter.search = e.target.value; bugPage = 0; viewBugs(); }, 300));
+  ['fCat:category', 'fStatus:status', 'fSev:severity', 'fTeam:team', 'fEnv:env'].forEach(p => { const [id, k] = p.split(':'); $('#' + id).onchange = e => { bugFilter[k] = e.target.value; bugPage = 0; viewBugs(); }; });
+  document.querySelectorAll('.tbl th.sortable').forEach(h => h.onclick = () => { const k = h.dataset.sort; if (bugSort.key === k) bugSort.dir = bugSort.dir === 'asc' ? 'desc' : 'asc'; else { bugSort.key = k; bugSort.dir = 'asc'; } viewBugs(); });
+  document.querySelectorAll('.pager [data-page]').forEach(b => b.onclick = () => { bugPage += (+b.dataset.page); viewBugs(); });
+  $('#newBug').onclick = () => openNewBug();
+  document.querySelectorAll('.tbl tbody tr[data-id]').forEach(tr => tr.onclick = () => { const b = all.find(x => String(x.original_id) === tr.dataset.id); if (b) openBug(b); });
+}
+function sortVal(b, k) { if (k === 'category') return catName(b.category); if (k === 'severity') return { alta: 0, media: 1, baixa: 2 }[b.severity]; if (k === 'title') return b.title.toLowerCase(); return b[k] ?? ''; }
+function openBug(b) {
+  openModal(esc(b.title), `<div class="kv">
+    <div class="k">${t('c_id')}</div><div>#${b.original_id}</div>
+    <div class="k">${t('c_category')}</div><div><span class="chip cat tiny">${esc(catName(b.category))}</span></div>
+    <div class="k">${t('c_severity')}</div><div>${sevChip(b.severity)}</div>
+    <div class="k">${t('c_status')}</div><div>${statusChip(b.status)}</div>
+    <div class="k">${t('c_teams')}</div><div>${teamBadges(b.teams)}</div>
+    <div class="k">Ponto focal</div><div>${esc(b.focal || t('no_resp'))}</div>
+    <div class="k">${t('c_env')}</div><div>${esc(envName(b.environment))}</div>
+    <div class="k">${t('c_occ')}</div><div>${fmtDate(b.occurrence_date)}</div>
+    <div class="k">Resolvido por</div><div>${b.resolved_by ? '✔ ' + esc(b.resolved_by) : '—'}</div>
+    <div class="k">Validado por (testes)</div><div>${b.validated_by ? '✔ ' + esc(b.validated_by) : '—'}</div>
+    <div class="k">Inputs</div><div>${esc(b.inputs || '—')}</div>
+  </div>
+  <h3 style="margin:16px 0 6px;font-size:13px;color:var(--text-soft)">Retestes</h3>
+  ${(b.retests || []).length ? `<div class="timeline">${b.retests.map(r => `<div class="tl-item"><div class="act">${esc(r.status_id)}</div><div class="meta">${fmtDT(r.created_at)} · ${esc(r.performed_by || '')}</div><div style="margin-top:4px">${esc(r.result_comment || '')}</div></div>`).join('')}</div>` : '<div class="empty">—</div>'}`);
+}
+function openNewBug() {
+  const lk = STATE.lookups;
+  const sel = (arr, mapName) => arr.map(o => `<option value="${o.id}">${esc(mapName ? mapName(o.id) : o.name)}</option>`).join('');
+  const focalOpts = ['<option value="">' + t('no_resp') + '</option>'].concat(userNames().map(n => `<option value="${esc(n)}">${esc(n)}</option>`)).join('');
+  openModal(t('b_new_bug').replace('+ ', ''), `
+    <div class="field"><label>Problema / situação encontrada * <span class="muted" id="cc">(0/160)</span></label><input class="input" id="nbT" maxlength="160" placeholder="Descreva o problema"></div>
+    <div class="grid cols-2" style="gap:12px">
+      <div class="field"><label>${t('c_category')}</label><select class="input" id="nbCat">${sel(lk.bug_categories)}</select></div>
+      <div class="field"><label>${t('c_severity')}</label><select class="input" id="nbSev">${sel(lk.severities, sevName)}</select></div>
+      <div class="field"><label>${t('c_status')}</label><select class="input" id="nbSt">${sel(lk.bug_statuses, stName)}</select></div>
+      <div class="field"><label>${t('c_env')}</label><select class="input" id="nbEnv">${sel(lk.environments)}</select></div>
+      <div class="field"><label>Data da ocorrência</label><input class="input" id="nbDate" type="date" value="2026-07-01"></div>
+      <div class="field"><label>Ponto focal</label><select class="input" id="nbFocal">${focalOpts}</select></div>
+    </div>
+    <div class="field"><label>Times responsáveis (pode marcar mais de um)</label><div class="checklist">${lk.teams.map(tm => `<label><input type="checkbox" value="${tm.id}"> ${esc(tm.name)}</label>`).join('')}</div></div>
+    <div class="field"><label>Inputs de exemplo</label><input class="input" id="nbIn" maxlength="200" placeholder="Ex.: 'golpe pix'"></div>
+    <div class="error-msg" id="nbErr"></div><button class="btn small" id="nbSave" style="margin-top:8px">${t('b_register')}</button>`);
+  $('#nbT').addEventListener('input', e => { $('#cc').textContent = `(${e.target.value.length}/160)`; });
+  $('#nbSave').onclick = async () => {
+    const title = $('#nbT').value.trim(); if (!title) { $('#nbErr').textContent = 'Informe o título.'; return; }
+    const teams = [...document.querySelectorAll('.checklist input:checked')].map(i => lk.teams.find(t => t.id === i.value));
+    await ABB.createBug({ title, category: $('#nbCat').value, severity: $('#nbSev').value, status: $('#nbSt').value, environment: $('#nbEnv').value, occurrence_date: $('#nbDate').value, focal: $('#nbFocal').value || t('no_resp'), teams, inputs: $('#nbIn').value.trim() || null });
+    closeModal(); toast('Bug registrado.'); viewBugs();
+  };
+}
+
+// ===================== FIXES =====================
+const FIX_ST = { planejada: 'Planejada', em_andamento: 'Em andamento', implantada: 'Implantada', cancelada: 'Cancelada' };
+async function viewFixes() {
+  setTitle(t('fixes'), t('sub_fixes')); loading();
+  const items = (await ABB.fixes()).items, bugs = (await ABB.bugs()).items;
+  const bugTitle = id => (bugs.find(b => b.original_id === id) || {}).title || ('#' + id);
+  $('#view').innerHTML = banner() + `<div class="card fade">
+    <div class="toolbar"><h3 style="margin:0">${t('fixes')} & Evoluções (${items.length})</h3><span style="flex:1"></span><button class="btn small" id="nf">${t('b_new_fix')}</button></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('c_title')}</th><th>${t('c_type')}</th><th>${t('c_status')}</th><th>${t('c_team')}</th><th>${t('c_linked')}</th><th>${t('c_release')}</th></tr></thead>
+    <tbody>${items.map((f, i) => `<tr data-idx="${i}"><td class="title">${esc(f.title)}</td><td><span class="chip ${f.type === 'evolucao' ? 'cat' : 'st-open'} tiny">${f.type === 'evolucao' ? 'Evolução' : 'Correção'}</span></td><td><span class="chip ${f.status === 'implantada' ? 'st-done' : 'st-open'}">${FIX_ST[f.status] || f.status}</span></td><td><span class="badge">${esc(f.team)}</span></td><td>${f.bugs.length ? f.bugs.map(id => `<span class="badge grey">#${id}</span>`).join('') : (f.type === 'evolucao' ? '<span class="chip cat tiny">evolução</span>' : '—')}</td><td>${fmtDate(f.planned_release)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  document.querySelectorAll('.tbl tbody tr[data-idx]').forEach(tr => tr.onclick = () => openFix(items[+tr.dataset.idx], bugTitle));
+  $('#nf').onclick = () => openNewFix(bugs);
+}
+function openFix(f, bugTitle) {
+  openModal(esc(f.title), `<div class="kv"><div class="k">${t('c_type')}</div><div>${f.type === 'evolucao' ? 'Evolução' : 'Correção'}</div><div class="k">${t('c_status')}</div><div>${FIX_ST[f.status] || f.status}</div><div class="k">${t('c_team')}</div><div>${esc(f.team)}</div><div class="k">${t('c_release')}</div><div>${fmtDate(f.planned_release)}</div></div>${f.spec ? `<div class="danger-box" style="border-color:rgba(0,45,75,.2);background:rgba(0,45,75,.05);color:var(--bb-blue)"><b>Especificação da evolução:</b><br>${esc(f.spec)}</div>` : ''}<h3 style="margin:16px 0 6px;font-size:13px;color:var(--text-soft)">${t('c_linked')}</h3>${f.bugs.length ? `<table class="tbl"><tbody>${f.bugs.map(id => `<tr><td class="id">#${id}</td><td class="title">${esc(bugTitle(id))}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">—</div>'}`);
+}
+function openNewFix(bugs) {
+  const lk = STATE.lookups;
+  const bugRow = b => `<label data-cat="${b.category}" data-sev="${b.severity}" data-t="${esc((b.title || '').toLowerCase())} ${b.original_id}"><input type="checkbox" value="${b.original_id}"> #${b.original_id} — <span class="chip cat tiny">${esc(catName(b.category))}</span> ${esc(b.title.slice(0, 45))}</label>`;
+  const openable = bugs.filter(b => !['resolvido', 'cancelado'].includes(b.status));
+  openModal(t('b_new_fix').replace('+ ', ''), `
+    <div class="field"><label>${t('c_type')}</label><select class="input" id="fType"><option value="correcao">Correção (exige bug vinculado)</option><option value="evolucao">Evolução (sem bug — especificar)</option></select></div>
+    <div class="field"><label>${t('c_title')}</label><input class="input" id="fTit" maxlength="160" placeholder="Descreva a correção/evolução"></div>
+    <div class="grid cols-2" style="gap:12px"><div class="field"><label>${t('c_team')}</label><select class="input" id="fTeam">${lk.teams.map(t => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('')}</select></div><div class="field"><label>${t('c_release')}</label><input class="input" id="fRel" type="date"></div></div>
+    <div id="fBugsWrap">
+      <label style="font-size:12.5px;color:var(--text-soft);font-weight:600">Bugs vinculados (marque 1 ou mais) *</label>
+      <div class="toolbar" style="margin:6px 0"><input class="search" id="fbq" maxlength="60" placeholder="Filtrar bugs..." style="min-width:150px"><select class="select" id="fbCat"><option value="">${t('all_cats')}</option>${lk.bug_categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><select class="select" id="fbSev"><option value="">${t('all_sev')}</option>${lk.severities.map(s => `<option value="${s.id}">${sevName(s.id)}</option>`).join('')}</select></div>
+      <div class="checklist" id="fbList">${openable.slice(0, 60).map(bugRow).join('')}</div>
+    </div>
+    <div id="fSpecWrap" style="display:none"><div class="field"><label>Especificação da evolução *</label><textarea class="input" id="fSpec" maxlength="600" rows="3" placeholder="O que será evoluído e por quê"></textarea></div></div>
+    <div class="error-msg" id="fErr"></div><button class="btn small" id="fSave" style="margin-top:8px">${t('b_save')}</button>`);
+  const filt = () => { const q = ($('#fbq').value || '').toLowerCase(), c = $('#fbCat').value, s = $('#fbSev').value; document.querySelectorAll('#fbList label').forEach(l => { l.style.display = (l.dataset.t.includes(q) && (!c || l.dataset.cat === c) && (!s || l.dataset.sev === s)) ? 'flex' : 'none'; }); };
+  $('#fbq').addEventListener('input', filt); $('#fbCat').onchange = filt; $('#fbSev').onchange = filt;
+  $('#fType').onchange = e => { const ev = e.target.value === 'evolucao'; $('#fBugsWrap').style.display = ev ? 'none' : 'block'; $('#fSpecWrap').style.display = ev ? 'block' : 'none'; };
+  $('#fSave').onclick = async () => {
+    const type = $('#fType').value, title = $('#fTit').value.trim();
+    if (!title) { $('#fErr').textContent = 'Informe o título.'; return; }
+    const bugsSel = [...document.querySelectorAll('#fBugsWrap input:checked')].map(i => +i.value);
+    if (type === 'correcao' && !bugsSel.length) { $('#fErr').textContent = 'Correção precisa de ≥1 bug (ou marque Evolução).'; return; }
+    const spec = $('#fSpec') ? $('#fSpec').value.trim() : '';
+    if (type === 'evolucao' && !spec) { $('#fErr').textContent = 'Descreva a especificação.'; return; }
+    await ABB.saveFix({ title, type, team: $('#fTeam').value, planned_release: $('#fRel').value, bugs: bugsSel, spec });
+    closeModal(); toast(type === 'evolucao' ? 'Evolução criada.' : 'Correção criada.'); viewFixes();
+  };
+}
+
+// ===================== JOURNEYS =====================
+let jFilter = { search: '', status: '', base: '' };
+async function viewJourneys() {
+  setTitle(t('journeys'), t('sub_journeys')); loading();
+  const all = (await ABB.journeysTRN()).items, bases = [...new Set(all.map(j => j.base))];
+  let rows = all.filter(j => (!jFilter.status || j.status === jFilter.status) && (!jFilter.base || j.base === jFilter.base) && (!jFilter.search || (j.trn + j.name).toLowerCase().includes(jFilter.search.toLowerCase())));
+  const prontas = all.filter(j => j.status === 'pronto').length, validadas = all.filter(j => j.validada).length;
+  const ic = v => v === true ? '<span class="ok-ic">✔</span>' : '<span class="no-ic">—</span>';
+  $('#view').innerHTML = banner() + `<div class="grid cols-3 fade">
+    <div class="card kpi"><div class="label">${t('trn_ready')}</div><div class="value">${prontas}<small>/${all.length}</small></div><div class="foot">${all.length - prontas} ${t('trn_pending')}</div></div>
+    <div class="card kpi"><div class="label">${t('trn_validated')}</div><div class="value">${validadas}<small>/${all.length}</small></div><div class="foot">${t('trn_check')}</div></div>
+    <div class="card kpi"><div class="label">${t('trn_bases')}</div><div class="value">${bases.length}</div><div class="foot">${bases.join(', ')}</div></div>
+  </div>
+  <div class="card fade" style="margin-top:16px">
+    <div class="toolbar"><input class="search" id="jq" maxlength="60" placeholder="${t('search_trn')}" value="${esc(jFilter.search)}">
+      <select class="select" id="jStatus"><option value="">${t('c_status')}: ${t('all_status').split(' ').pop().toLowerCase()}</option><option value="pronto" ${jFilter.status === 'pronto' ? 'selected' : ''}>Pronto</option><option value="pendente" ${jFilter.status === 'pendente' ? 'selected' : ''}>Pendente</option></select>
+      <select class="select" id="jBase"><option value="">${t('c_base')}: —</option>${bases.map(b => `<option value="${b}" ${jFilter.base === b ? 'selected' : ''}>${b}</option>`).join('')}</select>
+      <span style="flex:1"></span><button class="btn small secondary" id="jClear">${t('b_clear')}</button></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>TRN</th><th>${t('c_name')}</th><th>${t('c_agent')}</th><th>${t('c_base')}</th><th>${t('c_mapped')}</th><th>NIA</th><th>IBM</th><th>${t('c_integ')}</th><th>${t('c_status')}</th><th>${t('c_val')}</th></tr></thead>
+    <tbody>${rows.map(j => `<tr><td class="id" style="color:var(--ok)">${esc(j.trn)}</td><td class="title">${esc(j.name)}</td><td>${esc(j.agent || '—')}</td><td>${esc(j.base)}</td><td>${ic(j.mapeado)}</td><td>${ic(j.nia)}</td><td>${ic(j.ibm)}</td><td>${ic(j.integracao)}</td><td>${j.status === 'pronto' ? '<span class="chip st-done">Pronto</span>' : '<span class="chip st-open">Pendente</span>'}</td><td>${j.validada ? `<span class="ok-ic">${t('validated_tag')}</span> <button class="btn small secondary" data-trn="${esc(j.trn)}" data-act="revert">${t('b_revert')}</button>` : (j.status === 'pronto' ? `<button class="btn small secondary" data-trn="${esc(j.trn)}" data-act="validate">${t('b_validate')}</button>` : '<span class="no-ic">—</span>')}</td></tr>`).join('')}</tbody></table></div>
+  </div>`;
+  $('#jq').addEventListener('input', debounce(e => { jFilter.search = e.target.value; viewJourneys(); }, 300));
+  $('#jStatus').onchange = e => { jFilter.status = e.target.value; viewJourneys(); };
+  $('#jBase').onchange = e => { jFilter.base = e.target.value; viewJourneys(); };
+  $('#jClear').onclick = () => { jFilter = { search: '', status: '', base: '' }; viewJourneys(); };
+  document.querySelectorAll('[data-trn]').forEach(b => b.onclick = () => openValidateJourney(all.find(j => j.trn === b.dataset.trn), b.dataset.act));
+}
+function openValidateJourney(j, act) {
+  const isRevert = act === 'revert';
+  openModal((isRevert ? 'Reverter validação' : 'Validar jornada') + ' — ' + esc(j.trn), `
+    <div class="muted" style="margin-bottom:8px">${esc(j.name)}</div>
+    <div class="field"><label>Comentário (opcional, fica no histórico)</label><textarea class="input" id="jc" maxlength="300" rows="2" placeholder="${isRevert ? 'Motivo da reversão...' : 'Observação da validação...'}"></textarea></div>
+    <button class="btn small ${isRevert ? 'warn' : ''}" id="jok">${isRevert ? 'Reverter (mantém log)' : 'Confirmar validação'}</button>
+    <h3 style="margin:16px 0 6px;font-size:13px;color:var(--text-soft)">Histórico</h3>
+    <div class="timeline" id="jhist">${(j.log || []).map(l => `<div class="tl-item"><div class="act">${esc(l.what)}</div><div class="meta">${fmtDT(l.when)} · ${esc(l.who)}${l.comment ? ' · ' + esc(l.comment) : ''}</div></div>`).join('') || '<div class="empty">—</div>'}</div>`);
+  $('#jok').onclick = () => {
+    j.log = j.log || [];
+    j.log.unshift({ when: new Date().toISOString(), who: STATE.me.name, what: isRevert ? 'Validação revertida' : 'Jornada validada', comment: $('#jc').value.trim() });
+    j.validada = !isRevert;
+    closeModal(); toast(isRevert ? 'Validação revertida (log mantido).' : 'Jornada validada.'); viewJourneys();
+  };
+}
+
+// ===================== VALIDATIONS =====================
+async function viewValidations() {
+  setTitle(t('validations'), t('sub_validations')); loading();
+  const items = (await ABB.validationSummary()).items.map(d => ({ ...d, pct: d.total ? Math.round(d.aprovados / d.total * 100) : 0 }));
+  const tot = items.reduce((s, d) => s + d.total, 0), ap = items.reduce((s, d) => s + d.aprovados, 0);
+  $('#view').innerHTML = banner() + `<div class="card fade">
+    <div class="toolbar"><h3 style="margin:0">${t('coverage')} — ${ap}/${tot} ${t('chunks')} (${Math.round(ap / tot * 100)}%)</h3><span style="flex:1"></span><button class="btn small" id="addBase">${t('b_add_base')}</button></div>
+    ${items.map(d => `<div class="bar-row" style="grid-template-columns:150px 1fr 120px 180px">
+      <div>${esc(d.domain)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${d.pct}%;background:${d.pct === 100 ? 'var(--ok)' : 'linear-gradient(90deg,var(--bb-blue),var(--bb-blue-3))'}"></div></div>
+      <div class="num">${d.aprovados}/${d.total} · ${d.pct}%</div>
+      <div style="text-align:right"><button class="btn small secondary" data-val="${esc(d.domain)}">${t('b_validate')}</button> <button class="btn small secondary" data-del="${esc(d.domain)}">${t('b_exclude')}</button></div>
+    </div>`).join('')}
+    <div class="hint">${t('del_rule')}</div>
+  </div>`;
+  $('#addBase').onclick = () => { openModal(t('b_add_base').replace('+ ', ''), `<div class="field"><label>Domínio / nome da base</label><input class="input" id="bName" maxlength="60" placeholder="Ex.: Seguros"></div><div class="field"><label>Quantidade de chunks</label><input class="input" id="bChunks" type="number" value="0"></div><div class="field"><label>Comentário (log)</label><input class="input" id="bC" maxlength="200" placeholder="Motivo da inclusão"></div><button class="btn small" id="bSave" style="margin-top:8px">Incluir</button>`); $('#bSave').onclick = () => { const n = $('#bName').value.trim(); if (n) { window.ABB_DEMO.validation_summary.push({ domain: n, total: +$('#bChunks').value || 0, aprovados: 0, history: [{ when: new Date().toISOString(), who: STATE.me.name, what: 'Base incluída', comment: $('#bC').value.trim() }] }); closeModal(); toast('Base incluída (log salvo).'); viewValidations(); } }; };
+  document.querySelectorAll('[data-val]').forEach(b => b.onclick = () => openValidateBase(b.dataset.val));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => confirmTwoMaster('Excluir a base "' + b.dataset.del + '"', (comment) => { const d = window.ABB_DEMO.validation_summary.find(x => x.domain === b.dataset.del); if (d) { d.history = d.history || []; d.history.unshift({ when: new Date().toISOString(), who: STATE.me.name, what: 'Base excluída', comment }); } window.ABB_DEMO.validation_summary = window.ABB_DEMO.validation_summary.filter(x => x.domain !== b.dataset.del); toast('Base excluída (log salvo).'); viewValidations(); }));
+}
+function openValidateBase(domain) {
+  const d = window.ABB_DEMO.validation_summary.find(x => x.domain === domain);
+  openModal('Validar base — ' + esc(domain), `<div class="muted" style="margin-bottom:8px">Marca os chunks aprovados desta base.</div>
+    <div class="field"><label>Chunks aprovados</label><input class="input" id="vAp" type="number" value="${d.aprovados}" max="${d.total}"></div>
+    <div class="field"><label>Comentário (log)</label><input class="input" id="vC" maxlength="200" placeholder="Observação da validação"></div>
+    <button class="btn small" id="vok">Salvar validação</button>
+    <h3 style="margin:16px 0 6px;font-size:13px;color:var(--text-soft)">Histórico</h3>
+    <div class="timeline">${(d.history || []).map(l => `<div class="tl-item"><div class="act">${esc(l.what)}</div><div class="meta">${fmtDT(l.when)} · ${esc(l.who)}${l.comment ? ' · ' + esc(l.comment) : ''}</div></div>`).join('') || '<div class="empty">—</div>'}</div>`);
+  $('#vok').onclick = () => { d.aprovados = Math.min(+$('#vAp').value || 0, d.total); d.history = d.history || []; d.history.unshift({ when: new Date().toISOString(), who: STATE.me.name, what: 'Validação atualizada (' + d.aprovados + '/' + d.total + ')', comment: $('#vC').value.trim() }); closeModal(); toast('Validação salva (log).'); viewValidations(); };
+}
+
+// ===================== EVIDENCES =====================
+let evFilter = { category: '' };
+async function viewEvidences() {
+  setTitle(t('evidences'), t('sub_evidences')); loading();
+  const all = (await ABB.evidences()).items, bugs = (await ABB.bugs()).items, cats = STATE.lookups.bug_categories;
+  let items = all.filter(e => !evFilter.category || e.category === evFilter.category);
+  $('#view').innerHTML = banner() + `<div class="card fade">
+    <div class="toolbar"><h3 style="margin:0">Fila de associação (${items.length})</h3><select class="select" id="evCat"><option value="">${t('all_cats')}</option>${cats.map(c => `<option value="${c.id}" ${evFilter.category === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><span style="flex:1"></span><button class="btn small" id="evUp">${t('b_send_ev')}</button></div>
+    <div class="gallery">${items.map((e, i) => `<div class="ev-card"><div class="ev-thumb">${e.kind || '▣'}</div><div class="ev-meta"><div class="t">${esc(e.title)}</div><div class="s">Origem: ${esc(e.source_sheet)} · <span class="chip cat tiny">${esc(catName(e.category))}</span></div><div class="ev-links">${(e.bug_ids || []).length ? e.bug_ids.map(id => `<span class="badge grey">#${id}</span>`).join('') : '<span style="color:var(--warn);font-weight:600;font-size:12px">a associar</span>'}</div><button class="btn small secondary" data-assoc="${i}" style="width:100%;margin-top:4px">${t('b_assoc')}</button></div></div>`).join('') || '<div class="empty">—</div>'}</div></div>`;
+  $('#evCat').onchange = e => { evFilter.category = e.target.value; viewEvidences(); };
+  $('#evUp').onclick = () => openUploadEvidence();
+  document.querySelectorAll('[data-assoc]').forEach(b => b.onclick = () => openAssoc(items[+b.dataset.assoc], bugs));
+}
+function openUploadEvidence() {
+  const cats = STATE.lookups.bug_categories;
+  openModal('Enviar evidência', `
+    <div class="danger-box" style="border-color:rgba(0,45,75,.2);background:rgba(0,45,75,.05);color:var(--bb-blue)"><b>Fluxo:</b> 1) escolha o arquivo → 2) a evidência entra na <b>fila de associação</b> → 3) você a vincula a um ou mais bugs. Na API real o arquivo vai para o R2 e as imagens são comprimidas automaticamente.</div>
+    <div class="field" style="margin-top:12px"><label>Arquivo *</label>
+      <input class="input" id="euFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.mp4,.mov,.webm,image/*,application/pdf,video/*">
+      <div class="hint" style="margin-top:6px">Formatos aceitos: <b>PNG, JPG</b> e outras imagens (WEBP, GIF), <b>PDF</b> e <b>vídeo</b> em formatos leves (MP4, MOV, WEBM).</div></div>
+    <div class="field"><label>Título</label><input class="input" id="euT" maxlength="120" placeholder="Descreva a evidência (opcional — usa o nome do arquivo)"></div>
+    <div class="field"><label>${t('c_category')}</label><select class="input" id="euC">${cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+    <div class="error-msg" id="euErr"></div>
+    <button class="btn small" id="euSave" style="margin-top:8px">Enviar para a fila</button>`);
+  $('#euFile').onchange = e => { const f = e.target.files[0]; if (f && !$('#euT').value) $('#euT').value = f.name.replace(/\.[^.]+$/, ''); };
+  $('#euSave').onclick = () => {
+    const f = $('#euFile').files[0];
+    if (!f) { $('#euErr').textContent = 'Selecione um arquivo (PNG, JPG, PDF ou vídeo).'; return; }
+    const okTypes = /\.(png|jpe?g|webp|gif|pdf|mp4|mov|webm)$/i;
+    if (!okTypes.test(f.name)) { $('#euErr').textContent = 'Formato não aceito. Use imagem, PDF ou vídeo leve.'; return; }
+    const kind = /\.(mp4|mov|webm)$/i.test(f.name) ? '🎬' : /\.pdf$/i.test(f.name) ? '📄' : '🖼️';
+    window.ABB_DEMO.evidences.unshift({ id: 'ev' + Date.now(), title: $('#euT').value.trim() || f.name, source_sheet: 'Upload manual', category: $('#euC').value, entity_type: 'pending', bug_ids: [], file_name: f.name, kind });
+    closeModal(); toast('Evidência na fila. Agora associe a bug(s).'); viewEvidences();
+  };
+}
+function openAssoc(e, bugs) {
+  openModal('Associar evidência', `<div class="muted" style="margin-bottom:8px">${esc(e.title)} — pode vincular a <b>vários bugs</b></div>
+    <div class="toolbar" style="margin-bottom:8px"><input class="search" id="aq" maxlength="60" placeholder="Filtrar bugs..." style="min-width:150px"><select class="select" id="aCat"><option value="">${t('all_cats')}</option>${STATE.lookups.bug_categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><select class="select" id="aSev"><option value="">${t('all_sev')}</option>${STATE.lookups.severities.map(s => `<option value="${s.id}">${sevName(s.id)}</option>`).join('')}</select></div>
+    <div class="checklist" id="aList">${bugs.slice(0, 78).map(b => `<label data-cat="${b.category}" data-sev="${b.severity}" data-t="${esc((b.title || '').toLowerCase())} ${b.original_id}"><input type="checkbox" value="${b.original_id}" ${(e.bug_ids || []).includes(b.original_id) ? 'checked' : ''}> #${b.original_id} — <span class="chip cat tiny">${esc(catName(b.category))}</span> ${esc(b.title.slice(0, 40))}</label>`).join('')}</div>
+    <button class="btn small" id="aSave" style="margin-top:12px">${t('b_save')}</button>`);
+  const filt = () => { const q = ($('#aq').value || '').toLowerCase(), c = $('#aCat').value, s = $('#aSev').value; document.querySelectorAll('#aList label').forEach(l => l.style.display = (l.dataset.t.includes(q) && (!c || l.dataset.cat === c) && (!s || l.dataset.sev === s)) ? 'flex' : 'none'); };
+  $('#aq').addEventListener('input', filt); $('#aCat').onchange = filt; $('#aSev').onchange = filt;
+  $('#aSave').onclick = async () => { const ids = [...document.querySelectorAll('#aList input:checked')].map(i => +i.value); await ABB.assocEvidence(e.id, ids); closeModal(); toast(ids.length ? 'Associada a ' + ids.length + ' bug(s).' : 'Associação limpa.'); viewEvidences(); };
+}
+
+// ===================== AUDIT =====================
+let auFilter = { action: '', entity: '', user: '', from: '', to: '', search: '' };
+async function viewAudit() {
+  setTitle(t('audit'), t('sub_audit')); loading();
+  const all = (await ABB.audit()).items;
+  const actions = [...new Set(all.map(a => a.action))], ents = [...new Set(all.map(a => a.entity_type))], users = [...new Set(all.map(a => a.actor_email))];
+  let rows = all.filter(a => (!auFilter.action || a.action === auFilter.action) && (!auFilter.entity || a.entity_type === auFilter.entity) && (!auFilter.user || a.actor_email === auFilter.user) && (!auFilter.from || a.created_at.slice(0, 10) >= auFilter.from) && (!auFilter.to || a.created_at.slice(0, 10) <= auFilter.to) && (!auFilter.search || (a.actor_email + a.action + a.entity_type + a.entity_id).toLowerCase().includes(auFilter.search.toLowerCase())));
+  $('#view').innerHTML = banner() + `<div class="card fade">
+    <div class="toolbar">
+      <input class="search" id="aq" maxlength="60" placeholder="${t('search_gen')}" value="${esc(auFilter.search)}">
+      <select class="select" id="aAct"><option value="">${t('all_action')}</option>${actions.map(a => `<option value="${a}" ${auFilter.action === a ? 'selected' : ''}>${actName(a)}</option>`).join('')}</select>
+      <select class="select" id="aEnt"><option value="">${t('all_entity')}</option>${ents.map(e => `<option value="${e}" ${auFilter.entity === e ? 'selected' : ''}>${entName(e)}</option>`).join('')}</select>
+      <select class="select" id="aUser"><option value="">${t('all_user')}</option>${users.map(u => `<option value="${u}" ${auFilter.user === u ? 'selected' : ''}>${u}</option>`).join('')}</select>
+      <input class="select" id="aFrom" type="date" value="${auFilter.from}" title="${t('from')}"><input class="select" id="aTo" type="date" value="${auFilter.to}" title="${t('to')}">
+      <button class="btn small secondary" id="aClear">${t('b_clear')}</button>
+    </div>
+    <div class="muted" style="margin-bottom:8px">${rows.length} ${t('events')}</div>
+    <div class="timeline">${rows.slice(0, PAGE).map(a => `<div class="tl-item"><div class="act">${esc(a.actor_email)} <span style="font-weight:400;color:var(--text-soft)">· ${actName(a.action)} · ${entName(a.entity_type)}${a.entity_id ? ' #' + esc(a.entity_id) : ''}</span></div><div class="meta">${fmtDT(a.created_at)}</div></div>`).join('') || '<div class="empty">—</div>'}</div>
+  </div>`;
+  $('#aq').addEventListener('input', debounce(e => { auFilter.search = e.target.value; viewAudit(); }, 300));
+  $('#aAct').onchange = e => { auFilter.action = e.target.value; viewAudit(); };
+  $('#aEnt').onchange = e => { auFilter.entity = e.target.value; viewAudit(); };
+  $('#aUser').onchange = e => { auFilter.user = e.target.value; viewAudit(); };
+  $('#aFrom').onchange = e => { auFilter.from = e.target.value; viewAudit(); };
+  $('#aTo').onchange = e => { auFilter.to = e.target.value; viewAudit(); };
+  $('#aClear').onclick = () => { auFilter = { action: '', entity: '', user: '', from: '', to: '', search: '' }; viewAudit(); };
+}
+
+// ===================== ADMIN =====================
+async function viewAdmin() {
+  setTitle(t('admin'), t('sub_admin')); loading();
+  const users = (await ABB.users()).items, roles = (await ABB.roles()).items;
+  const teams = STATE.lookups.teams;
+  $('#view').innerHTML = banner() + `
+    <div class="card fade"><h3>${t('roles_title')}</h3><div class="grid cols-2">${roles.map(r => `<div style="border:1px solid var(--border);border-radius:12px;padding:12px 14px"><b style="color:var(--bb-blue)">${esc(r.name)}</b><div class="muted" style="margin-top:4px;font-size:13px">${esc(r.desc)}</div></div>`).join('')}</div></div>
+    <div class="card fade" style="margin-top:16px">
+      <div class="toolbar"><h3 style="margin:0">Times (${teams.length})</h3><span class="muted">Master e Administrador podem criar times</span><span style="flex:1"></span><button class="btn small" id="newTeam">+ Criar time</button></div>
+      <div>${teams.map(tm => `<span class="badge" style="font-size:13px;padding:5px 10px;margin:3px">${esc(tm.name)}</span>`).join('')}</div>
+    </div>
+    <div class="card fade" style="margin-top:16px">
+      <div class="toolbar"><h3 style="margin:0">${t('users_title')}</h3><span style="flex:1"></span><button class="btn small" id="inv">${t('b_invite')}</button></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('c_name')}</th><th>${t('c_email')}</th><th>${t('c_role')}</th><th>${t('c_team')}</th><th>${t('c_status')}</th><th>${t('c_last')}</th></tr></thead>
+      <tbody>${users.map((u, i) => `<tr data-idx="${i}"><td class="title">${esc(u.name)}</td><td>${esc(u.email)}</td><td><span class="badge">${esc(u.role_name)}</span></td><td><span class="badge grey">${esc(u.team || '—')}</span></td><td>${u.status === 'active' ? '<span class="chip st-done">Ativo</span>' : '<span class="chip st-cancel">' + esc(u.status) + '</span>'}</td><td>${fmtDT(u.last_login_at)}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+  document.querySelectorAll('.tbl tbody tr[data-idx]').forEach(tr => tr.onclick = () => openUser(users[+tr.dataset.idx]));
+  $('#inv').onclick = () => openInvite();
+  $('#newTeam').onclick = () => openModal('Criar time', `<div class="field"><label>Nome do time</label><input class="input" id="tName" maxlength="60" placeholder="Ex.: SQUAD SEGUROS"></div><div class="error-msg" id="tErr"></div><button class="btn small" id="tSave" style="margin-top:8px">Criar time</button>`) && ($('#tSave').onclick = async () => { const n = $('#tName').value.trim(); if (!n) { $('#tErr').textContent = 'Informe o nome.'; return; } await ABB.createTeam(n); closeModal(); toast('Time criado.'); viewAdmin(); });
+}
+function openUser(u) {
+  openModal(esc(u.name), `<div class="kv"><div class="k">${t('c_email')}</div><div>${esc(u.email)}</div><div class="k">${t('c_role')}</div><div>${esc(u.role_name)}</div><div class="k">Time atual</div><div>${esc(u.team || '—')}</div><div class="k">${t('c_status')}</div><div>${esc(u.status)}</div></div>
+  <div class="field" style="margin-top:12px"><label>Mover para outro time (mantém histórico)</label><select class="input" id="uTeam">${STATE.lookups.teams.map(t => `<option value="${esc(t.name)}" ${u.team === t.name ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></div>
+  <button class="btn small" id="uMove">Salvar mudança de time</button>
+  <h3 style="margin:16px 0 6px;font-size:13px;color:var(--text-soft)">Histórico do usuário</h3>
+  <div class="timeline">${(u.history || []).map(h => `<div class="tl-item"><div class="act">${esc(h.what)}</div><div class="meta">${fmtDate(h.when)}</div></div>`).join('') || '<div class="empty">—</div>'}</div>`);
+  $('#uMove').onclick = () => { const nt = $('#uTeam').value; if (nt !== u.team) { u.history = u.history || []; u.history.unshift({ when: new Date().toISOString().slice(0, 10), what: `Time alterado: ${u.team || '—'} → ${nt}` }); u.team = nt; } closeModal(); toast('Time atualizado (com histórico).'); viewAdmin(); };
+}
+function openInvite() {
+  const roles = window.ABB_DEMO.roles;
+  openModal(t('b_invite').replace('+ ', ''), `
+    <div class="grid cols-2" style="gap:12px">
+      <div class="field"><label>Nome *</label><input class="input" id="ivN" maxlength="60" placeholder="Nome"></div>
+      <div class="field"><label>Sobrenome *</label><input class="input" id="ivS" maxlength="60" placeholder="Sobrenome"></div>
+    </div>
+    <div class="field"><label>${t('c_email')} *</label><input class="input" id="ivE" maxlength="120" placeholder="nome@bb.com.br"></div>
+    <div class="grid cols-2" style="gap:12px"><div class="field"><label>${t('c_role')}</label><select class="input" id="ivR">${roles.filter(r => r.id !== 'master').map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select></div><div class="field"><label>${t('c_team')}</label><select class="input" id="ivT">${STATE.lookups.teams.map(t => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('')}</select></div></div>
+    <div class="error-msg" id="ivErr"></div><button class="btn small" id="ivSave" style="margin-top:8px">Enviar convite</button>`);
+  $('#ivSave').onclick = async () => {
+    const nome = $('#ivN').value.trim(), sob = $('#ivS').value.trim(), email = $('#ivE').value.trim();
+    if (!nome) { $('#ivErr').textContent = 'Informe o nome.'; return; }
+    if (!sob) { $('#ivErr').textContent = 'Informe o sobrenome.'; return; }
+    if (!email.includes('@')) { $('#ivErr').textContent = 'Informe um e-mail válido.'; return; }
+    const rn = roles.find(r => r.id === $('#ivR').value);
+    await ABB.inviteUser({ name: nome + ' ' + sob, first_name: nome, last_name: sob, email, role: rn.id, role_name: rn.name, team: $('#ivT').value });
+    closeModal(); toast('Convite enviado.'); viewAdmin();
+  };
+}
+
+// ===================== SETTINGS =====================
+function viewSettings() {
+  setTitle(t('settings'), t('sub_settings'));
+  $('#view').innerHTML = `<div class="card fade" style="max-width:640px">
+    <h3>Fonte de dados</h3>
+    <label class="switch"><input type="checkbox" id="demoTgl" ${ABB.cfg.demo ? 'checked' : ''}> Modo demonstração (dados de exemplo)</label>
+    <div class="field" style="margin-top:16px"><label>URL base da API</label><input class="input" id="apiBase" maxlength="200" placeholder="https://abb-control-center.ffariasmix.workers.dev" value="${esc(ABB.cfg.apiBase)}"></div>
+    <div class="field"><label>Autenticação (quando conectado à API)</label><select class="input" id="authMode"><option value="access" ${ABB.cfg.accessMode ? 'selected' : ''}>Cloudflare Access (código, sessão 24h)</option><option value="otp" ${!ABB.cfg.accessMode ? 'selected' : ''}>Código por e-mail (OTP)</option></select></div>
+    <div class="hint">No sistema publicado o modo demo fica desligado e a autenticação é sempre Cloudflare Access. Tela técnica, só para Master.</div>
+    <button class="btn small" id="saveCfg" style="margin-top:16px">Salvar e recarregar</button>
+  </div>`;
+  $('#saveCfg').onclick = () => { ABB.cfg.demo = $('#demoTgl').checked; ABB.cfg.apiBase = $('#apiBase').value.trim(); ABB.cfg.accessMode = $('#authMode').value === 'access'; ABB.cfg.token = ''; renderLogin('Configuração salva.'); };
+}
+
+// ===================== HELPERS =====================
+function openModal(title, body, wide) {
+  const bg = el(`<div class="modal-bg"><div class="modal ${wide ? 'wide' : ''} fade"><div class="mhead"><h3>${title}</h3><button class="close">×</button></div><div class="mbody">${body}</div></div></div>`);
+  document.body.appendChild(bg);
+  bg.querySelector('.close').onclick = closeModal; bg.onclick = e => { if (e.target === bg) closeModal(); };
+  document.addEventListener('keydown', function esc(ev) { if (ev.key === 'Escape') { closeModal(); document.removeEventListener('keydown', esc); } });
+  return true;
+}
+function closeModal() { document.querySelector('.modal-bg')?.remove(); }
+function confirmTwoMaster(what, onOk) {
+  openModal('Confirmação dupla de Master', `<div class="danger-box">${esc(what)}.<br><br>Toda exclusão exige <b>2 confirmações de Master</b> e registra log. (Demo: marque as duas caixas.)</div>
+    <div class="field" style="margin-top:12px"><label>Comentário / motivo (log)</label><input class="input" id="dc" maxlength="200" placeholder="Por que está excluindo"></div>
+    <label class="switch" style="margin-top:6px"><input type="checkbox" id="m1"> Confirmo (Master 1)</label><br><label class="switch" style="margin-top:8px"><input type="checkbox" id="m2"> Confirmo (Master 2)</label><br>
+    <button class="btn small warn" id="delOk" style="margin-top:14px">Excluir definitivamente</button>`);
+  $('#delOk').onclick = () => { if ($('#m1').checked && $('#m2').checked) { const c = $('#dc').value.trim(); closeModal(); onOk(c); } else toast('Marque as duas confirmações de Master.'); };
+}
+function toast(msg) { const x = el(`<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bb-blue);color:#fff;padding:12px 20px;border-radius:12px;box-shadow:var(--shadow);z-index:100;font-size:14px;font-weight:500" class="fade">${esc(msg)}</div>`); document.body.appendChild(x); setTimeout(() => x.remove(), 2400); }
+
+async function boot() { try { STATE.me = await ABB.me(); STATE.lookups = await ABB.lookups(); renderShell(); } catch (e) { ABB.logout(); renderLogin(e.status === 401 ? 'Sessão expirada.' : (e.message || 'Falha.')); } }
+if (!ABB.cfg.demo && ABB.cfg.accessMode) boot(); else if (ABB.cfg.token) boot(); else renderLogin();
+</script></body></html>
