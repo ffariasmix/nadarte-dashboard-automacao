@@ -21,8 +21,9 @@ jobs:
       - name: Instalar openpyxl
         run: pip install "openpyxl>=3.1"
 
-      - name: Canario coletor REDE 5 unidades (PII-safe; .bin ficam gitignored)
+      - name: SITPROBE — distribuicao de situacao + criterio de ativo (rapido, so cadastro)
         env:
+          PACTO_SITPROBE: '1'
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
