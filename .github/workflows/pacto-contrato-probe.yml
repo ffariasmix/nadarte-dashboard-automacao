@@ -1,0 +1,33 @@
+name: PACTO API — Probe de contrato (valor/ticket)
+
+on:
+  workflow_dispatch: {}   # manual apenas
+
+permissions:
+  contents: write
+
+jobs:
+  probe-contrato:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar deps
+        run: pip install "openpyxl>=3.1"
+      - name: Probe de contrato (PII-safe, 716 Norte)
+        env:
+          PACTO_KEY_716NORTE: ${{ secrets.PACTO_KEY_716NORTE }}
+        run: |
+          python scripts/pacto_probe_contrato.py 2> pacto_contrato_result.txt || true
+          echo "=== RESULTADO ==="; cat pacto_contrato_result.txt
+      - name: Commitar resultado (PII-safe)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pacto_contrato_result.txt
+          git commit -m "probe: schema de contrato/valor [skip ci]" || echo "sem mudanca"
+          git push
