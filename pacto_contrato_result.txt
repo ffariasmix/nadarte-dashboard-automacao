@@ -1,0 +1,22 @@
+[/v1/contrato] status=500 itens_na_pagina=0
+[roster] 19303/None clientes coletados
+[roster] total=19303 ativos=941
+[cliente-path] /clientes/003144/contratos -> status=404 lista=0
+[cliente-path] /clientes/003144/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/3144/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/3144 -> status=200 lista=0
+[/v1/cliente/3144] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+---
+[cliente-path] /clientes/004277/contratos -> status=404 lista=0
+[cliente-path] /clientes/004277/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/4277/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/4277 -> status=200 lista=0
+[/v1/cliente/4277] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+---
+[cliente-path] /clientes/018681/contratos -> status=404 lista=0
+[cliente-path] /clientes/018681/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/18740/contrato -> status=404 lista=0
+[cliente-path] /v1/cliente/18740 -> status=200 lista=0
+[/v1/cliente/18740] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+---
+[probe] fim (PII-safe: so campos/valores de plano, sem nome/CPF)
