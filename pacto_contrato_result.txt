@@ -1,6 +1,13 @@
-[empresaId] candidatos via /v1/plano: [1]
-[empresaId=1 2026-06-01..2026-06-30] status=200 META='Dados não encontrados.'
-[empresaId=1 2026-05-01..2026-05-31] status=200 META='Dados não encontrados.'
-[empresaId=2 2026-06-01..2026-06-30] status=200 META='Dados não encontrados.'
-[empresaId=2 2026-05-01..2026-05-31] status=200 META='Dados não encontrados.'
-[probe v8] fim (PII-safe)
+
+########## empresaId=1 ##########
+[receita-forma-pgto] status=200 META='Opera��o realizada com sucesso.'
+[resumo] status=200 META='Opera��o realizada com sucesso.'
+[saldos] status=500 corpo-nao-JSON
+[velocimetro-fatur] status=200 OK -> tem dado:
+  [velocimetro-fatur] keys=['valorAtingidoPonteiro', 'valorFinal', 'valorFinalAmarelo', 'valorInicialAmarelo']
+    valorInicialAmarelo = 0.0
+    valorFinalAmarelo = 0.0
+    valorAtingidoPonteiro = 187823.1499620003
+    valorFinal = 206605.46
+[!] empresaId=1 TEM dado financeiro — parar aqui
+[probe v9] fim
