@@ -1,6 +1,5 @@
 [/v1/contrato] status=500 itens=0
-[roster] 19303/None clientes coletados
-[roster] total=19303 ativos=939
+[amostra] pagina0=200 ativos_na_pagina=6
 === /v1/cliente/3144 status=200 ===
 [cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
   [situacao] dict keys=['codigo', 'descricao']
@@ -41,4 +40,4 @@
   [avisos] list n=4
     [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
 ---
-[probe v2] fim (PII-safe)
+[probe v3] fim (PII-safe)
