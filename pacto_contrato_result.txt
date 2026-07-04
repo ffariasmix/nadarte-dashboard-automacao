@@ -1,43 +1,25 @@
-[/v1/contrato] status=500 itens=0
-[amostra] pagina0=200 ativos_na_pagina=6
-=== /v1/cliente/3144 status=200 ===
-[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
-  [situacao] dict keys=['codigo', 'descricao']
-  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
-  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
-    [situacaocontrato] dict keys=['codigo', 'descricao']
-  [clienteObservacao] list n=16
-    [clienteObservacao[0]] dict keys=['codigo', 'dataCadastro', 'observacao']
-  [vinculos] list n=2
-    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
-      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
-  [avisos] list n=6
-    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
----
-=== /v1/cliente/4277 status=200 ===
-[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
-  [situacao] dict keys=['codigo', 'descricao']
-  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
-  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
-    [situacaocontrato] dict keys=['codigo', 'descricao']
-  [clienteObservacao] list n=1
-    [clienteObservacao[0]] dict keys=['codigo', 'dataCadastro', 'observacao']
-  [vinculos] list n=2
-    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
-      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
-  [avisos] list n=1
-    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
----
-=== /v1/cliente/18740 status=200 ===
-[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
-  [situacao] dict keys=['codigo', 'descricao']
-  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
-  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
-    [situacaocontrato] dict keys=['codigo', 'descricao']
-  [vinculos] list n=3
-    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
-      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
-  [avisos] list n=4
-    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
----
-[probe v3] fim (PII-safe)
+[amostra] cod=3144 (pagina0=200 ativos=6)
+[try] /v1/contrato?page=0&size=5 -> 500 | 
+[try] /v1/contrato?page=0&size=5&empresaId=1 -> 500 | 
+[try] /v1/contrato?codigoCliente=3144 -> 500 | 
+[try] /v1/contrato?codigoCliente=3144&page=0&size=5 -> 500 | 
+[try] /v1/contrato/cliente/3144 -> 404 | Serviço não encontrado para o caminho: /v1/contrato/cliente/3144
+[try] /v1/cliente/3144/contrato -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/contrato
+[try] /v1/cliente/3144/contratos -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/contratos
+[try] /v1/cliente/3144/financeiro -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/financeiro
+[try] /clientes/003144/financeiro -> 404 | Serviço não encontrado para o caminho: /clientes/003144/financeiro
+[try] /clientes/003144/parcelas -> 404 | Serviço não encontrado para o caminho: /clientes/003144/parcelas
+[try] /clientes/003144/contrato-atual -> 404 | Serviço não encontrado para o caminho: /clientes/003144/contrato-atual
+[try] /clientes/003144/plano -> 404 | Serviço não encontrado para o caminho: /clientes/003144/plano
+[try] /v1/plano?page=0&size=5 -> 200
+  [/v1/plano?page=0&size=5] list n=5
+    [/v1/plano?page=0&size=5[0]] keys=['bolsa', 'codigo', 'descricao', 'empresa', 'ingressoate', 'links', 'vigenciaate', 'vigenciade']
+      [empresa] keys=['ativa', 'codigo', 'links', 'nome']
+[try] /v1/planos?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/planos
+[try] /planos?page=0&size=5 -> 200
+  [/planos?page=0&size=5] list n=0
+[try] /v1/parcela?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/parcela
+[try] /v1/mensalidade?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/mensalidade
+[try] /financeiro/parcelas?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /financeiro/parcelas
+[try +hdr] /v1/contrato?page=0&size=5 -> 500 | 
+[probe v4] fim (PII-safe)
