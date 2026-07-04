@@ -1,18 +1,6 @@
-
-=== [data simples + empresaId header] status=200 ===
-    /v1/bi/contas-receber?dataInicial=2026-06-01&dataFinal=2026-06-30
-    META.error=dados_não_encontrados. | message='Dados não encontrados.' | campo='Dados não encontrados.'
-
-=== [data com hora + empresaId header] status=200 ===
-    /v1/bi/contas-receber?dataInicial=2026-06-01T00:00:00&dataFinal=2026-06-30T23:59:59
-    META.error=dados_não_encontrados. | message='Dados não encontrados.' | campo='Dados não encontrados.'
-
-=== [empresaId em query (sem header)] status=400 ===
-    /v1/bi/contas-receber?empresaId=1&dataInicial=2026-06-01&dataFinal=2026-06-30
-    META.error=campo_empresaid_precisa_ser_informado_no_header_da_requisicao | message='Campo empresaId precisa ser informado no header da requisicao' | campo='Campo empresaId precisa ser informado no header da requisicao'
-
-=== [empresaId query + header] status=200 ===
-    /v1/bi/contas-receber?empresaId=1&dataInicial=2026-06-01&dataFinal=2026-06-30
-    META.error=dados_não_encontrados. | message='Dados não encontrados.' | campo='Dados não encontrados.'
-
-[probe v7] fim (PII-safe)
+[empresaId] candidatos via /v1/plano: [1]
+[empresaId=1 2026-06-01..2026-06-30] status=200 META='Dados não encontrados.'
+[empresaId=1 2026-05-01..2026-05-31] status=200 META='Dados não encontrados.'
+[empresaId=2 2026-06-01..2026-06-30] status=200 META='Dados não encontrados.'
+[empresaId=2 2026-05-01..2026-05-31] status=200 META='Dados não encontrados.'
+[probe v8] fim (PII-safe)
