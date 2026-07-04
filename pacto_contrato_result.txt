@@ -1,25 +1,95 @@
-[amostra] cod=3144 (pagina0=200 ativos=6)
-[try] /v1/contrato?page=0&size=5 -> 500 | 
-[try] /v1/contrato?page=0&size=5&empresaId=1 -> 500 | 
-[try] /v1/contrato?codigoCliente=3144 -> 500 | 
-[try] /v1/contrato?codigoCliente=3144&page=0&size=5 -> 500 | 
-[try] /v1/contrato/cliente/3144 -> 404 | Serviço não encontrado para o caminho: /v1/contrato/cliente/3144
-[try] /v1/cliente/3144/contrato -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/contrato
-[try] /v1/cliente/3144/contratos -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/contratos
-[try] /v1/cliente/3144/financeiro -> 404 | Serviço não encontrado para o caminho: /v1/cliente/3144/financeiro
-[try] /clientes/003144/financeiro -> 404 | Serviço não encontrado para o caminho: /clientes/003144/financeiro
-[try] /clientes/003144/parcelas -> 404 | Serviço não encontrado para o caminho: /clientes/003144/parcelas
-[try] /clientes/003144/contrato-atual -> 404 | Serviço não encontrado para o caminho: /clientes/003144/contrato-atual
-[try] /clientes/003144/plano -> 404 | Serviço não encontrado para o caminho: /clientes/003144/plano
-[try] /v1/plano?page=0&size=5 -> 200
-  [/v1/plano?page=0&size=5] list n=5
-    [/v1/plano?page=0&size=5[0]] keys=['bolsa', 'codigo', 'descricao', 'empresa', 'ingressoate', 'links', 'vigenciaate', 'vigenciade']
-      [empresa] keys=['ativa', 'codigo', 'links', 'nome']
-[try] /v1/planos?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/planos
-[try] /planos?page=0&size=5 -> 200
-  [/planos?page=0&size=5] list n=0
-[try] /v1/parcela?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/parcela
-[try] /v1/mensalidade?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/mensalidade
-[try] /financeiro/parcelas?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /financeiro/parcelas
-[try +hdr] /v1/contrato?page=0&size=5 -> 500 | 
-[probe v4] fim (PII-safe)
+[planos] total_na_pagina=87
+[plano] cod=1 desc='FITNESS 14 MESES' vals={}
+[plano] cod=15 desc='JIU JITSU' vals={}
+[plano] cod=8 desc='JIU JITSU 2026' vals={}
+[plano] cod=63 desc='JIU JITSU - RENOVAÇÃO' vals={}
+[plano] cod=21 desc='JIU JITSU RENOVAÇÃO 2026' vals={}
+[plano] cod=31 desc='JIU JITSU + TL' vals={}
+[plano] cod=32 desc='JIU JITSU + TL RENOVAÇÃO' vals={}
+[plano] cod=49 desc='KARATÊ' vals={}
+[plano] cod=79 desc='KARATÊ 2X 2026' vals={}
+[plano] cod=74 desc='KARATÊ 2X + NATAÇÃO 2 OU 3X' vals={}
+[plano] cod=20 desc='KARATE 2X RENOVAÇÃO 2026' vals={}
+[plano] cod=75 desc='KARATE 3X..' vals={}
+[plano] cod=14 desc='KARATE 3X 2026' vals={}
+[plano] cod=77 desc='KARATE 3X RENOVAÇÃO 2026' vals={}
+[plano] cod=64 desc='KARATÊ - RENOVAÇÃO' vals={}
+[plano] cod=30 desc='KARATE + TL RENOVAÇÃO' vals={}
+[plano] cod=18 desc='MUAY 2X THAI RENOVAÇÃO 2026' vals={}
+[plano] cod=50 desc='MUAY THAI' vals={}
+[plano] cod=17 desc='MUAY THAI 2X 2026' vals={}
+[plano] cod=52 desc='MUAY THAI 2X + TL' vals={}
+[plano] cod=69 desc='MUAY THAI 2X + TL RENOVAÇÃO' vals={}
+[plano] cod=72 desc='MUAY THAI 3X 2026' vals={}
+[plano] cod=73 desc='MUAY THAI 3X RENOVAÇAO 2026' vals={}
+[plano] cod=76 desc='MUAY THAI 3X + TL' vals={}
+[plano] cod=78 desc='MUAY THAI 3X + TL RENOVAÇÃO' vals={}
+[plano] cod=23 desc='MUAY THAI + NATAÇÃO 1X' vals={}
+[plano] cod=53 desc='***MUAY THAI+NATAÇÃO 2X' vals={}
+[plano] cod=25 desc='MUAY THAI + NATAÇÃO 2X' vals={}
+[plano] cod=26 desc='MUAY THAI + NATAÇÃO 2X RENOVAÇÃO' vals={}
+[plano] cod=54 desc='***MUAY THAI + NATAÇÃO 3X' vals={}
+[plano] cod=27 desc='MUAY THAI + NATAÇÃO 3X' vals={}
+[plano] cod=70 desc='***MUAY THAI + NATAÇÃO 3X - RENOVAÇÃO' vals={}
+[plano] cod=28 desc='MUAY THAI + NATAÇÃO 3X RENOVAÇÃO' vals={}
+[plano] cod=66 desc='MUAY THAI - RENOVAÇÃO' vals={}
+[plano] cod=13 desc='MUAY THAI + TL 2026' vals={}
+[plano] cod=3 desc='MUAY THAI + TL 2026 RENOVAÇÃO' vals={}
+[plano] cod=22 desc='MUAY THAI + TL RENOVAÇÃO' vals={}
+[plano] cod=86 desc='***NATAÇÃO 2X + KARATÊ 3X' vals={}
+[plano] cod=87 desc='***NATAÇÃO 5X- RENOVAÇÃO' vals={}
+[plano] cod=89 desc='NATAÇÃO MAPLE BEAR' vals={}
+[plano] cod=90 desc='*NATA/HIDRO 1X + KARATÊ/ JIU JITSU/ MUAY THAI 2X - RENOVAÇÃO' vals={}
+[plano] cod=84 desc='***NATA/HIDRO 2X + KARATÊ/JIU JITSU / MUAY THAI 2X' vals={}
+[plano] cod=85 desc='***NATA/HIDRO 2X + KARATÊ/JIU JITSU / MUAY THAI 2X - RENOVAÇÃO' vals={}
+[plano] cod=43 desc='NATA/HIDRO OU BEBE' vals={}
+[plano] cod=39 desc='NATA/HIDRO OU BEBE 1X 2026' vals={}
+[plano] cod=59 desc='NATA/HIDRO OU BEBE 1X RENOVAÇÃO 2026' vals={}
+[plano] cod=33 desc='NATA/HIDRO OU BEBE 2X.' vals={}
+[plano] cod=44 desc='NATA/HIDRO OU BEBE 2X 2026' vals={}
+[plano] cod=57 desc='NATA/HIDRO OU BEBE 2X RENOVAÇÃO 2026' vals={}
+[plano] cod=34 desc='NATA/HIDRO OU BEBE 3X.' vals={}
+[plano] cod=45 desc='NATA/HIDRO OU BEBE 3X 2026' vals={}
+[plano] cod=58 desc='NATA/HIDRO OU BEBE 3X RENOVAÇÃO 2026' vals={}
+[plano] cod=46 desc='NATA/HIDRO OU BEBE 5X' vals={}
+[plano] cod=35 desc='NATA/HIDRO OU BEBE 5X.' vals={}
+[plano] cod=56 desc='NATA/HIDRO OU BEBE - RENOVAÇÃO' vals={}
+[plano] cod=4 desc='PLANO BOLSISTA' vals={}
+[plano] cod=82 desc='TL+1X NAT. OU HIDRO' vals={}
+[plano] cod=40 desc='TL+1X NAT. OU HIDRO 2026' vals={}
+[plano] cod=62 desc='TL + 1X NAT. OU HIDRO - RENOVAÇÃO' vals={}
+[plano] cod=24 desc='TL+1X NAT. OU HIDRO RENOVAÇÃO 2026' vals={}
+[plano] cod=71 desc='TL + 2X JIU-JITSU / KARATÊ / MUAY THAI' vals={}
+[plano] cod=67 desc='TL + 2X JIU-JITSU / KARATÊ / MUAY THAI - RENOVAÇÃO' vals={}
+[plano] cod=42 desc='TL+2X NAT. OU HIDRO' vals={}
+[plano] cod=36 desc='TL+2X NAT. OU HIDRO 2026' vals={}
+[plano] cod=60 desc='TL + 2X NAT. OU HIDRO - RENOVAÇÃO' vals={}
+[plano] cod=9 desc='TL+2X NAT. OU HIDRO RENOVAÇÃO 2026' vals={}
+[plano] cod=47 desc='TL+3X NAT. OU HIDRO' vals={}
+[plano] cod=37 desc='TL+3X NAT. OU HIDRO.' vals={}
+[plano] cod=61 desc='TL + 3X NAT. OU HIDRO - RENOVAÇÃO' vals={}
+[plano] cod=6 desc='TL+3X NAT. OU HIDRO RENOVAÇÃO 2026' vals={}
+[plano] cod=48 desc='***TL+5X NAT. OU HIDRO' vals={}
+[plano] cod=38 desc='TL+5X NAT. OU HIDRO.' vals={}
+[plano] cod=5 desc='TL BLACK 2026' vals={}
+[plano] cod=11 desc='TL BLACK RENOVAÇAO 2026' vals={}
+[plano] cod=10 desc='TL + JJ OU KARATE 2X 2026' vals={}
+[plano] cod=29 desc='TL + JJ OU KARATE 2X 2026 RENOVAÇÃO' vals={}
+[plano] cod=51 desc='TL + KARATÊ' vals={}
+[plano] cod=68 desc='TL + KARATÊ - RENOVAÇÃO' vals={}
+[plano] cod=12 desc='TL + MUAY-THAI +NATAÇAO 3X.' vals={}
+[plano] cod=83 desc='***TL + NATAÇÃO + MUAY THAI' vals={}
+[plano] cod=88 desc='***TL + NATAÇÃO + MUAY THAI RENOVAÇÃO' vals={}
+[plano] cod=41 desc='TRANSITO LIVRE' vals={}
+[plano] cod=7 desc='TRANSITO LIVRE 2026' vals={}
+[plano] cod=80 desc='TRANSITO LIVRE BLACK' vals={}
+[plano] cod=81 desc='TRANSITO LIVRE BLACK - RENOVAÇÃO' vals={}
+[plano] cod=55 desc='TRANSITO LIVRE - RENOVAÇÃO' vals={}
+[plano] cod=16 desc='TRANSITO LIVRE - RENOVAÇÃO 2026' vals={}
+[det] /v1/plano/1 -> 404 | Serviço não encontrado para o caminho: /v1/plano/1
+[det] /v1/plano/1/valor -> 404 | Serviço não encontrado para o caminho: /v1/plano/1/valor
+[det] /v1/plano/1/valores -> 404 | Serviço não encontrado para o caminho: /v1/plano/1/valores
+[det] /v1/plano/1/tabela -> 404 | Serviço não encontrado para o caminho: /v1/plano/1/tabela
+[det] /v1/tabelaPreco?codigoPlano=1 -> 404 | Serviço não encontrado para o caminho: /v1/tabelaPreco
+[det] /v1/tabelaPreco?page=0&size=5 -> 404 | Serviço não encontrado para o caminho: /v1/tabelaPreco
+[probe v5] fim (PII-safe)
