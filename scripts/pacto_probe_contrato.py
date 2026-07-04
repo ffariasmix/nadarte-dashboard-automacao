@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-pacto_probe_contrato.py (v6) — Confirmar /v1/bi/contas-receber como fonte do VALOR por aluno.
-Doc: "Consultar contas a receber por periodo, incluindo valores, datas de vencimento e
-pessoas relacionadas". Params: empresaId (header) + dataInicial + dataFinal.
-v6 chama num mes fechado e faz WALK PII-safe: mostra as CHAVES e SO valores de campos de
-valor/vencimento + pessoa.codigo (codPessoa). NUNCA loga nome/CPF/email.
+pacto_probe_contrato.py (v7) — /v1/bi/contas-receber: descobrir a chamada correta.
+v6: status=200 mas corpo = {meta:{error,...}} (erro de validacao) — faltou imprimir a msg.
+v7: imprime a MENSAGEM do erro e testa variacoes (data com hora, empresaId em query).
+    Ao dar certo, WALK PII-safe (valores/vencimento + pessoa.codigo). Nunca loga nome/CPF.
 
 Roda so na 716 Norte. Uso: PACTO_KEY_716NORTE=... python scripts/pacto_probe_contrato.py
 """
@@ -53,34 +52,42 @@ def walk(tag, o, depth=0, maxdepth=6):
         if o and depth < maxdepth:
             walk(tag + "[0]", o[0], depth + 1, maxdepth)
 
-# mes fechado mais recente
 t = datetime.date.today()
 y, m = (t.year - 1, 12) if t.month == 1 else (t.year, t.month - 1)
-di = f"{y}-{m:02d}-01"
-df = f"{y}-{m:02d}-{calendar.monthrange(y, m)[1]:02d}"
-path = f"/v1/bi/contas-receber?dataInicial={di}&dataFinal={df}"
-print(f"[req] {path} (empresaId=1)", file=sys.stderr)
+last = calendar.monthrange(y, m)[1]
+d1, d2 = f"{y}-{m:02d}-01", f"{y}-{m:02d}-{last:02d}"
 
-st, body = raw_get(path, {"empresaId": "1"})
-print(f"[/v1/bi/contas-receber] status={st}", file=sys.stderr)
-if st != 200:
-    print(f"[erro] corpo: {body[:200].replace(chr(10),' ')}", file=sys.stderr)
-else:
+variacoes = [
+    ("data simples + empresaId header",
+     f"/v1/bi/contas-receber?dataInicial={d1}&dataFinal={d2}", {"empresaId": "1"}),
+    ("data com hora + empresaId header",
+     f"/v1/bi/contas-receber?dataInicial={d1}T00:00:00&dataFinal={d2}T23:59:59", {"empresaId": "1"}),
+    ("empresaId em query (sem header)",
+     f"/v1/bi/contas-receber?empresaId=1&dataInicial={d1}&dataFinal={d2}", None),
+    ("empresaId query + header",
+     f"/v1/bi/contas-receber?empresaId=1&dataInicial={d1}&dataFinal={d2}", {"empresaId": "1"}),
+]
+
+for nome, path, hdr in variacoes:
+    st, body = raw_get(path, hdr)
+    print(f"\n=== [{nome}] status={st} ===", file=sys.stderr)
+    print(f"    {path}", file=sys.stderr)
     try:
         obj = json.loads(body)
     except Exception:
-        obj = None
-        print(f"[aviso] corpo nao-JSON: {body[:160]!r}", file=sys.stderr)
-    if obj is not None:
-        items = obj.get("content", obj) if isinstance(obj, dict) else obj
-        if isinstance(items, list):
-            print(f"[contas-receber] itens={len(items)}", file=sys.stderr)
-            # soma dos valores (se acharmos o campo) e distintos por pessoa.codigo
-            if items:
-                print("--- ESTRUTURA DO 1o ITEM (PII-safe) ---", file=sys.stderr)
-                walk("item", items[0])
-        else:
-            print("[aviso] content nao e' lista; estrutura:", file=sys.stderr)
-            walk("content", items)
+        print(f"    corpo nao-JSON: {body[:160]!r}", file=sys.stderr); continue
+    meta = obj.get("meta") if isinstance(obj, dict) else None
+    if isinstance(meta, dict) and meta.get("error"):
+        print(f"    META.error={meta.get('error')} | message={meta.get('message')!r} | campo={meta.get('messageValue')!r}", file=sys.stderr)
+        continue
+    items = obj.get("content", obj) if isinstance(obj, dict) else obj
+    if isinstance(items, list):
+        print(f"    OK itens={len(items)}", file=sys.stderr)
+        if items:
+            print("    --- ESTRUTURA 1o ITEM (PII-safe) ---", file=sys.stderr)
+            walk("item", items[0], depth=2)
+        break  # achou a chamada certa
+    else:
+        walk("content", items, depth=2)
 
-print("[probe v6] fim (PII-safe)", file=sys.stderr)
+print("\n[probe v7] fim (PII-safe)", file=sys.stderr)
