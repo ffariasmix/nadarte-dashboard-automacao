@@ -1,13 +1,12 @@
-
-########## empresaId=1 ##########
-[receita-forma-pgto] status=200 META='Opera��o realizada com sucesso.'
-[resumo] status=200 META='Opera��o realizada com sucesso.'
-[saldos] status=500 corpo-nao-JSON
-[velocimetro-fatur] status=200 OK -> tem dado:
-  [velocimetro-fatur] keys=['valorAtingidoPonteiro', 'valorFinal', 'valorFinalAmarelo', 'valorInicialAmarelo']
-    valorInicialAmarelo = 0.0
-    valorFinalAmarelo = 0.0
-    valorAtingidoPonteiro = 187823.1499620003
-    valorFinal = 206605.46
-[!] empresaId=1 TEM dado financeiro — parar aqui
-[probe v9] fim
+[periodo] mesIni=2026-05 mes=2026-06
+--- resumo (status=200) ---
+[resumo] meta.message='Opera��o realizada com sucesso.'
+[resumo] content=[{"mes": "2026-05", "contasReceberPorDataQuitacao": 0.0, "recebiveis": 282933.28150000004, "totalReceita": 282933.28150000004, "contasReceberPorDataLancamento": 0.0, "faturamentoPorDataLancamento": 268212.0, "totalFaturamento": 268212.0, "totalDespesa": 1819.2, "competencia": 44244.332, "contasReceberPorDataCompetencia": 0.0, "totalCompetencia": 44244.332}, {"mes": "2026-06", "contasReceberPorDataQuitacao": 0.0, "recebiveis": 310381.68750999996, "totalReceita": 310381.68750999996, "contasReceberPorDataLancamento": 0.0, "faturamentoPorDataLancamento": 187823.141, "totalFaturamento": 187823.141, "totalDespesa": 282.2, "competencia": 21915.3398, "contasReceberPorDataCompetencia": 0.0, "totalCompetencia": 21915.3398}]
+--- receita-forma-pgto (status=200) ---
+[receita-forma-pgto] meta.message='Opera��o realizada com sucesso.'
+[receita-forma-pgto] content=[{"valor": 5579.2, "tipoFormaPagamento": "AVISTA"}, {"valor": 3076.12, "tipoFormaPagamento": "CARTAODEBITO"}, {"valor": 264043.65, "tipoFormaPagamento": "CARTAOCREDITO"}, {"valor": 16510.55, "tipoFormaPagamento": "CHEQUE"}]
+--- velocimetro-receita(1) (status=200) ---
+[velocimetro-receita(1)] content={"valorInicialAmarelo": 0.0, "valorFinalAmarelo": 0.0, "valorAtingidoPonteiro": 289209.52, "valorFinal": 318130.47}
+--- velocimetro-faturamento(2) (status=200) ---
+[velocimetro-faturamento(2)] content={"valorInicialAmarelo": 0.0, "valorFinalAmarelo": 0.0, "valorAtingidoPonteiro": 187823.1499620003, "valorFinal": 206605.46}
+[probe v10] fim
