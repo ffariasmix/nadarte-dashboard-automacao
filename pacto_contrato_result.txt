@@ -1,22 +1,44 @@
-[/v1/contrato] status=500 itens_na_pagina=0
+[/v1/contrato] status=500 itens=0
 [roster] 19303/None clientes coletados
-[roster] total=19303 ativos=941
-[cliente-path] /clientes/003144/contratos -> status=404 lista=0
-[cliente-path] /clientes/003144/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/3144/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/3144 -> status=200 lista=0
-[/v1/cliente/3144] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+[roster] total=19303 ativos=939
+=== /v1/cliente/3144 status=200 ===
+[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+  [situacao] dict keys=['codigo', 'descricao']
+  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
+  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
+    [situacaocontrato] dict keys=['codigo', 'descricao']
+  [clienteObservacao] list n=16
+    [clienteObservacao[0]] dict keys=['codigo', 'dataCadastro', 'observacao']
+  [vinculos] list n=2
+    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
+      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
+  [avisos] list n=6
+    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
 ---
-[cliente-path] /clientes/004277/contratos -> status=404 lista=0
-[cliente-path] /clientes/004277/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/4277/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/4277 -> status=200 lista=0
-[/v1/cliente/4277] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+=== /v1/cliente/4277 status=200 ===
+[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+  [situacao] dict keys=['codigo', 'descricao']
+  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
+  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
+    [situacaocontrato] dict keys=['codigo', 'descricao']
+  [clienteObservacao] list n=1
+    [clienteObservacao[0]] dict keys=['codigo', 'dataCadastro', 'observacao']
+  [vinculos] list n=2
+    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
+      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
+  [avisos] list n=1
+    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
 ---
-[cliente-path] /clientes/018681/contratos -> status=404 lista=0
-[cliente-path] /clientes/018681/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/18740/contrato -> status=404 lista=0
-[cliente-path] /v1/cliente/18740 -> status=200 lista=0
-[/v1/cliente/18740] keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+=== /v1/cliente/18740 status=200 ===
+[cliente] dict keys=['avisos', 'clienteObservacao', 'clienteSintetico', 'codigo', 'matricula', 'pessoa', 'situacao', 'vinculos']
+  [situacao] dict keys=['codigo', 'descricao']
+  [pessoa] dict keys=['codigo', 'cpf', 'datanasc', 'emails', 'enderecos', 'fotoKey', 'fotoUrl', 'nome', 'rg', 'sexo', 'telefones']
+  [clienteSintetico] dict keys=['colaboradores', 'dia', 'situacaocontrato']
+    [situacaocontrato] dict keys=['codigo', 'descricao']
+  [vinculos] list n=3
+    [vinculos[0]] dict keys=['codigo', 'colaborador', 'tipoVinculo']
+      [colaborador] dict keys=['codigo', 'cpf', 'email', 'nome']
+  [avisos] list n=4
+    [avisos[0]] dict keys=['bloqueio', 'bloqueioCheque', 'cadastroIncompleto', 'codigo', 'dataAtualizacao', 'dataBloqueio', 'dataDesbloqueio', 'dataRegistro', 'desabilitado', 'mensagem', 'pesoRisco', 'tipoMensagem']
 ---
-[probe] fim (PII-safe: so campos/valores de plano, sem nome/CPF)
+[probe v2] fim (PII-safe)
