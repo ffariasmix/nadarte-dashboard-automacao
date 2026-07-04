@@ -1,28 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-pacto_probe_contrato.py (v5) — Confirmar se o PRECO do plano existe no detalhe do plano,
-e listar TODOS os planos da unidade (nome do plano NAO e' PII) para montar a tabela plano->preco.
-Descobertas ate aqui:
-  - /v1/contrato = 500 (todas as variacoes).
-  - /v1/plano (lista) = 200, mas SEM campo de valor (so codigo/descricao/empresa/vigencias).
-  - demais endpoints financeiros = 404.
-v5: /v1/plano?size=200 -> lista completa (cod + descricao + qualquer campo de valor no topo);
-    e /v1/plano/{codigo} (detalhe) + variacoes -> procura o preco.
-    PII-safe (nome de plano e' produto, nao pessoa).
+pacto_probe_contrato.py (v6) — Confirmar /v1/bi/contas-receber como fonte do VALOR por aluno.
+Doc: "Consultar contas a receber por periodo, incluindo valores, datas de vencimento e
+pessoas relacionadas". Params: empresaId (header) + dataInicial + dataFinal.
+v6 chama num mes fechado e faz WALK PII-safe: mostra as CHAVES e SO valores de campos de
+valor/vencimento + pessoa.codigo (codPessoa). NUNCA loga nome/CPF/email.
 
 Roda so na 716 Norte. Uso: PACTO_KEY_716NORTE=... python scripts/pacto_probe_contrato.py
 """
-import os, sys, json, urllib.request, urllib.error
-from pacto_fetch import gj, lst, gv
+import os, sys, json, urllib.request, urllib.error, datetime, calendar
 
 KEY = os.environ.get("PACTO_KEY_716NORTE", "").strip()
 if not KEY:
     print("[probe] sem PACTO_KEY_716NORTE", file=sys.stderr); sys.exit(0)
 
 BASE = "https://apigw.pactosolucoes.com.br"
-VAL_HINT = ("valor","price","preco","mensal","parcela","total","desconto",
-            "liquid","bruto","vlr","receita","ticket","adesao","anuidade","vencimento","tabela")
+VAL_HINT = ("valor","vencimento","receb","quitacao","saldo","parcela","desconto",
+            "juros","multa","total","liquid","bruto","pago","aberto","competencia")
+PII = ("nome","name","cpf","email","telefone","fone","rg","endereco","nascimento",
+       "datanasc","logradouro","bairro","cidade","cep","apelido","foto")
 
 def raw_get(path, headers=None):
     req = urllib.request.Request(BASE + path, method="GET")
@@ -31,57 +28,59 @@ def raw_get(path, headers=None):
     for k, v in (headers or {}).items():
         req.add_header(k, v)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return e.code, (e.read().decode("utf-8", "replace") if e.fp else "")
     except Exception as e:
         return -1, str(e)
 
-def walk_vals(tag, o, depth=0, maxdepth=5):
+def walk(tag, o, depth=0, maxdepth=6):
     ind = "  " * depth
     if isinstance(o, dict):
         print(f"{ind}[{tag}] keys={sorted(o.keys())}", file=sys.stderr)
         for k, v in o.items():
+            kl = k.lower()
+            if any(p in kl for p in PII):
+                continue
             if isinstance(v, (dict, list)):
                 if depth < maxdepth and v:
-                    walk_vals(k, v, depth + 1, maxdepth)
-            elif any(h in k.lower() for h in VAL_HINT):
+                    walk(k, v, depth + 1, maxdepth)
+            elif kl == "codigo" or any(h in kl for h in VAL_HINT):
                 print(f"{ind}  {k} = {v!r}", file=sys.stderr)
     elif isinstance(o, list):
         print(f"{ind}[{tag}] list n={len(o)}", file=sys.stderr)
         if o and depth < maxdepth:
-            walk_vals(tag + "[0]", o[0], depth + 1, maxdepth)
+            walk(tag + "[0]", o[0], depth + 1, maxdepth)
 
-def probe(path):
-    st, body = raw_get(path)
-    if st == 200:
-        try:
-            obj = json.loads(body)
-        except Exception:
-            print(f"[det] {path} -> 200 (nao-JSON)", file=sys.stderr); return
-        print(f"[det] {path} -> 200", file=sys.stderr)
-        walk_vals(path, obj.get("content", obj) if isinstance(obj, dict) else obj, depth=1)
-    else:
-        print(f"[det] {path} -> {st} | {body[:120].replace(chr(10),' ')}", file=sys.stderr)
+# mes fechado mais recente
+t = datetime.date.today()
+y, m = (t.year - 1, 12) if t.month == 1 else (t.year, t.month - 1)
+di = f"{y}-{m:02d}-01"
+df = f"{y}-{m:02d}-{calendar.monthrange(y, m)[1]:02d}"
+path = f"/v1/bi/contas-receber?dataInicial={di}&dataFinal={df}"
+print(f"[req] {path} (empresaId=1)", file=sys.stderr)
 
-# 1) LISTA COMPLETA de planos (nome do plano = produto, nao PII) + campos de valor no topo
-st, o = gj(KEY, "/v1/plano?page=0&size=200")
-plans = lst(o)
-print(f"[planos] total_na_pagina={len(plans)}", file=sys.stderr)
-for p in plans:
-    if not isinstance(p, dict): continue
-    cod = gv(p, "codigo"); desc = gv(p, "descricao")
-    vals = {k: v for k, v in p.items()
-            if any(h in k.lower() for h in VAL_HINT) and not isinstance(v, (dict, list))}
-    print(f"[plano] cod={cod} desc={desc!r} vals={vals}", file=sys.stderr)
+st, body = raw_get(path, {"empresaId": "1"})
+print(f"[/v1/bi/contas-receber] status={st}", file=sys.stderr)
+if st != 200:
+    print(f"[erro] corpo: {body[:200].replace(chr(10),' ')}", file=sys.stderr)
+else:
+    try:
+        obj = json.loads(body)
+    except Exception:
+        obj = None
+        print(f"[aviso] corpo nao-JSON: {body[:160]!r}", file=sys.stderr)
+    if obj is not None:
+        items = obj.get("content", obj) if isinstance(obj, dict) else obj
+        if isinstance(items, list):
+            print(f"[contas-receber] itens={len(items)}", file=sys.stderr)
+            # soma dos valores (se acharmos o campo) e distintos por pessoa.codigo
+            if items:
+                print("--- ESTRUTURA DO 1o ITEM (PII-safe) ---", file=sys.stderr)
+                walk("item", items[0])
+        else:
+            print("[aviso] content nao e' lista; estrutura:", file=sys.stderr)
+            walk("content", items)
 
-# 2) DETALHE do 1o plano (onde o preco costuma ficar) + variacoes
-if plans:
-    cod0 = gv(plans[0], "codigo")
-    for path in (f"/v1/plano/{cod0}", f"/v1/plano/{cod0}/valor",
-                 f"/v1/plano/{cod0}/valores", f"/v1/plano/{cod0}/tabela",
-                 f"/v1/tabelaPreco?codigoPlano={cod0}", "/v1/tabelaPreco?page=0&size=5"):
-        probe(path)
-
-print("[probe v5] fim (PII-safe)", file=sys.stderr)
+print("[probe v6] fim (PII-safe)", file=sys.stderr)
