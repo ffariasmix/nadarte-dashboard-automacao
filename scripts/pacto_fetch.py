@@ -217,7 +217,7 @@ def fetch_client_full(key, c, wmonths):
     """1 cliente -> (rec, [datas na janela]). rec: attrs + contrato (ini/fim/sit).
     dados-pessoais (codPessoa+cpf+demografia) + 1 chamada de acessos."""
     try:
-        M = gv(c, "matricula"); nome = gv(c, "nome") or ""; sit = str(gv(c, "situacao") or "")
+        M = gv(c, "matricula"); cc = gv(c, "codigoCliente", "codigo"); nome = gv(c, "nome") or ""; sit = str(gv(c, "situacao") or "")
         ini = to_date(gv(c, "inicioContrato")); fim = to_date(gv(c, "fimContrato"))
         modc = gv(c, "categoria") or ""
         st, o = gj(key, f"/clientes/{M}/dados-pessoais")
@@ -238,6 +238,10 @@ def fetch_client_full(key, c, wmonths):
             st2, o2 = gj(key, f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
             acc_ok = (st2 == 200)
             for a in (lst(o2) if acc_ok else []):
+                # by-pessoa pode trazer acessos de IRMAOS (mesmo codPessoa) -> so os DESTE cliente
+                cl = gv(a, "cliente"); clcod = gv(cl, "codigo") if isinstance(cl, dict) else None
+                if clcod is not None and cc is not None and str(clcod) != str(cc):
+                    continue
                 d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
                 if d and (d.year, d.month) in wmonths:
                     dates.append(d)
@@ -305,7 +309,7 @@ def write_catraca_wb(path, sheets):
         ws = wb.create_sheet(title=f"{mn}. {ABBR[mn]}.{yr}"[:31])
         ws.append(CT_HEADER)
         for r in sheets[(yr, mn)]:
-            ws.append(["", r["nome"], r["cpf"], r["data"]])
+            ws.append([r.get("mat", ""), r["nome"], r["cpf"], r["data"]])
     wb.save(path)
 
 def merge_catraca_into(path, sheets):
@@ -324,7 +328,7 @@ def merge_catraca_into(path, sheets):
         ws = wb.create_sheet(title=f"{mn}. {ABBR[mn]}.{yr}"[:31])
         ws.append(CT_HEADER)
         for r in sheets[(yr, mn)]:
-            ws.append(["", r["nome"], r["cpf"], r["data"]])
+            ws.append([r.get("mat", ""), r["nome"], r["cpf"], r["data"]])
         add += 1
     wb.save(path)
     return add
@@ -363,7 +367,7 @@ def selftest_data():
                 naccess = random.choice([0, 2, 4, 8, 12])
                 for _ in range(naccess):
                     day = random.randint(1, calendar.monthrange(m[0], m[1])[1])
-                    cat.setdefault(m, []).append({"cpf": cpf, "nome": f"ALUNO {uk} {cid}",
+                    cat.setdefault(m, []).append({"mat": str(cid), "cpf": cpf, "nome": f"ALUNO {uk} {cid}",
                                                   "data": datetime.date(m[0], m[1], day)})
             alunos_by_month[m][ulabel] = rows
         catraca_by_unit[(uk, ulabel)] = cat
@@ -460,7 +464,7 @@ def main():
             ]
         for rec, dates in recs:
             for d in dates:
-                cat.setdefault((d.year, d.month), []).append({"cpf": rec["cpf"], "nome": rec["nome"], "data": d})
+                cat.setdefault((d.year, d.month), []).append({"mat": rec["mat"], "cpf": rec["cpf"], "nome": rec["nome"], "data": d})
         catraca_by_unit[ulabel] = cat
         nwin = len(recs); ncpf = sum(1 for rec, _ in recs if len(str(rec["cpf"] or "")) >= 11)
         tot_acc = sum(len(v) for v in cat.values())

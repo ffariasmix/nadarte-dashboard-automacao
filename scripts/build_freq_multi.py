@@ -208,9 +208,9 @@ for mk, path in alunos_files.items():
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
             doc_v = r[c_doc] if (c_doc is not None and c_doc<len(r)) else None
-            key = skey(unit, doc_v, nome_v)
-            if not key: continue
             mat = norm_mat(r[c_mat]) if (c_mat is not None and c_mat<len(r)) else ""
+            key = mat if mat else skey(unit, doc_v, nome_v)   # chave = (unidade+matricula); fallback CPF/nome
+            if not key: continue
             active[(pos,unit)].add(key)
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
@@ -238,13 +238,14 @@ for unit, path in catraca_files.items():
         rows = [r for r in wb[sn].iter_rows(values_only=True)]
         hidx, colmap = detect_header(rows, ["MAT. CLIENTE","CPF","DATA ENTRADA"])
         if hidx is None: continue
-        c_cpf=find_col(colmap,"CPF"); c_nome=find_col(colmap,"NOME"); c_dt=find_col(colmap,"DATA ENTRADA")
-        if c_cpf is None and c_nome is None: continue
+        c_mat=find_col(colmap,"MAT. CLIENTE","MAT CLIENTE"); c_cpf=find_col(colmap,"CPF"); c_nome=find_col(colmap,"NOME"); c_dt=find_col(colmap,"DATA ENTRADA")
+        if c_mat is None and c_cpf is None and c_nome is None: continue
         for r in rows[hidx+1:]:
             if r is None: continue
+            mat_v = norm_mat(r[c_mat]) if (c_mat is not None and c_mat<len(r)) else ""
             cpf_v = r[c_cpf] if (c_cpf is not None and c_cpf<len(r)) else None
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
-            key = skey(unit, cpf_v, nome_v)
+            key = mat_v if mat_v else skey(unit, cpf_v, nome_v)   # chave = matricula; fallback CPF/nome
             if not key: continue
             acc[(unit,pos)][key]+=1; total+=1; people.add(key)
             if c_dt is not None and c_dt<len(r):
