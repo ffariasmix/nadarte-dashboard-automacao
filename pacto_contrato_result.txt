@@ -1,12 +1,9 @@
-[periodo] mesIni=2026-05 mes=2026-06
---- resumo (status=200) ---
-[resumo] meta.message='Opera��o realizada com sucesso.'
-[resumo] content=[{"mes": "2026-05", "contasReceberPorDataQuitacao": 0.0, "recebiveis": 282933.28150000004, "totalReceita": 282933.28150000004, "contasReceberPorDataLancamento": 0.0, "faturamentoPorDataLancamento": 268212.0, "totalFaturamento": 268212.0, "totalDespesa": 1819.2, "competencia": 44244.332, "contasReceberPorDataCompetencia": 0.0, "totalCompetencia": 44244.332}, {"mes": "2026-06", "contasReceberPorDataQuitacao": 0.0, "recebiveis": 310381.68750999996, "totalReceita": 310381.68750999996, "contasReceberPorDataLancamento": 0.0, "faturamentoPorDataLancamento": 187823.141, "totalFaturamento": 187823.141, "totalDespesa": 282.2, "competencia": 21915.3398, "contasReceberPorDataCompetencia": 0.0, "totalCompetencia": 21915.3398}]
---- receita-forma-pgto (status=200) ---
-[receita-forma-pgto] meta.message='Opera��o realizada com sucesso.'
-[receita-forma-pgto] content=[{"valor": 5579.2, "tipoFormaPagamento": "AVISTA"}, {"valor": 3076.12, "tipoFormaPagamento": "CARTAODEBITO"}, {"valor": 264043.65, "tipoFormaPagamento": "CARTAOCREDITO"}, {"valor": 16510.55, "tipoFormaPagamento": "CHEQUE"}]
---- velocimetro-receita(1) (status=200) ---
-[velocimetro-receita(1)] content={"valorInicialAmarelo": 0.0, "valorFinalAmarelo": 0.0, "valorAtingidoPonteiro": 289209.52, "valorFinal": 318130.47}
---- velocimetro-faturamento(2) (status=200) ---
-[velocimetro-faturamento(2)] content={"valorInicialAmarelo": 0.0, "valorFinalAmarelo": 0.0, "valorAtingidoPonteiro": 187823.1499620003, "valorFinal": 206605.46}
-[probe v10] fim
+[amostra] pagina0=200 ativos=6
+[cli mat=003144 codPessoa=3146] acessos=200 blanks=200 matriculas_nos_acessos={}
+[cli mat=004277 codPessoa=4279] acessos=200 blanks=200 matriculas_nos_acessos={}
+[cli mat=018681 codPessoa=19117] acessos=13 blanks=13 matriculas_nos_acessos={}
+[cli mat=017777 codPessoa=18141] acessos=152 blanks=152 matriculas_nos_acessos={}
+[cli mat=019193 codPessoa=19656] acessos=6 blanks=6 matriculas_nos_acessos={}
+[cli mat=018175 codPessoa=18555] acessos=180 blanks=180 matriculas_nos_acessos={}
+[v11] checados=6 | casos multi-matricula(CPF compartilhado)=0 | clientes c/ acesso sem matricula=6
+[probe v11] fim (PII-safe)
