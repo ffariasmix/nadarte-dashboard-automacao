@@ -411,19 +411,22 @@ except Exception: pass
 # ---- TICKET dinamico: faturamento real (API, ultimo mes fechado) / alunos ativos ----
 _ativos_un = {}
 for _s in students: _ativos_un[_s["u"]] = _ativos_un.get(_s["u"], 0) + 1
-tickets_out = dict(TICKETS)  # fallback = valores fixos
+tickets_out = dict(TICKETS); ticket_mes = ""  # fallback = valores fixos
 try:
     _fj = json.load(open(os.path.join(DATA_DIR, "faturamento.json")))
     _fat = _fj.get("faturamento", {})
     for _u in UNIT_KEYS:
         if _fat.get(_u) and _ativos_un.get(_u):
             tickets_out[_u] = round(float(_fat[_u]) / _ativos_un[_u], 2)
+    _ym = _fj.get("mes", "")
+    if _ym and "-" in _ym:
+        _yy, _mm = _ym.split("-"); ticket_mes = f"{ABBR[int(_mm)]}/{_yy}"
     print(f"[ticket] dinamico (faturamento {_fj.get('mes')}): {tickets_out}", file=sys.stderr)
 except Exception as _e:
     print(f"[ticket] valores fixos (sem faturamento.json): {_e}", file=sys.stderr)
 
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
-       "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,
+       "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,
        "baseUpdated":meta.get("baseUpdated",""),
        "baseUpdatedBy":meta.get("baseUpdatedBy","") or meta.get("baseUpdatedByName","")}
