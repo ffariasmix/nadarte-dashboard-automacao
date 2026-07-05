@@ -1,9 +1,70 @@
-[amostra] pagina0=200 ativos=6
-[cli mat=003144 codPessoa=3146] acessos=200 blanks=200 matriculas_nos_acessos={}
-[cli mat=004277 codPessoa=4279] acessos=200 blanks=200 matriculas_nos_acessos={}
-[cli mat=018681 codPessoa=19117] acessos=13 blanks=13 matriculas_nos_acessos={}
-[cli mat=017777 codPessoa=18141] acessos=152 blanks=152 matriculas_nos_acessos={}
-[cli mat=019193 codPessoa=19656] acessos=6 blanks=6 matriculas_nos_acessos={}
-[cli mat=018175 codPessoa=18555] acessos=180 blanks=180 matriculas_nos_acessos={}
-[v11] checados=6 | casos multi-matricula(CPF compartilhado)=0 | clientes c/ acesso sem matricula=6
-[probe v11] fim (PII-safe)
+[amostra] ativos_na_pagina=6
+
+=== cliente matricula=003144 codigoCliente=3144 codPessoa=3146 acessos=200 ===
+--- ESTRUTURA DO 1o ACESSO ---
+[acesso] keys=['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
+  codigo = 752293
+  [cliente] keys=['codigo', 'codigoMatricula', 'empresa', 'matricula', 'pessoa', 'situacao']
+    codigo = 3144
+    matricula = '003144'
+    [pessoa] keys=['codigo', 'cpf', 'dataNascimento', 'email', 'emails', 'fotoKey', 'nome', 'sexo', 'telefone', 'telefones', 'valorLimiteCaixaAbertoVendaAvulsa']
+      codigo = 3146
+    [empresa] keys=['arredondamento', 'ativa', 'bvObrigatorio', 'capacidadeSimultanea', 'carenciaRenovacao', 'codigo', 'codigoGymPass', 'cpfCodigoInternoWeHelp', 'empresaConciliadora', 'habilitarCadastroEmpresaSesi', 'habilitarIntegracaoGladiumSescDf', 'horariocapacidadeporcategoria', 'integracaMyWellneApiKey', 'integracaoAmigoFitHabilitada', 'integracaoF360Dir', 'integracaoF360FtpPort', 'integracaoF360FtpServer', 'integracaoF360Quinzenal', 'integracaoF360RelFatHabilitada', 'integracaoF360User', 'integracaoFogueteHabilitada', 'integracaoManyChatHabilitada', 'integracaoManyChatTokenApi', 'integracaoMentorWebHabilitada', 'integracaoMentorWebPassword', 'integracaoMentorWebServico', 'integracaoMentorWebUrl', 'integracaoMentorWebUser', 'integracaoMyWellneHabilitada', 'integracaoMyWellnessEnviarGrupos', 'integracaoMyWellnessEnviarVinculos', 'integracaoMyWellnessFacilityUrl', 'integracaoMyWellnessPassword', 'integracaoMyWellnessUser', 'integracaoNuvemshopHabilitada', 'integracaoSpiviHabilitada', 'integracaoSpiviSiteID', 'nome', 'notificarWebhook', 'nrDiasVigenciaMyWellnessGymPass', 'permiteContratosConcomintante', 'pontuarApenasCampanhasAtivas', 'senhaConciliadora', 'timeZoneDefault', 'tipoGestaoNfse', 'tipoVigenciaMyWellnessGympass', 'tokenApiGymPass', 'tokenBuzzLead', 'tokenSMS', 'trabalharComPontuacao', 'urlWebhookNotificar', 'usaIntegracoesCrm', 'usarApiSescCe', 'usarApiSescRo', 'usarConciliadora', 'usarGestaoCreditosPersonal', 'usarNfce', 'usarNfse', 'usarParceiroFidelidade', 'usarSescDf', 'utilizaConfigCancelamentoSesc', 'utilizaGestaoClientesComRestricoes', 'utilizaSistemaEstacionamento', 'utilizarPactoPrint']
+      codigo = 1
+  sentido = 'E'
+  [localAcesso] keys=['codigo', 'descricao', 'listaColetor']
+    codigo = 2
+  [coletor] keys=['codigo', 'descricao']
+    codigo = 2
+  meioIdentificacaoEntrada = 12
+  matricula = None
+  cliente.codigo distintos nos acessos: {'3144': 200}  (== codigoCliente 3144? multiplos = CPF compartilhado)
+
+=== cliente matricula=004277 codigoCliente=4277 codPessoa=4279 acessos=200 ===
+--- ESTRUTURA DO 1o ACESSO ---
+[acesso] keys=['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
+  codigo = 751917
+  [cliente] keys=['codigo', 'codigoMatricula', 'empresa', 'matricula', 'pessoa', 'situacao']
+    codigo = 4277
+    matricula = '004277'
+    [pessoa] keys=['codigo', 'cpf', 'dataNascimento', 'email', 'emails', 'fotoKey', 'nome', 'sexo', 'telefone', 'telefones', 'valorLimiteCaixaAbertoVendaAvulsa']
+      codigo = 4279
+    [empresa] keys=['arredondamento', 'ativa', 'bvObrigatorio', 'capacidadeSimultanea', 'carenciaRenovacao', 'codigo', 'codigoGymPass', 'cpfCodigoInternoWeHelp', 'empresaConciliadora', 'habilitarCadastroEmpresaSesi', 'habilitarIntegracaoGladiumSescDf', 'horariocapacidadeporcategoria', 'integracaMyWellneApiKey', 'integracaoAmigoFitHabilitada', 'integracaoF360Dir', 'integracaoF360FtpPort', 'integracaoF360FtpServer', 'integracaoF360Quinzenal', 'integracaoF360RelFatHabilitada', 'integracaoF360User', 'integracaoFogueteHabilitada', 'integracaoManyChatHabilitada', 'integracaoManyChatTokenApi', 'integracaoMentorWebHabilitada', 'integracaoMentorWebPassword', 'integracaoMentorWebServico', 'integracaoMentorWebUrl', 'integracaoMentorWebUser', 'integracaoMyWellneHabilitada', 'integracaoMyWellnessEnviarGrupos', 'integracaoMyWellnessEnviarVinculos', 'integracaoMyWellnessFacilityUrl', 'integracaoMyWellnessPassword', 'integracaoMyWellnessUser', 'integracaoNuvemshopHabilitada', 'integracaoSpiviHabilitada', 'integracaoSpiviSiteID', 'nome', 'notificarWebhook', 'nrDiasVigenciaMyWellnessGymPass', 'permiteContratosConcomintante', 'pontuarApenasCampanhasAtivas', 'senhaConciliadora', 'timeZoneDefault', 'tipoGestaoNfse', 'tipoVigenciaMyWellnessGympass', 'tokenApiGymPass', 'tokenBuzzLead', 'tokenSMS', 'trabalharComPontuacao', 'urlWebhookNotificar', 'usaIntegracoesCrm', 'usarApiSescCe', 'usarApiSescRo', 'usarConciliadora', 'usarGestaoCreditosPersonal', 'usarNfce', 'usarNfse', 'usarParceiroFidelidade', 'usarSescDf', 'utilizaConfigCancelamentoSesc', 'utilizaGestaoClientesComRestricoes', 'utilizaSistemaEstacionamento', 'utilizarPactoPrint']
+      codigo = 1
+  sentido = 'E'
+  [localAcesso] keys=['codigo', 'descricao', 'listaColetor']
+    codigo = 2
+  [coletor] keys=['codigo', 'descricao']
+    codigo = 2
+  meioIdentificacaoEntrada = 12
+  matricula = None
+  cliente.codigo distintos nos acessos: {'4277': 200}  (== codigoCliente 4277? multiplos = CPF compartilhado)
+
+=== cliente matricula=018681 codigoCliente=18740 codPessoa=19117 acessos=13 ===
+--- ESTRUTURA DO 1o ACESSO ---
+[acesso] keys=['cliente', 'codigo', 'coletor', 'dataDeAcesso', 'dataRegistro', 'dataSaida', 'dtHrEntrada', 'dtHrEntradaDate', 'dtHrSaida', 'dtHrSaidaDate', 'horaEntradaRegistroAcesso', 'horaSaidaRegistroAcesso', 'liberacaoAcesso', 'localAcesso', 'matricula', 'meioIdentificacaoEntrada', 'meioIdentificacaoEntradaApresentar', 'meioIdentificacaoSaida', 'periodoAcessoCliente', 'pessoa', 'registrarSaida', 'sentido', 'situacao', 'ticket', 'usuario']
+  codigo = 749782
+  [cliente] keys=['codigo', 'codigoMatricula', 'empresa', 'matricula', 'pessoa', 'situacao']
+    codigo = 18740
+    matricula = '018681'
+    [pessoa] keys=['codigo', 'cpf', 'dataNascimento', 'email', 'emails', 'fotoKey', 'nome', 'sexo', 'telefone', 'telefones', 'valorLimiteCaixaAbertoVendaAvulsa']
+      codigo = 19117
+    [empresa] keys=['arredondamento', 'ativa', 'bvObrigatorio', 'capacidadeSimultanea', 'carenciaRenovacao', 'codigo', 'codigoGymPass', 'cpfCodigoInternoWeHelp', 'empresaConciliadora', 'habilitarCadastroEmpresaSesi', 'habilitarIntegracaoGladiumSescDf', 'horariocapacidadeporcategoria', 'integracaMyWellneApiKey', 'integracaoAmigoFitHabilitada', 'integracaoF360Dir', 'integracaoF360FtpPort', 'integracaoF360FtpServer', 'integracaoF360Quinzenal', 'integracaoF360RelFatHabilitada', 'integracaoF360User', 'integracaoFogueteHabilitada', 'integracaoManyChatHabilitada', 'integracaoManyChatTokenApi', 'integracaoMentorWebHabilitada', 'integracaoMentorWebPassword', 'integracaoMentorWebServico', 'integracaoMentorWebUrl', 'integracaoMentorWebUser', 'integracaoMyWellneHabilitada', 'integracaoMyWellnessEnviarGrupos', 'integracaoMyWellnessEnviarVinculos', 'integracaoMyWellnessFacilityUrl', 'integracaoMyWellnessPassword', 'integracaoMyWellnessUser', 'integracaoNuvemshopHabilitada', 'integracaoSpiviHabilitada', 'integracaoSpiviSiteID', 'nome', 'notificarWebhook', 'nrDiasVigenciaMyWellnessGymPass', 'permiteContratosConcomintante', 'pontuarApenasCampanhasAtivas', 'senhaConciliadora', 'timeZoneDefault', 'tipoGestaoNfse', 'tipoVigenciaMyWellnessGympass', 'tokenApiGymPass', 'tokenBuzzLead', 'tokenSMS', 'trabalharComPontuacao', 'urlWebhookNotificar', 'usaIntegracoesCrm', 'usarApiSescCe', 'usarApiSescRo', 'usarConciliadora', 'usarGestaoCreditosPersonal', 'usarNfce', 'usarNfse', 'usarParceiroFidelidade', 'usarSescDf', 'utilizaConfigCancelamentoSesc', 'utilizaGestaoClientesComRestricoes', 'utilizaSistemaEstacionamento', 'utilizarPactoPrint']
+      codigo = 1
+  sentido = 'E'
+  [localAcesso] keys=['codigo', 'descricao', 'listaColetor']
+    codigo = 2
+  [coletor] keys=['codigo', 'descricao']
+    codigo = 2
+  [usuario] keys=['codigo', 'colaborador', 'nome']
+    codigo = 110
+    [colaborador] keys=['codigo', 'empresa', 'pessoa', 'situacao', 'situacaoApresentar', 'tiposColaborador']
+      codigo = 329
+      [pessoa] keys=['categoria', 'codCliente', 'codigo', 'cpf', 'dataNascimento', 'fotoKey', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'tipo', 'tipoColaborador', 'tipoCompraCredito', 'urlFoto']
+        codigo = 18582
+      [empresa] keys=['arredondamento', 'ativa', 'bvObrigatorio', 'capacidadeSimultanea', 'carenciaRenovacao', 'codigo', 'codigoGymPass', 'cpfCodigoInternoWeHelp', 'empresaConciliadora', 'habilitarCadastroEmpresaSesi', 'habilitarIntegracaoGladiumSescDf', 'horariocapacidadeporcategoria', 'integracaMyWellneApiKey', 'integracaoAmigoFitHabilitada', 'integracaoF360Dir', 'integracaoF360FtpPort', 'integracaoF360FtpServer', 'integracaoF360Quinzenal', 'integracaoF360RelFatHabilitada', 'integracaoF360User', 'integracaoFogueteHabilitada', 'integracaoManyChatHabilitada', 'integracaoManyChatTokenApi', 'integracaoMentorWebHabilitada', 'integracaoMentorWebPassword', 'integracaoMentorWebServico', 'integracaoMentorWebUrl', 'integracaoMentorWebUser', 'integracaoMyWellneHabilitada', 'integracaoMyWellnessEnviarGrupos', 'integracaoMyWellnessEnviarVinculos', 'integracaoMyWellnessFacilityUrl', 'integracaoMyWellnessPassword', 'integracaoMyWellnessUser', 'integracaoNuvemshopHabilitada', 'integracaoSpiviHabilitada', 'integracaoSpiviSiteID', 'nome', 'notificarWebhook', 'nrDiasVigenciaMyWellnessGymPass', 'permiteContratosConcomintante', 'pontuarApenasCampanhasAtivas', 'senhaConciliadora', 'timeZoneDefault', 'tipoGestaoNfse', 'tipoVigenciaMyWellnessGympass', 'tokenApiGymPass', 'tokenBuzzLead', 'tokenSMS', 'trabalharComPontuacao', 'urlWebhookNotificar', 'usaIntegracoesCrm', 'usarApiSescCe', 'usarApiSescRo', 'usarConciliadora', 'usarGestaoCreditosPersonal', 'usarNfce', 'usarNfse', 'usarParceiroFidelidade', 'usarSescDf', 'utilizaConfigCancelamentoSesc', 'utilizaGestaoClientesComRestricoes', 'utilizaSistemaEstacionamento', 'utilizarPactoPrint']
+        codigo = 1
+  meioIdentificacaoEntrada = 11
+  matricula = None
+  cliente.codigo distintos nos acessos: {'18740': 13}  (== codigoCliente 18740? multiplos = CPF compartilhado)
+[probe v12] fim (PII-safe)
