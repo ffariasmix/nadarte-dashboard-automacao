@@ -2,8 +2,8 @@ name: Build & Deploy Dashboard Nad'Arte
 
 on:
   schedule:
-    # Quinta-feira 11:00 UTC = 08:00 America/Sao_Paulo (ajuste o cron se precisar)
-    - cron: '0 11 * * 4'
+    # Sexta-feira 13:00 UTC = 10:00 America/Sao_Paulo (gera a agenda da semana seguinte)
+    - cron: '0 13 * * 5'
   workflow_dispatch:
     inputs:
       deploy:
@@ -74,16 +74,6 @@ jobs:
           echo "Coletando da API PACTO (pode levar ~30 min; rate-limit por chave)..."
           python scripts/pacto_fetch.py data
 
-      - name: Faturamento por unidade (API PACTO) para o ticket dinamico
-        continue-on-error: true
-        env:
-          PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
-          PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
-          PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
-          PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
-          PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
-        run: python scripts/pacto_faturamento.py data
-
       - name: Construir freq_multi.json (com checagem de consistencia)
         run: |
           set -o pipefail
@@ -142,10 +132,6 @@ jobs:
           echo "- Alunos: ${{ steps.meta.outputs.n }}"          >> "$GITHUB_STEP_SUMMARY"
           echo "- Dados ate: ${{ steps.meta.outputs.junmax }}"  >> "$GITHUB_STEP_SUMMARY"
           echo "- Publicar? ${{ github.event.inputs.deploy || 'true' }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Ticket por unidade (R\$):**" >> "$GITHUB_STEP_SUMMARY"
-          python -c "import json;t=json.load(open('data/freq_multi.json'))['tickets'];[print('- %s: %.2f'%(k,v)) for k,v in sorted(t.items(),key=lambda x:-x[1])]" >> "$GITHUB_STEP_SUMMARY" || true
-          if [ -f data/faturamento.json ]; then echo "" >> "$GITHUB_STEP_SUMMARY"; echo "_Faturamento (fonte do ticket):_ \`$(cat data/faturamento.json)\`" >> "$GITHUB_STEP_SUMMARY"; else echo "" >> "$GITHUB_STEP_SUMMARY"; echo "_Ticket = valores fixos (faturamento.json ausente)._" >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Garantir projeto Pages (cria se nao existir)
         if: ${{ github.event.inputs.deploy != 'false' }}
