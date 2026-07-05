@@ -142,6 +142,10 @@ jobs:
           echo "- Alunos: ${{ steps.meta.outputs.n }}"          >> "$GITHUB_STEP_SUMMARY"
           echo "- Dados ate: ${{ steps.meta.outputs.junmax }}"  >> "$GITHUB_STEP_SUMMARY"
           echo "- Publicar? ${{ github.event.inputs.deploy || 'true' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Ticket por unidade (R\$):**" >> "$GITHUB_STEP_SUMMARY"
+          python -c "import json;t=json.load(open('data/freq_multi.json'))['tickets'];[print('- %s: %.2f'%(k,v)) for k,v in sorted(t.items(),key=lambda x:-x[1])]" >> "$GITHUB_STEP_SUMMARY" || true
+          if [ -f data/faturamento.json ]; then echo "" >> "$GITHUB_STEP_SUMMARY"; echo "_Faturamento (fonte do ticket):_ \`$(cat data/faturamento.json)\`" >> "$GITHUB_STEP_SUMMARY"; else echo "" >> "$GITHUB_STEP_SUMMARY"; echo "_Ticket = valores fixos (faturamento.json ausente)._" >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Garantir projeto Pages (cria se nao existir)
         if: ${{ github.event.inputs.deploy != 'false' }}
