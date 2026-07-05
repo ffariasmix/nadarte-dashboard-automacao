@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-pacto_faturamento.py — Faturamento real por unidade (ULTIMO MES FECHADO) via /v1/bi/resumo
+pacto_faturamento.py — Faturamento real por unidade (MES FECHADO COM FOLGA = 2 meses atras,
+pois o mes recem-fechado ainda tem faturamento a lancar) via /v1/bi/resumo
 da API PACTO. Escreve data/faturamento.json = {"mes": "AAAA-MM", "faturamento": {unit: valor}}.
 Usado pelo build para o TICKET dinamico (faturamento / alunos ativos por unidade).
 Robusto: descobre o empresaId de cada unidade via /v1/plano; falha silenciosa por unidade
@@ -51,13 +52,18 @@ def empresa_id(key):
         pass
     return "1"
 
-def last_closed_month():
+def month_back(n):
+    """(ano, mes) de n meses atras a partir de hoje."""
     t = datetime.date.today()
-    return (t.year - 1, 12) if t.month == 1 else (t.year, t.month - 1)
+    y, m = t.year, t.month - n
+    while m < 1:
+        m += 12; y -= 1
+    return (y, m)
 
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
-    y, m = last_closed_month()
+    # mes com FOLGA: pula o mes recem-fechado (faturamento ainda em lancamento) e usa o anterior.
+    y, m = month_back(2)
     mes = f"{y}-{m:02d}"
     fat = {}
     for unit, secret in UNITS:
