@@ -57,13 +57,7 @@ jobs:
             exit 1
           fi
 
-      - name: Baixar bases do Google Drive
-        env:
-          GOOGLE_SA_KEY: ${{ secrets.GOOGLE_SA_KEY }}
-        run: python scripts/drive_download.py data
-
-      - name: Atualizar com API PACTO (mes corrente + catraca nova + Vencimentos)
-        if: ${{ github.event.inputs.usar_api != 'false' }}
+      - name: Coletar bases da API PACTO (fonte unica - cadastro, catraca, contrato)
         env:
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
