@@ -47,7 +47,7 @@ def window_months(start, end):
             m = 1; y += 1
     return out
 
-def active_in_month(ini, fim, yr, mn, situacao=""):
+def active_in_month(ini, fim, yr, mn, situacao="", strict_ativo=False):
     """ATIVO no mes, alinhado ao criterio da PACTO (mesmo do painel Drive):
     - quem esta ATIVO hoje conta em todo mes desde que ja era cliente (nao importa se o
       contrato "venceu" — inclui vencidos/a vencer, como o flag ATIVO faz);
@@ -61,6 +61,8 @@ def active_in_month(ini, fim, yr, mn, situacao=""):
         return False
     if str(situacao).upper() == "ATIVO":
         return True   # membro ativo hoje e ja era cliente em M
+    if strict_ativo:
+        return False  # mes-base: conta SO o flag ATIVO (nao expande por contrato)
     # inativo/saiu -> usa o contrato para saber ate quando esteve ativo
     if fim and fim < first:
         return False
@@ -458,9 +460,11 @@ def main():
     for uk, ulabel, recs in results:
         cat = {}
         for ym in wmonths:
+            # mes-base (WINDOW_END = mais recente) conta SO flag ATIVO; meses passados usam contrato (churn)
+            _strict = (ym == WINDOW_END)
             alunos_by_month[ym][ulabel] = [
                 rec for rec, _ in recs
-                if active_in_month(rec["ini"], rec["fim"], ym[0], ym[1], rec["sit"])
+                if active_in_month(rec["ini"], rec["fim"], ym[0], ym[1], rec["sit"], strict_ativo=_strict)
             ]
         for rec, dates in recs:
             for d in dates:
