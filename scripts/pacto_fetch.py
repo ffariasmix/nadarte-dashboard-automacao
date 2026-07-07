@@ -236,25 +236,25 @@ def fotos_professores(key):
         pass
     return by_id, by_nome
 
-def _prof_do_cliente(cli, prof_by_id, prof_by_nome):
-    """Best-effort: extrai (nome, foto) do professor vinculado ao aluno."""
+# Tipos de vinculo que contam como "professor" (modelo B). Consultor/comercial fica de fora.
+PROF_TIPOS = ("PROFESSOR", "INSTRUTOR", "TREINADOR", "PERSONAL", "PROF")
+
+def _prof_do_cliente(cli):
+    """(nome, tipo) do vinculo de PROFESSOR/INSTRUTOR do aluno. Foto nao existe na API.
+    Estrutura real: vinculos[].{codigo, colaborador{codigo,cpf,email,nome}, tipoVinculo}."""
     vincs = gv(cli, "vinculos")
     if not isinstance(vincs, list):
         return "", ""
     for v in vincs:
         if not isinstance(v, dict):
             continue
-        p = gv(v, "professor") if isinstance(gv(v, "professor"), dict) else v
-        pid = gv(p, "id", "professorId", "codigoProfessor", "idProfessor")
-        nome = gv(p, "nome", "nomeProfessor", "professor") or ""
-        foto = gv(p, "imageUri", "fotoUrl") or ""
-        if pid is not None and str(pid) in prof_by_id:
-            info = prof_by_id[str(pid)]
-            return (nome or info.get("nome", "")), (foto or info.get("foto", ""))
-        if nome and nome.strip().upper() in prof_by_nome:
-            return nome, (foto or prof_by_nome[nome.strip().upper()])
-        if nome or foto:
-            return nome, foto
+        tipo = str(gv(v, "tipoVinculo") or "").strip()
+        if not any(k in tipo.upper() for k in PROF_TIPOS):
+            continue                      # ignora CONSULTOR e outros vinculos nao-docentes
+        colab = gv(v, "colaborador")
+        nome = (gv(colab, "nome") or "") if isinstance(colab, dict) else ""
+        if nome:
+            return str(nome).strip(), (tipo.title() if tipo else "Professor")
     return "", ""
 
 def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
@@ -281,14 +281,14 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
             contract_ok = False          # transitorio (rate-limit/erro) -> re-tentar
         # 401/403 (sem escopo) e 404 (sem contrato) -> aceita vazio, sem re-tentar em loop
         # FOTO do aluno + professor vinculado (guia 'Pacto API - Fotos'). So se PACTO_FOTOS=1.
-        foto = ""; prof = ""; prof_foto = ""
+        foto = ""; prof = ""; prof_role = ""
         if FOTOS and cc is not None:
             st4, o4 = gj(key, f"/v1/cliente/{cc}")
             if st4 == 200:
                 cli = unwrap(o4) if isinstance(o4, dict) else {}
                 pes = gv(cli, "pessoa") if isinstance(gv(cli, "pessoa"), dict) else {}
                 foto = gv(pes, "fotoUrl") or gv(dp, "urlFoto") or ""
-                prof, prof_foto = _prof_do_cliente(cli, prof_by_id, prof_by_nome)
+                prof, prof_role = _prof_do_cliente(cli)
         rec = {
             "ulabel": None, "mat": M, "nome": nome, "cpf": cpf,
             "nasc": to_date(gv(dp, "dataNascimento", "datanasc", "nascimento")),
@@ -296,7 +296,7 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
             "mod": mod_txt or gv(dp, "categoria") or modc,
             "dm": to_date(gv(dp, "dataMatricula")) or ini,
             "ini": ini, "fim": fim, "sit": sit,
-            "foto": foto, "prof": prof, "profFoto": prof_foto,
+            "foto": foto, "prof": prof, "profRole": prof_role,
         }
         dates = []
         acc_ok = True
@@ -359,7 +359,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","FOTO","PROF NOME","PROF FOTO"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","FOTO","PROF NOME","PROF TIPO"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -369,7 +369,7 @@ def write_alunos_wb(path, unit_label_to_rows):
         ws.append(AL_HEADER)
         for r in rows:
             ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"],
-                       r.get("foto",""), r.get("prof",""), r.get("profFoto","")])
+                       r.get("foto",""), r.get("prof",""), r.get("profRole","")])
     wb.save(path)
 
 def write_catraca_wb(path, sheets):

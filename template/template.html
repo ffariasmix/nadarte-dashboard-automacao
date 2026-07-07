@@ -842,7 +842,7 @@ function alunoDetail(s){
      +'<span class="adtag2">'+escD(unitLabel)+'</span>'
      +(s.band?'<span class="adtag2">'+escD(s.band)+'</span>':'')
      +(ti?'<span class="adtag2">Aluno desde '+ti.desde+' · '+ti.label+' de casa</span>':'')+'</div>'
-   +(s.prof?('<div class="adprof">'+avatarEl(s.prof,s.profFoto,'avsm')+'<div><div class="adlab" style="margin:0">Professor responsável</div><div style="font-weight:600">'+escD(s.prof)+'</div></div></div>'):'')
+   +(s.prof?('<div class="adprof">'+avatarEl(s.prof,'','avsm')+'<div><div class="adlab" style="margin:0">'+escD(s.profRole||'Professor')+'</div><div style="font-weight:600">'+escD(s.prof)+'</div></div></div>'):'')
    +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px"><span style="color:#3E6DAA">■</span> acessou · <span style="color:#E8A0A0">■</span> matriculado s/ acesso · <span style="color:#cfcfcf">■</span> não matriculado</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Matriculado em <b>'+(ti?ti.desde:'—')+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
    +'<div class="adsec"><div class="adlab">Diagnóstico</div>'+escD(c.motivo||'')+'</div>'
    +'<div class="adsec" style="border-left-color:'+ab.cor+'"><div class="adlab" style="color:'+ab.cor+'">Abordagem recomendada · '+escD(ab.obj)+'</div>'
