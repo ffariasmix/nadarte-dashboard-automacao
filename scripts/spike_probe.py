@@ -123,4 +123,54 @@ if isinstance(profs, list) and profs and isinstance(profs[0], dict):
     p = profs[0].get("professor") or {}
     print(f"  [bi-professores-vinculos] itens={len(profs)} professor.keys={sorted(p.keys())} imageUri_presente={bool(p.get('imageUri'))}")
 
+# ---------- 4) PROFUNDIDADE DO HISTORICO (desde quando ha catraca confiavel) ----------
+# Amostra alunos ATIVOS, puxa o historico completo de acessos (size=1000) e mede:
+#  - data do acesso mais antigo, e
+#  - densidade por mes (quantos acessos por AAAA-MM na amostra) -> revela quando fica "denso/confiavel".
+print("\n=== PROFUNDIDADE DO HISTORICO (amostra, PII-safe) ===")
+def _acc_ym(a):
+    v = a.get("dtHrEntrada") or a.get("dataDeAcesso") or a.get("dataRegistro") or a.get("data")
+    if v is None: return None
+    try:
+        n = int(v)
+        d = _dt.datetime.utcfromtimestamp(n/1000.0) if n > 10_000_000_000 else _dt.datetime.utcfromtimestamp(n)
+        return (d.year, d.month)
+    except (ValueError, TypeError):
+        s = str(v)[:7].replace("/", "-")
+        try:
+            p = s.split("-"); return (int(p[0]), int(p[1])) if len(p) >= 2 else None
+        except Exception:
+            return None
+
+st, body, _ = raw("/clientes/simples?page=0&size=300")
+ros = unwrap(as_json(body) or {})
+ativos = [c for c in (ros if isinstance(ros, list) else []) if str((c.get("situacao") or "")).strip().upper() == "ATIVO"]
+amostra = ativos[:40]
+print(f"  amostra: {len(amostra)} alunos ATIVOS (de {len(ativos)} na pagina)")
+hist = {}; oldest = None; com_acesso = 0; total_acc = 0
+for c in amostra:
+    M = c.get("matricula") or c.get("codigo")
+    if not M: continue
+    st1, b1, _ = raw(f"/clientes/{M}/dados-pessoais")
+    dp = unwrap(as_json(b1) or {}); cp = (dp.get("codigoPessoa") or dp.get("codPessoa")) if isinstance(dp, dict) else None
+    if not cp: continue
+    st2, b2, _ = raw(f"/acessos-cliente/by-pessoa/{cp}?page=0&size=1000")
+    accs = unwrap(as_json(b2) or {}); accs = accs if isinstance(accs, list) else []
+    if accs: com_acesso += 1
+    for a in accs:
+        if not isinstance(a, dict): continue
+        ym = _acc_ym(a)
+        if not ym: continue
+        total_acc += 1
+        hist[ym] = hist.get(ym, 0) + 1
+        if oldest is None or ym < oldest: oldest = ym
+print(f"  alunos com >=1 acesso: {com_acesso}/{len(amostra)} · total de acessos lidos: {total_acc}")
+if oldest:
+    print(f"  ACESSO MAIS ANTIGO NA AMOSTRA: {oldest[0]}-{oldest[1]:02d}")
+    print("  densidade por mes (AAAA-MM: nº de acessos na amostra) — util p/ ver a partir de quando fica confiavel:")
+    for ym in sorted(hist):
+        print(f"    {ym[0]}-{ym[1]:02d}: {hist[ym]}")
+else:
+    print("  sem acessos na amostra (verificar chave/permissao).")
+
 print("=== fim (nenhuma credencial impressa) ===")

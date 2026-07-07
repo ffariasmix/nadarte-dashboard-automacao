@@ -169,6 +169,7 @@ jobs:
 
       - name: Sincronizar Agenda Tática (grava iniciativas no D1)
         if: ${{ github.event.inputs.deploy != 'false' }}
+        continue-on-error: true   # secundario (Agenda Tatica): nao pode derrubar o run do dashboard
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
