@@ -131,15 +131,15 @@ tr:hover td{background:#FAFAF8}
 .b-medio{background:var(--yellow-soft);color:#9a7a12}
 .b-alto{background:var(--red-soft);color:#b5302f}
 .b-na{background:#F0EEEA;color:var(--muted)}
-.alertcards{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}
-.alert{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
-.alert .ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
-.alert .v{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1}
-.alert .l{font-size:11px;color:var(--muted);font-weight:600;margin-top:3px}
+.flagcards{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}
+.flagbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.flagbox .ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.flagbox .v{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.flagbox .l{font-size:11px;color:var(--muted);font-weight:600;margin-top:3px}
 
 footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;align-items:center}
 footer .dot{width:8px;height:8px;border-radius:3px;background:var(--orange);display:inline-block;margin-right:6px}
-@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.g3,.g2{grid-template-columns:1fr}.units{grid-template-columns:repeat(2,1fr)}.alertcards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.g3,.g2{grid-template-columns:1fr}.units{grid-template-columns:repeat(2,1fr)}.flagcards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:680px){.kpis{grid-template-columns:repeat(2,1fr)}.insights{grid-template-columns:1fr}.units{grid-template-columns:1fr}}
 
 .brand{display:flex;align-items:center;gap:12px}
@@ -160,7 +160,7 @@ footer .dot{width:8px;height:8px;border-radius:3px;background:var(--orange);disp
 .cap{margin:12px 2px 0;font-size:12px;color:var(--muted);line-height:1.55}
 .cap b{color:var(--ink)}
 .gauge{margin:4px 0 2px}
-.gtrack{position:relative;height:13px;border-radius:7px;background:linear-gradient(90deg,#D64545 0%,#F2C94C 45%,#5BAD6F 100%);box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
+.gline{position:relative;height:13px;border-radius:7px;background:linear-gradient(90deg,#D64545 0%,#F2C94C 45%,#5BAD6F 100%);box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
 .gmark{position:absolute;top:-5px;width:4px;height:23px;background:var(--graphite);border-radius:2px;box-shadow:0 0 0 2px #fff}
 .gscale{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:5px;font-weight:600}
 .cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
@@ -210,7 +210,7 @@ tr.clk:hover td{background:var(--orange-soft)}
 .metaline b{color:var(--ink)}
 .diasview{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
 .dchip{background:var(--orange-soft);color:#b4471a;border-radius:7px;padding:3px 9px;font-size:11px;font-weight:700}
-.alert{align-items:flex-start}
+.flagbox{align-items:flex-start}
 .adef{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4;font-weight:500}
 .catboxes{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:6px 0 4px}
 .catbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;border-top:4px solid var(--line)}.lagonote{display:flex;gap:11px;align-items:flex-start;background:var(--yellow-soft);border:1px solid var(--line);border-left:4px solid var(--yellow);border-radius:12px;padding:12px 15px;margin:14px 0 2px;font-size:13.5px;line-height:1.5;color:var(--ink)}.lagonote svg{flex:none;width:20px;height:20px;stroke:var(--yellow);fill:none;stroke-width:2;margin-top:1px}
@@ -254,7 +254,7 @@ header.top{position:static!important}
 .verbadge{display:none;margin-left:10px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;vertical-align:middle}
 
 /* fix overflow horizontal na Visão Geral: itens de grid precisam poder encolher para o canvas do Chart.js não estourar a largura */
-.grid>*,.kpis>*,.units>*,.insights>*,.catboxes>*,.cmp>*,.alertcards>*{min-width:0}
+.grid>*,.kpis>*,.units>*,.insights>*,.catboxes>*,.cmp>*,.flagcards>*{min-width:0}
 .cwrap{min-width:0}
 .cwrap canvas{max-width:100%!important}
 
@@ -392,7 +392,7 @@ header.top{position:static!important}
 <p class="sub">Risco é definido por <b>mudança de comportamento</b> (queda/parada), não pelo nível absoluto. Clique numa linha para ver detalhes do aluno.</p>
 <div class="multiwarn" id="warnRisco"></div>
 <div class="needmulti">
-<div class="alertcards" id="alerts"></div>
+<div class="flagcards" id="riscoAvisos"></div>
 <div class="subtab" id="riscoFilter">
 <button class="stbtn active" data-rf="AM">Alto + Médio</button><button class="stbtn" data-rf="Alto">Só Alto</button><button class="stbtn" data-rf="Médio">Só Médio</button><button class="stbtn" data-rf="all">Todos</button></div>
 <div class="panel"><div style="overflow-x:auto"><table id="trisco"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (motivo do risco)</th><th>% Meta</th><th>Risco</th><th>Ação para este aluno</th></tr></thead><tbody id="triscob"></tbody></table></div><div class="pager" id="riscoPager"></div></div>
@@ -402,7 +402,7 @@ header.top{position:static!important}
 <section class="section" id="tab-meta">
 <h2 class="title">Meta Atingida</h2>
 <p class="sub">Meta = cumprir <b>≥ 90%</b> da frequência mínima esperada <b>por categoria</b> (Fitness 3x · Água 1,5x · Luta 1,5x · combinações "Ambos" de 2 a 3x por semana) — não 90% dos dias do mês. Quem atinge é referência para reconhecer e manter.</p>
-<div class="alertcards" id="alertsM"></div>
+<div class="flagcards" id="metaAvisos"></div>
 <p class="cap" id="metaCmpCap" style="margin:-8px 0 18px"></p>
 <div class="subtab" id="metaFilter">
 <button class="stbtn active" data-mf="sim">Atingiram a meta</button><button class="stbtn" data-mf="quase">Quase lá (70–90%)</button><button class="stbtn" data-mf="nao">Abaixo da meta</button></div>
@@ -414,7 +414,7 @@ header.top{position:static!important}
 <p class="sub">Engajado = aluno que <b>não alterou o comportamento</b> — mantém o hábito (Fiel ou Regular), independente do nível. Núcleo a preservar.</p>
 <div class="multiwarn" id="warnEng"></div>
 <div class="needmulti">
-<div class="alertcards" id="alertsE"></div>
+<div class="flagcards" id="engAvisos"></div>
 <div class="subtab" id="engFilter">
 <button class="stbtn active" data-ef="cons">Consistentes (Fiel+Regular)</button><button class="stbtn" data-ef="Fiel">Só Fiéis</button><button class="stbtn" data-ef="asc">Em ascensão</button></div>
 <div class="panel"><div style="overflow-x:auto"><table id="teng"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (comportamento)</th><th>% Meta</th><th>Ação para este aluno</th></tr></thead><tbody id="tengb"></tbody></table></div><div class="pager" id="engPager"></div></div>
@@ -602,7 +602,7 @@ function renderScore(L,A){const sc=unitScore(L,A);
  const e=A.eng/Math.max(A.base,1),ev=A.risk.Alto/Math.max(A.base,1);
  document.getElementById('scoreWrap').innerHTML='<h3>Score da unidade '+tip('Régua 0–100 da saúde de frequência e retenção da unidade.')+'</h3>'
  +'<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap"><div style="font-size:46px;font-weight:900;color:'+zone+';line-height:1">'+sc+'<span style="font-size:18px;color:var(--muted)">/100</span></div>'
- +'<div style="flex:1;min-width:240px"><div class="gauge"><div class="gtrack"><div class="gmark" style="left:calc('+sc+'% - 2px)"></div></div><div class="gscale"><span>0 Crítico</span><span>40</span><span>70</span><span>100 Saudável</span></div></div></div>'
+ +'<div style="flex:1;min-width:240px"><div class="gauge"><div class="gline"><div class="gmark" style="left:calc('+sc+'% - 2px)"></div></div><div class="gscale"><span>0 Crítico</span><span>40</span><span>70</span><span>100 Saudável</span></div></div></div>'
  +'<div><span class="clchip" style="background:'+tint(zone)+';color:'+zone+';font-size:13px">'+zt+'</span></div></div>'
  +'<div class="scoretxt"><b>Como é composto:</b> 35% × frequência (vs meta) + 25% × % engajados + 10% × (1 − % risco alto) + <b>30% × retenção realizada (churn vs meta)</b>. '
  +'<br>Hoje: frequência <b>'+pct0(A.metaMed)+'</b> · engajados <b>'+pct0(e)+'</b> · risco alto <b>'+pct0(ev)+'</b> · churn médio (meses fechados) <b>'+pct(churnAcum(state.unit))+'</b> → faixa <b>'+churnBand(churnAcum(state.unit))+'</b> <span style="color:var(--muted)">(meta: Ouro 2,5% · Prata 3,5% · Bronze 4,0% · Básico 4,5%; gap até Básico '+pct(Math.max(0,churnAcum(state.unit)-SCORE_META.basico))+')</span> → score <b style="color:'+zone+'">'+sc+'</b>.</div>';}
@@ -764,7 +764,7 @@ function paginate(rows,renderRow,bodyId,pagerId,setter,page,size){size=size||30;
 let pgR=1,pgM=1,pgE=1,rf='AM',mf='sim',ef='cons',cR=[],cM=[],cE=[];
 let mudDir='all',mudClu='all',mudCic='all';
 let anivToday=false;
-function alertCards(id,arr){document.getElementById(id).innerHTML=arr.map(a=>'<div class="alert"><div class="ico" style="background:'+tint(a.c)+';color:'+a.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+a.ico+'</svg></div><div><div class="v" style="color:'+a.c+'">'+a.v+'</div><div class="l">'+a.l+'</div></div></div>').join('');}
+function alertCards(id,arr){document.getElementById(id).innerHTML=arr.map(a=>'<div class="flagbox"><div class="ico" style="background:'+tint(a.c)+';color:'+a.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+a.ico+'</svg></div><div><div class="v" style="color:'+a.c+'">'+a.v+'</div><div class="l">'+a.l+'</div></div></div>').join('');}
 const IC_AL='<path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/>',IC_OK='<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',IC_HE='<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/>';
 
 // ===== Drawer de aluno: perfil + abordagem personalizada (reutilizavel em todas as abas) =====
@@ -856,7 +856,7 @@ function alunoDetail(s){
 function openAluno(k){var s=findAluno(k);if(!s)return;var b=document.getElementById('alunoDrawerBody');if(b)b.innerHTML=alunoDetail(s);var d=document.getElementById('alunoDrawer'),o=document.getElementById('alunoOverlay');if(d)d.classList.add('open');if(o)o.classList.add('open');}
 function closeAluno(){var d=document.getElementById('alunoDrawer'),o=document.getElementById('alunoOverlay');if(d)d.classList.remove('open');if(o)o.classList.remove('open');}
 
-function renderRisco(L){if(state.from===state.to){document.getElementById('alerts').innerHTML='';document.getElementById('triscob').innerHTML='';document.getElementById('riscoPager').innerHTML='';return;}const A=agg(L);
+function renderRisco(L){if(state.from===state.to){document.getElementById('riscoAvisos').innerHTML='';document.getElementById('triscob').innerHTML='';document.getElementById('riscoPager').innerHTML='';return;}const A=agg(L);
  const lastM=MES[state.to-1];
  const cur=winAgg(L,state.from,state.to);
  const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
@@ -869,7 +869,7 @@ function renderRisco(L){if(state.from===state.to){document.getElementById('alert
   {c:C.red,ico:IC_AL,l:'Em evasão (2+ meses)',f:'evas',d:'<b>2+ meses seguidos</b> sem acesso após estar ativo. Cálculo: meses consecutivos sem registro ≥ 2 ao fim da janela. Subconjunto do Alto, mais grave.',pred:s=>s.m.cluster==='Em evasão'},
   {c:C.yellow,ico:IC_AL,l:'Risco Médio',f:'Médio',d:'Faltou <b>1 mês</b> após rotina, caiu <b>≥40%</b> na frequência, ou padrão irregular (presença &lt;60%). Cálculo: queda relativa entre a 1ª e a 2ª metade do período. Contato preventivo.',pred:s=>s.m.risco==='Médio'}
  ];
- document.getElementById('alerts').innerHTML=rboxes.map(b=>{const r=_rs(b.pred);const cmpHtml=cmpRow(fval(cur,b.f),fval(mom,b.f),fval(qoq,b.f),false,true);return '<div class="alert" style="border-left:4px solid '+b.c+'"><div class="ico" style="background:'+tint(b.c)+';color:'+b.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+b.ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+b.c+'">'+r.c+'</div><div class="l">'+b.l+'</div>'+cmpHtml+'<div style="font-size:15px;font-weight:800;color:'+b.c+';margin-top:6px">'+BRL(r.v)+'<span style="font-size:11px;font-weight:600;color:var(--muted)"> em risco/mês</span></div><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+b.d+'</div></div></div>';}).join('');
+ document.getElementById('riscoAvisos').innerHTML=rboxes.map(b=>{const r=_rs(b.pred);const cmpHtml=cmpRow(fval(cur,b.f),fval(mom,b.f),fval(qoq,b.f),false,true);return '<div class="flagbox" style="border-left:4px solid '+b.c+'"><div class="ico" style="background:'+tint(b.c)+';color:'+b.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+b.ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+b.c+'">'+r.c+'</div><div class="l">'+b.l+'</div>'+cmpHtml+'<div style="font-size:15px;font-weight:800;color:'+b.c+';margin-top:6px">'+BRL(r.v)+'<span style="font-size:11px;font-weight:600;color:var(--muted)"> em risco/mês</span></div><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+b.d+'</div></div></div>';}).join('');
  const wm=withM(L);let rows=wm.filter(s=>rf==='AM'?s.m.risco!=='Baixo':rf==='all'?true:s.m.risco===rf);
  rows.sort((a,b)=>({Alto:0,'Médio':1,Baixo:2}[a.m.risco]-{Alto:0,'Médio':1,Baixo:2}[b.m.risco])||(b.m.inativo-a.m.inativo)||(a.m.metaPct-b.m.metaPct));cR=rows;drawR();}
 function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
@@ -892,7 +892,7 @@ function cmpRow(curV,momV,qoqV,isPct,invert){
    const d=curV-v;const better=invert?(d<=0):(d>=0);const col=(d===0)?'var(--muted)':(better?C.green:C.red);const arr=d>0?'▲':(d<0?'▼':'•');
    return '<span style="color:'+col+';font-weight:700">'+lab+' '+arr+' '+fmt(d)+'</span>';};
  return '<div style="font-size:11px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">'+seg(momV,'MoM')+seg(qoqV,'QoQ')+'</div>';}
-function cmpBox(c,ico,v,l,cmpHtml,desc){return '<div class="alert" style="border-left:4px solid '+c+'"><div class="ico" style="background:'+tint(c)+';color:'+c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+c+'">'+v+'</div><div class="l">'+l+'</div>'+(cmpHtml||'')+'<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+desc+'</div></div></div>';}
+function cmpBox(c,ico,v,l,cmpHtml,desc){return '<div class="flagbox" style="border-left:4px solid '+c+'"><div class="ico" style="background:'+tint(c)+';color:'+c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+c+'">'+v+'</div><div class="l">'+l+'</div>'+(cmpHtml||'')+'<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+desc+'</div></div></div>';}
 function renderMeta(L){const wm=withM(L);const single=state.from===state.to;
  const cur=winAgg(L,state.from,state.to);
  const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
@@ -903,13 +903,13 @@ function renderMeta(L){const wm=withM(L);const single=state.from===state.to;
  html+=cmpBox(C.yellow,IC_AL,cur.quase,'Quase lá (70–90%)',cmpRow(cur.quase,mom&&mom.quase,qoq&&qoq.quase,false,false),'Entre <b>70% e 90%</b> da meta — um empurrão fecha o ciclo.');
  if(single)html+=cmpBox(C.purple,IC_HE,'—','Meta + Engajado','','<b>Precisa de 2+ meses.</b> "Engajado" usa a <b>trajetória</b> do aluno (comparação entre meses); com um único mês ('+MES[state.from-1]+') não dá para calcular. Selecione um intervalo no <b>Período</b> (ex.: Mai + Jun).');
  else html+=cmpBox(C.purple,IC_HE,cur.both,'Meta + Engajado',cmpRow(cur.both,mom&&mom.both,qoq&&qoq.both,false,false),'Bateu a meta <b>e</b> tem hábito consistente (Fiel/Regular) — alta frequência E sem queda de comportamento.');
- document.getElementById('alertsM').innerHTML=html;
+ document.getElementById('metaAvisos').innerHTML=html;
  document.getElementById('metaCmpCap').innerHTML='<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 1 trimestre antes (−3 meses) · <span style="color:'+C.green+'">▲ verde melhorou</span> · <span style="color:'+C.red+'">▼ vermelho piorou</span>. <b>YoY suprimido</b> (sem base de 2025). Aparece "—" quando não há período anterior suficiente (ex.: a janela começa em janeiro).';
  let rows=wm.filter(s=>mf==='sim'?s.m.atingiu:mf==='quase'?(!s.m.atingiu&&s.m.metaPct>=0.7):(s.m.metaPct<0.7));
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cM=rows;drawM();}
 function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+situMeta(s)+'</td><td style="font-weight:700;color:'+(s.m.atingiu?C.green:C.muted)+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoMeta(s.m)+'</td></tr>','tmetab','metaPager',p=>{pgM=p;drawM();},pgM,30);}
 
-function renderEng(L){if(state.from===state.to){document.getElementById('alertsE').innerHTML='';document.getElementById('tengb').innerHTML='';document.getElementById('engPager').innerHTML='';return;}
+function renderEng(L){if(state.from===state.to){document.getElementById('engAvisos').innerHTML='';document.getElementById('tengb').innerHTML='';document.getElementById('engPager').innerHTML='';return;}
  const cur=winAgg(L,state.from,state.to);
  const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
  const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
@@ -918,7 +918,7 @@ function renderEng(L){if(state.from===state.to){document.getElementById('alertsE
  html+=cmpBox(C.purple,IC_HE,cur.eng,'Engajados (consistentes)',cmpRow(cur.eng,mom&&mom.eng,qoq&&qoq.eng,false,false),'Não alteraram o hábito (Fiel + Regular), em qualquer nível de frequência.');
  html+=cmpBox(C.blue,IC_HE,cur.asc,'Em ascensão',cmpRow(cur.asc,mom&&mom.asc,qoq&&qoq.asc,false,false),'Frequência crescendo ≥40% vs a própria linha de base.');
  html+=cmpBox(C.muted,IC_HE,pct0(cur.engRate),'% engajada da base',cmpRow(cur.engRate,mom&&mom.engRate,qoq&&qoq.engRate,true,false),'Proporção consistente da base ativa ('+cur.base+').');
- document.getElementById('alertsE').innerHTML=html;
+ document.getElementById('engAvisos').innerHTML=html;
  const wm=withM(L);let rows=wm.filter(s=>ef==='cons'?(s.m.cluster==='Fiel'||s.m.cluster==='Regular'):ef==='Fiel'?s.m.cluster==='Fiel':s.m.cluster==='Em ascensão');
  rows.sort((a,b)=>b.m.metaPct-a.m.metaPct);cE=rows;drawE();}
 function drawE(){paginate(cE,(s,i)=>'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+situEng(s.m)+'</td><td style="font-weight:700;color:'+C.green+'">'+pct0(s.m.metaPct)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoEng(s.m)+'</td></tr>','tengb','engPager',p=>{pgE=p;drawE();},pgE,30);}
