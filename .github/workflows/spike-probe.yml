@@ -1,0 +1,35 @@
+name: Spike Probe (Pacto)
+
+# Roda a sondagem PII-safe (endpoints, modalidade, fotos/professor e profundidade
+# do historico) usando os Secrets do repo. Nao publica nada; so imprime no log.
+on:
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: 'Unidade para sondar'
+        type: choice
+        options: ['716NORTE', '905SUL', '604NORTE', 'LAGONORTE', 'LAGOSUL']
+        default: '716NORTE'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rodar sondagem (PII-safe)
+        env:
+          PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
+          PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
+          PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
+          PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
+          PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
+        run: |
+          echo "Sondando unidade: ${{ github.event.inputs.unit }}"
+          python scripts/spike_probe.py ${{ github.event.inputs.unit }}
