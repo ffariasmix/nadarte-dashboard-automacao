@@ -215,9 +215,52 @@ def roster_full(key):
     print(f"[roster] {len(out)}/{total} clientes coletados", file=sys.stderr)
     return out
 
-def fetch_client_full(key, c, wmonths):
+FOTOS = os.environ.get("PACTO_FOTOS", "").strip().lower() in ("1", "true", "yes", "on")
+
+def fotos_professores(key):
+    """{prof_id: {'nome':..,'foto':..}} e {nome_upper: foto}. Guia 'Fotos'."""
+    by_id, by_nome = {}, {}
+    try:
+        st, o = gj(key, "/psec/colaboradores/bi-professores-vinculos")
+        if st == 200:
+            for it in lst(o):
+                p = gv(it, "professor") if isinstance(it, dict) else None
+                if not isinstance(p, dict):
+                    continue
+                pid = gv(p, "id"); nome = gv(p, "nome") or ""; img = gv(p, "imageUri") or ""
+                if pid is not None:
+                    by_id[str(pid)] = {"nome": nome, "foto": img}
+                if nome:
+                    by_nome[str(nome).strip().upper()] = img
+    except Exception:
+        pass
+    return by_id, by_nome
+
+def _prof_do_cliente(cli, prof_by_id, prof_by_nome):
+    """Best-effort: extrai (nome, foto) do professor vinculado ao aluno."""
+    vincs = gv(cli, "vinculos")
+    if not isinstance(vincs, list):
+        return "", ""
+    for v in vincs:
+        if not isinstance(v, dict):
+            continue
+        p = gv(v, "professor") if isinstance(gv(v, "professor"), dict) else v
+        pid = gv(p, "id", "professorId", "codigoProfessor", "idProfessor")
+        nome = gv(p, "nome", "nomeProfessor", "professor") or ""
+        foto = gv(p, "imageUri", "fotoUrl") or ""
+        if pid is not None and str(pid) in prof_by_id:
+            info = prof_by_id[str(pid)]
+            return (nome or info.get("nome", "")), (foto or info.get("foto", ""))
+        if nome and nome.strip().upper() in prof_by_nome:
+            return nome, (foto or prof_by_nome[nome.strip().upper()])
+        if nome or foto:
+            return nome, foto
+    return "", ""
+
+def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
     """1 cliente -> (rec, [datas na janela]). rec: attrs + contrato (ini/fim/sit).
-    dados-pessoais (codPessoa+cpf+demografia) + 1 chamada de acessos."""
+    dados-pessoais (codPessoa+cpf+demografia) + 1 chamada de acessos (+foto/prof se PACTO_FOTOS)."""
+    prof_by_id = prof_by_id or {}; prof_by_nome = prof_by_nome or {}
     try:
         M = gv(c, "matricula"); cc = gv(c, "codigoCliente", "codigo"); nome = gv(c, "nome") or ""; sit = str(gv(c, "situacao") or "")
         ini = to_date(gv(c, "inicioContrato")); fim = to_date(gv(c, "fimContrato"))
@@ -226,13 +269,34 @@ def fetch_client_full(key, c, wmonths):
         dp_ok = (st == 200)
         dp = unwrap(o) if dp_ok else {}
         cp = gv(dp, "codigoPessoa", "codPessoa"); cpf = gv(dp, "cpf") or ""
+        # MODALIDADE real: vem da descricao do(s) contrato(s), nao do cadastro (que vem vazio).
+        # Guia "Pacto API - Modalidades e Categorias": GET /v1/contrato/matricula/{mat} -> content[].descricao
+        # Escopo necessario na chave: adm:cadastros:contrato:modelos-de-contrato:consultar
+        mod_txt = ""; contract_ok = True
+        st3, o3 = gj(key, f"/v1/contrato/matricula/{M}")
+        if st3 == 200:
+            descs = [str(gv(it, "descricao") or "").strip() for it in lst(o3)]
+            mod_txt = " , ".join(d for d in descs if d)
+        elif st3 in (429, 500, 502, 503, 504):
+            contract_ok = False          # transitorio (rate-limit/erro) -> re-tentar
+        # 401/403 (sem escopo) e 404 (sem contrato) -> aceita vazio, sem re-tentar em loop
+        # FOTO do aluno + professor vinculado (guia 'Pacto API - Fotos'). So se PACTO_FOTOS=1.
+        foto = ""; prof = ""; prof_foto = ""
+        if FOTOS and cc is not None:
+            st4, o4 = gj(key, f"/v1/cliente/{cc}")
+            if st4 == 200:
+                cli = unwrap(o4) if isinstance(o4, dict) else {}
+                pes = gv(cli, "pessoa") if isinstance(gv(cli, "pessoa"), dict) else {}
+                foto = gv(pes, "fotoUrl") or gv(dp, "urlFoto") or ""
+                prof, prof_foto = _prof_do_cliente(cli, prof_by_id, prof_by_nome)
         rec = {
             "ulabel": None, "mat": M, "nome": nome, "cpf": cpf,
             "nasc": to_date(gv(dp, "dataNascimento", "datanasc", "nascimento")),
             "sexo": gv(dp, "sexo") or "",
-            "mod": gv(dp, "descricao") or gv(dp, "categoria") or modc,
+            "mod": mod_txt or gv(dp, "categoria") or modc,
             "dm": to_date(gv(dp, "dataMatricula")) or ini,
             "ini": ini, "fim": fim, "sit": sit,
+            "foto": foto, "prof": prof, "profFoto": prof_foto,
         }
         dates = []
         acc_ok = True
@@ -247,7 +311,7 @@ def fetch_client_full(key, c, wmonths):
                 d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
                 if d and (d.year, d.month) in wmonths:
                     dates.append(d)
-        ok = dp_ok and acc_ok          # se qualquer chamada falhou -> re-tentar depois
+        ok = dp_ok and acc_ok and contract_ok   # qualquer chamada transitoria falhou -> re-tentar
         return rec, dates, ok
     except Exception:
         return {"ulabel": None, "mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
@@ -259,6 +323,9 @@ def coleta_unidade(unit_key, unit_label, key):
     """FULL-API com FILA DE RE-TENTATIVA: quem falha (rate-limit) volta pra fila e e
     recoletado em ate RETRY_ROUNDS rodadas. Nada e descartado silenciosamente."""
     wmonths = set(window_months(WINDOW_START, WINDOW_END))
+    prof_by_id, prof_by_nome = (fotos_professores(key) if FOTOS else ({}, {}))
+    if FOTOS:
+        print(f"[fotos] {unit_key}: {len(prof_by_id)} professores mapeados", file=sys.stderr)
     full = roster_full(key)
     win = [c for c in full
            if any(active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), y, m, gv(c, "situacao"))
@@ -271,7 +338,7 @@ def coleta_unidade(unit_key, unit_label, key):
         rounds += 1
         failed = []
         with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            for (rec, dates, ok), c in zip(ex.map(lambda c: fetch_client_full(key, c, wmonths), pending), pending):
+            for (rec, dates, ok), c in zip(ex.map(lambda c: fetch_client_full(key, c, wmonths, prof_by_id, prof_by_nome), pending), pending):
                 if ok:
                     rec["ulabel"] = unit_label
                     recs.append((rec, dates))
@@ -283,7 +350,7 @@ def coleta_unidade(unit_key, unit_label, key):
             time.sleep(8 * rounds)   # respira antes de re-tentar (rate-limit)
     # ultima tentativa p/ os que restaram: inclui o aluno (roster) mesmo sem acesso, p/ nao sumir do mes
     for c in pending:
-        rec, dates, ok = fetch_client_full(key, c, wmonths)
+        rec, dates, ok = fetch_client_full(key, c, wmonths, prof_by_id, prof_by_nome)
         rec["ulabel"] = unit_label
         recs.append((rec, dates))
     if pending:
@@ -292,7 +359,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","FOTO","PROF NOME","PROF FOTO"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -301,7 +368,8 @@ def write_alunos_wb(path, unit_label_to_rows):
         ws = wb.create_sheet(title=label[:31])
         ws.append(AL_HEADER)
         for r in rows:
-            ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"]])
+            ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"],
+                       r.get("foto",""), r.get("prof",""), r.get("profFoto","")])
     wb.save(path)
 
 def write_catraca_wb(path, sheets):

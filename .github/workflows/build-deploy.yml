@@ -64,8 +64,12 @@ jobs:
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
           PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
           PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
+          # Fotos (PII): ligado so quando a Variable PACTO_FOTOS=1 existir no repo.
+          # Pre-requisito: dashboard atras de Cloudflare Access. Adiciona ~1 chamada/aluno.
+          PACTO_FOTOS: ${{ vars.PACTO_FOTOS || '' }}
         run: |
           echo "Coletando da API PACTO (pode levar ~30 min; rate-limit por chave)..."
+          echo "Fotos: ${PACTO_FOTOS:-desligado}"
           python scripts/pacto_fetch.py data
 
       - name: Faturamento por unidade (API PACTO) para o ticket dinamico

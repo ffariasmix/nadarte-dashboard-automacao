@@ -3,3 +3,11 @@ public/
 node_modules/
 *.bin
 sa_key.json
+
+# Python (bytecode/cache)
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store

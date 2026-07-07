@@ -30,12 +30,26 @@ TICKET_NATAL = 245.20
 UNIT_KEYS = ["716Norte","905Sul","604Norte","LagoNorte","LagoSul"]
 ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
 
-CAT_TOKENS = {
- "agua": ["NATAC","NATA","HIDRO","BEBE","AQUA"],
- "lutas":["KARATE","MUAY","JIU","JUDO","HAPKIDO","CAPOEIRA","BOXE","TAEKWON","KUNG","LUTA"],
- "fit":  ["TRANSITO LIVRE","FITNESS","MUSCULA","DANCA","PILATES","AULA COLETIVA","FUNCIONAL",
-          "SPINNING","CROSS","ZUMBA","RITMO","GINASTICA","ALONGA","YOGA","TREINA"],
-}
+# --- Classificador de modalidade (texto do plano -> 7 baldes) ---
+# Fonte: guia "Pacto API - Modalidades e Categorias". A modalidade vem da descricao
+# do contrato (GET /v1/contrato/matricula/{mat}), nao do cadastro (que vem vazio).
+AGUA_TK = ("NATAC","NATA","HIDRO","BEBE","AQUA")
+LUTA_TK = ("KARATE","MUAY","JIU","JUDO","HAPKIDO","CAPOEIRA","BOXE","TAEKWON","KUNG","LUTA")
+FIT_TK  = ("TRANSITO LIVRE"," TL ","LIVRE ACESSO","FITNESS","MUSCULA","DANCA","PILATES",
+           "AULA COLETIVA","FUNCIONAL","SPINNING","CROSS","ZUMBA","RITMO","GINASTICA",
+           "ALONGA","YOGA","TREINA")
+
+# Rotulos canonicos das categorias (identicos aos usados no dashboard)
+CAT_FIT="Fitness"; CAT_AGUA="Água"; CAT_LUTA="Luta"
+CAT_AF="Ambos (Água + Fitness)"; CAT_AL="Ambos (Água + Luta)"
+CAT_FL="Ambos (Fitness + Luta)"; CAT_AFL="Ambos (Água + Fitness + Luta)"
+CAT_OUT="Outros"
+
+# LAGO NORTE: a catraca fica so no ambiente fitness. So passam pela catraca as categorias
+# que incluem Fitness; alunos exclusivos de Agua/Luta ficam de fora da analise de frequencia.
+LAGO_UNIT = "LagoNorte"
+LAGO_FIT_CATS = {CAT_FIT, CAT_AF, CAT_FL, CAT_AFL}
+LAGO_EXCLUDED = set()   # (unit,key) excluidos por nao passar pela catraca
 
 def deaccent(s):
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
@@ -58,21 +72,29 @@ def skey(unit, doc_val, nome_val):
         return f"{unit}|C|{cpf}"
     return f"{unit}|N|{n}" if n else ""
 
-TOK_ORDER = ["agua","fit","lutas"]  # prioridade por token: agua > fit > lutas > outros
-def tok_cat(T):
-    for cat in TOK_ORDER:
-        if any(k in T for k in CAT_TOKENS[cat]): return cat
-    return "other"
+def _tok_cat(tok):
+    # prioridade agua > fit > luta; padding com espacos evita casar "TL" dentro de palavra
+    t = " " + up(tok) + " "
+    if any(k in t for k in AGUA_TK): return "agua"
+    if any(k in t for k in FIT_TK):  return "fit"
+    if any(k in t for k in LUTA_TK): return "lutas"
+    return "outros"
 def classify_grupo(mod):
-    # 1 categoria por token, por prioridade; tokens nao reconhecidos = "outros".
-    toks = [up(t) for t in re.split(r"[;,]", str(mod or "")) if up(t)]
-    if not toks: return "Fitness"
-    g = {tok_cat(t) for t in toks}
-    has_a="agua" in g; has_f="fit" in g; has_l="lutas" in g
-    if has_a and (has_f or has_l): return "Ambos"
-    if has_a: return "Água"
-    if has_f: return "Fitness"
-    return "Lutas e Outros"
+    # texto da(s) descricao(oes) de contrato -> 7 baldes (+ Outros). Tokeniza por ; , + /
+    u = up(mod)
+    if "TODAS AS MODALIDADES" in u or "TODAS MODALIDADES" in u:
+        return CAT_AFL
+    toks = [t for t in re.split(r"[;,+/]", str(mod or "")) if t.strip()]
+    b = set(_tok_cat(t) for t in toks); b.discard("outros")
+    A = "agua" in b; F = "fit" in b; L = "lutas" in b
+    if A and F and L: return CAT_AFL
+    if A and F: return CAT_AF
+    if A and L: return CAT_AL
+    if F and L: return CAT_FL
+    if A: return CAT_AGUA
+    if F: return CAT_FIT
+    if L: return CAT_LUTA
+    return CAT_OUT
 
 def parse_birth(v):
     if v is None or v == "": return (0,0,0)
@@ -204,6 +226,7 @@ for mk, path in alunos_files.items():
         c_doc=find_col(colmap,"DOCUMENTO","CPF")
         c_nasc=find_col(colmap,"NASCIMENTO"); c_sexo=find_col(colmap,"SEXO"); c_mod=find_col(colmap,"MODALIDADE")
         c_dm=find_col(colmap,"DATA MATRICULA","DATA DE MATRICULA","DT MATRICULA","DATA MATR")
+        c_foto=find_col(colmap,"FOTO"); c_prof=find_col(colmap,"PROF NOME","PROFESSOR"); c_pfoto=find_col(colmap,"PROF FOTO")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -211,16 +234,23 @@ for mk, path in alunos_files.items():
             mat = norm_mat(r[c_mat]) if (c_mat is not None and c_mat<len(r)) else ""
             key = mat if mat else skey(unit, doc_v, nome_v)   # chave = (unidade+matricula); fallback CPF/nome
             if not key: continue
+            mod = r[c_mod] if (c_mod is not None and c_mod<len(r)) else ""
+            grupo = classify_grupo(mod)
+            # LAGO NORTE: catraca so no acesso fitness. Aluno sem Fitness (Agua/Luta puros) nao
+            # passa pela catraca -> apareceria "sumido" por artefato. Excluir da analise.
+            if unit == LAGO_UNIT and grupo not in LAGO_FIT_CATS:
+                LAGO_EXCLUDED.add((unit, key)); continue
             active[(pos,unit)].add(key)
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
-            mod = r[c_mod] if (c_mod is not None and c_mod<len(r)) else ""
+            _cell=lambda ci: (str(r[ci]).strip() if (ci is not None and ci<len(r) and r[ci] is not None) else "")
             attrs[pos][(unit,key)] = {
                 "nome": nome_v, "mat": mat,
-                "grupo": classify_grupo(mod), "mod": str(mod or "").strip(),
+                "grupo": grupo, "mod": str(mod or "").strip(),
                 "sexo": sexo_of(r[c_sexo]) if (c_sexo is not None and c_sexo<len(r)) else "N/D",
                 "band": band_of(BAND_REF,by,bm,bd), "bm":bm,"bd":bd,"by":by,
                 "dm": (parse_dt(r[c_dm]).isoformat() if (c_dm is not None and c_dm<len(r) and parse_dt(r[c_dm])) else ""),
+                "foto": _cell(c_foto), "prof": _cell(c_prof), "profFoto": _cell(c_pfoto),
             }
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----
@@ -296,9 +326,10 @@ for (pos,unit),keys in active.items():
         act= [1 if key in active[(mm,unit)] else 0 for mm in range(NMONTHS)]
         students.append({
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
-            "grupo":a.get("grupo","Fitness"),"mod":a.get("mod","")[:40],
+            "grupo":a.get("grupo","Outros"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
             "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),"dm":a.get("dm",""),
+            "foto":a.get("foto",""),"prof":a.get("prof",""),"profFoto":a.get("profFoto",""),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
@@ -429,8 +460,11 @@ except Exception as _e:
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,
+       "lagoUnit":LAGO_UNIT,"lagoExcluded":len(LAGO_EXCLUDED),
+       "lagoFitCats":sorted(LAGO_FIT_CATS),
        "baseUpdated":meta.get("baseUpdated",""),
        "baseUpdatedBy":meta.get("baseUpdatedBy","") or meta.get("baseUpdatedByName","")}
+print(f"[lago] excluidos por nao passar pela catraca (Agua/Luta puros): {len(LAGO_EXCLUDED)}", file=sys.stderr)
 with open(os.path.join(DATA_DIR,"freq_multi.json"),"w") as f:
     json.dump(out,f,ensure_ascii=False,separators=(", ",": "))
 print(f"[ok] freq_multi.json: {len(students)} students; baseMonth={MESES[base_pos]}; junMax={JUN_MAX}", file=sys.stderr)
