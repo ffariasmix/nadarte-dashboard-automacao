@@ -106,22 +106,47 @@ if isinstance(planos, list) and planos:
           ", ".join(str(p.get('descricao') or p.get('nome') or p.get('nomePlano') or '?') for p in planos[:8]))
     print(f"  [/v1/plano] keys do plano: {sorted(planos[0].keys())[:16]}")
 
-# ---------- 3) FOTOS / PROFESSOR (PII-safe: so presenca de campo) ----------
+# ---------- 3) FOTOS / PROFESSOR (PII-safe: chaves/estrutura, sem valores sensiveis) ----------
 print("\n=== FOTOS/PROFESSOR (PII-safe) ===")
-cc = cliente.get("codigoCliente") or cliente.get("codigo")
-if cc:
+# procura um cliente COM vinculos e abre a estrutura do 'colaborador'
+amostra_cli = roster[:12] if isinstance(roster, list) else []
+achou = False
+for c0 in amostra_cli:
+    cc = c0.get("codigoCliente") or c0.get("codigo")
+    if not cc:
+        continue
     st, body, _ = raw(f"/v1/cliente/{cc}")
     cli = unwrap(as_json(body) or {})
-    if isinstance(cli, dict):
-        pes = cli.get("pessoa") or {}
-        vinc = cli.get("vinculos")
-        vk = sorted(vinc[0].keys()) if isinstance(vinc, list) and vinc and isinstance(vinc[0], dict) else "sem vinculos"
-        print(f"  [/v1/cliente/{{cc}}] status={st} pessoa.fotoUrl_presente={bool(pes.get('fotoUrl'))} vinculos_item_keys={vk}")
+    if not isinstance(cli, dict):
+        continue
+    pes = cli.get("pessoa") or {}
+    vinc = cli.get("vinculos")
+    if isinstance(vinc, list) and vinc and isinstance(vinc[0], dict):
+        v0 = vinc[0]
+        print(f"  [/v1/cliente] pessoa.fotoUrl_presente={bool(pes.get('fotoUrl'))} vinculos={len(vinc)} vinculo_keys={sorted(v0.keys())} tipoVinculo={v0.get('tipoVinculo')!r} codigo={v0.get('codigo')!r}")
+        colab = v0.get("colaborador")
+        if isinstance(colab, dict):
+            # chaves do colaborador (sem imprimir nome/valores sensiveis) + presenca de campos de foto/id
+            print(f"    colaborador.keys={sorted(colab.keys())}")
+            for kk in ("id","codigo","codigoPessoa","imageUri","fotoUrl","urlFoto","funcao","cargo","tipo"):
+                if kk in colab and kk not in ("nome",):
+                    val = colab.get(kk)
+                    if kk in ("imageUri","fotoUrl","urlFoto"):
+                        print(f"      {kk}_presente={bool(val)}")
+                    elif not isinstance(val, (dict, list)):
+                        print(f"      {kk}={val!r}")
+        achou = True
+        break
+if not achou:
+    print("  nenhum dos 12 clientes amostrados tinha vinculos (professor) — pode ser normal por unidade")
+# catalogo de professores (para mapear foto): imprime status SEMPRE
 st, body, _ = raw("/psec/colaboradores/bi-professores-vinculos")
 profs = unwrap(as_json(body) or {})
 if isinstance(profs, list) and profs and isinstance(profs[0], dict):
-    p = profs[0].get("professor") or {}
-    print(f"  [bi-professores-vinculos] itens={len(profs)} professor.keys={sorted(p.keys())} imageUri_presente={bool(p.get('imageUri'))}")
+    p = profs[0].get("professor") or (profs[0] if "imageUri" in profs[0] else {})
+    print(f"  [bi-professores-vinculos] status={st} itens={len(profs)} item0_keys={sorted(profs[0].keys())} professor.keys={sorted(p.keys()) if isinstance(p,dict) else '?'} imageUri_presente={bool(p.get('imageUri')) if isinstance(p,dict) else False}")
+else:
+    print(f"  [bi-professores-vinculos] status={st} (vazio/nao-lista) formato={shape(body)}")
 
 # ---------- 4) PROFUNDIDADE DO HISTORICO (desde quando ha catraca confiavel) ----------
 # Amostra alunos ATIVOS, puxa o historico completo de acessos (size=1000) e mede:
