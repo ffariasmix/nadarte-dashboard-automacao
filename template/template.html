@@ -497,13 +497,13 @@ function sig(x){return (x>=0?'+':'')+Math.round(x*100)+'%';}
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0;}
 const VEZDEF={'Fitness':3,'Água':1.5,'Luta':1.5,'Ambos (Água + Fitness)':3,'Ambos (Água + Luta)':2,'Ambos (Fitness + Luta)':3,'Ambos (Água + Fitness + Luta)':3,'Outros':1.5};
 const CATORD=['Fitness','Água','Luta','Ambos (Água + Fitness)','Ambos (Água + Luta)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)','Outros'];
-const state={cat:'Total',mod:'Todas',unit:'REDE',from:1,to:6,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16};
+const state={cat:'Total',mod:'Todas',unit:'REDE',from:1,to:MES.length,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16};
 const UDPS=DATA.udps||{};
 function unitDps(u){return UDPS[u]||7;}
 function diasNoMes(mo){return [31,28,31,30,31,30][mo];}
 function domingos(mo,upto){let c=0;for(let d=1;d<=upto;d++){if(new Date(2026,mo,d).getDay()===0)c++;}return c;}
 let DIAS={6:[],7:[]};
-function computeDias(){DIAS={6:[],7:[]};for(let m=0;m<6;m++){const tot=(m<5)?diasNoMes(m):state.cutoff;DIAS[7].push(tot);DIAS[6].push(tot-domingos(m,tot));}}
+function computeDias(){DIAS={6:[],7:[]};for(let m=0;m<MES.length;m++){const tot=(m<5)?diasNoMes(m):state.cutoff;DIAS[7].push(tot);DIAS[6].push(tot-domingos(m,tot));}}
 function semanas(m,dps){return Math.max(0.3,(DIAS[dps]||DIAS[7])[m]/dps);}
 function expected(m,g,dps){return (state.vezG[g]||3)*semanas(m,dps);}
 function cumpr(ac,m,g,dps){return Math.min(1,ac[m]/expected(m,g,dps));}
@@ -537,8 +537,8 @@ function met(s){const c=cluster(s.ac,state.from,state.to,s.fs,isNovoCad(s));cons
   return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng});}
 function filtered(){return DATA.students.filter(s=>(state.unit==='REDE'||s.u===state.unit)&&(state.cat==='Total'||s.grupo===state.cat)&&(state.mod==='Todas'||s.mod===state.mod));}
 function withM(L){return L.map(s=>Object.assign({},s,{m:met(s)}));}
-function monthTotals(L){const o=[];for(let m=0;m<6;m++)o.push(L.reduce((a,s)=>a+s.ac[m],0));return o;}
-function monthActives(L){const o=[];for(let m=0;m<6;m++)o.push(L.reduce((a,s)=>a+(s.ac[m]>0?1:0),0));return o;}
+function monthTotals(L){const o=[];for(let m=0;m<MES.length;m++)o.push(L.reduce((a,s)=>a+s.ac[m],0));return o;}
+function monthActives(L){const o=[];for(let m=0;m<MES.length;m++)o.push(L.reduce((a,s)=>a+(s.ac[m]>0?1:0),0));return o;}
 function monthAvgPerActive(L){const t=monthTotals(L),a=monthActives(L);return t.map((v,i)=>a[i]?v/a[i]:0);}
 function agg(L){const risk={Baixo:0,'Médio':0,Alto:0},clu={};let mpS=0,nf=0,sumiram=0,evas=0,fiel=0,eng=0,meta=0,both=0;
  L.forEach(s=>{const m=s.m;risk[m.risco]++;clu[m.cluster]=(clu[m.cluster]||0)+1;
@@ -568,7 +568,7 @@ const BRL2=v=>'R$\u00A0'+Number(v).toLocaleString('pt-BR',{minimumFractionDigits
 function ticketU(k){return (DATA.tickets&&DATA.tickets[k])||0;}
 const SaldoArrow={id:'saldoArrow',afterDatasetsDraw(c){const di=c.data.datasets.findIndex(d=>d.label==='Saldo líquido');if(di<0)return;const meta=c.getDatasetMeta(di),ctx=c.ctx;ctx.save();ctx.font='800 12px Inter';ctx.textAlign='center';meta.data.forEach((pt,i)=>{const v=c.data.datasets[di].data[i];if(v==null)return;const up=v>=0;ctx.fillStyle=up?C.green:C.red;ctx.fillText((up?'▲ +':'▼ ')+v,pt.x,pt.y-11);});ctx.restore();}};
 function evolChart(id,L){destroy(id);const tot=monthTotals(L),avg=monthAvgPerActive(L);
- const cut=state.cutoff||16;const projJun=avg[5]*(30/cut);
+ const cut=state.cutoff||16;const projJun=avg[avg.length-1]*(30/cut);
  const avgReal=[avg[0],avg[1],avg[2],avg[3],avg[4],null];
  const avgProj=[null,null,null,null,avg[4],projJun];
  ch[id]=new Chart(document.getElementById(id),{data:{labels:MES,datasets:[
@@ -630,7 +630,7 @@ function renderKPIs(L,A){
 function renderCatBoxes(L,A){const g=grp(L,'grupo');const order=CATORD.filter(k=>g[k]);
  document.getElementById('catboxes').innerHTML=order.map(k=>{const o=g[k];const col=GCOL[k];return '<div class="catbox" style="border-top-color:'+col+'"><div class="cbval" style="color:'+col+'">'+pct0(o.f)+'</div><div class="cbname">'+(k==='Água'?'Natação/Água':k)+'</div><div class="cbsub">'+o.n+' alunos · meta '+fmtVez(state.vezG[k])+'x/sem · '+o.meta+' batem a meta</div></div>';}).join('');
  document.getElementById('catboxesCap').innerHTML='<b>Como o geral é calculado:</b> cada categoria é medida pela <b>sua própria meta</b> semanal. A <b>frequência média da unidade ('+pct(A.metaMed)+')</b> é a média ponderada: soma do cumprimento de cada categoria pelo seu nº de alunos, dividida pela base total ('+A.base+' alunos).';}
-function renderCmp(L,A){const mp=[];for(let m=0;m<6;m++){let s=0,k=0;L.forEach(st=>{if(st.ac[m]>0){s+=cumpr(st.ac,m,st.grupo,st.dps);k++;}});mp.push(k?s/k:0);}
+function renderCmp(L,A){const mp=[];for(let m=0;m<MES.length;m++){let s=0,k=0;L.forEach(st=>{if(st.ac[m]>0){s+=cumpr(st.ac,m,st.grupo,st.dps);k++;}});mp.push(k?s/k:0);}
  const to=state.to-1,prev=to-1;const mom=(prev>=0&&mp[prev]>0)?(mp[to]/mp[prev]-1):null;
  const cards=[{t:'Cumprimento — '+MES[to],v:pct(mp[to]),s:'média entre quem treinou no mês'},
   {t:'MoM (vs '+(prev>=0?MES[prev]:'—')+')',v:mom==null?'—':sig(mom),s:mom==null?'sem mês anterior':(mom>=0?'evoluindo':'em queda'),c:mom==null?C.muted:(mom>=0?C.green:C.red)},
@@ -646,7 +646,7 @@ function renderRiskMoney(L){
  let v=0,c=0,vA=0,cA=0;L.forEach(s=>{const r=s.m.risco;if(r==='Alto'||r==='Médio'){const tk=ticketU(s.u);v+=tk;c++;if(r==='Alto'){vA+=tk;cA++;}}});
  const ser={labels:[],vals:[]};
  for(let m=state.from+1;m<=state.to;m++){let mv=0;L.forEach(s=>{const r=cluster(s.ac,state.from,m,s.fs,isNovoCad(s)).risco;if(r==='Alto'||r==='Médio')mv+=ticketU(s.u);});ser.labels.push(MES[m-1]);ser.vals.push(Math.round(mv));}
- const junePart=(state.to===6);
+ const junePart=(state.to===MES.length);
  let momHtml='';
  const lastIdx=ser.vals.length-1,vIdx=(junePart&&ser.vals.length>=3)?lastIdx-1:lastIdx;
  if(vIdx>=1){const cur=ser.vals[vIdx],prev=ser.vals[vIdx-1],dlt=cur-prev,worse=dlt>0,col=worse?C.red:C.green,arr=worse?'▲':'▼',pc=prev?Math.round(Math.abs(dlt)/prev*100):0;momHtml='<div style="font-size:13px;font-weight:800;color:'+col+';margin-top:4px">'+arr+' '+BRL(Math.abs(dlt))+' ('+pc+'%) '+ser.labels[vIdx]+' vs '+ser.labels[vIdx-1]+' — '+(worse?'piorando':'melhorando')+(junePart?' <span style="font-weight:600;color:var(--muted)">(meses fechados; junho à parte)</span>':'')+'</div>';}
@@ -666,9 +666,9 @@ function renderInsights(L,A){const act=monthActives(L);const g=grp(L,'grupo');co
  const worst=gA.slice().sort((a,b)=>((b[1].alto+b[1].med)/b[1].n)-((a[1].alto+a[1].med)/a[1].n))[0];
  const bestFreq=gA.slice().sort((a,b)=>b[1].f-a[1].f)[0];
  const wm=withM(L);const topFreq=wm.slice().sort((a,b)=>b.m.metaPct-a.m.metaPct)[0];
- let bi=0,bv=-1;for(let m=1;m<6;m++){if(act[m]>bv){bv=act[m];bi=m;}}
- const mpM=[];for(let m=0;m<6;m++){let s=0,k=0;L.forEach(st=>{if(st.ac[m]>0){s+=cumpr(st.ac,m,st.grupo,st.dps);k++;}});mpM.push(k?s/k:0);}
- const queda=mpM[4]>0&&mpM[2]>0?(mpM[4]<mpM[2]):false;const gAg=g['Água'],gFi=g['Fitness'];
+ let bi=0,bv=-1;for(let m=1;m<MES.length;m++){if(act[m]>bv){bv=act[m];bi=m;}}
+ const mpM=[];for(let m=0;m<MES.length;m++){let s=0,k=0;L.forEach(st=>{if(st.ac[m]>0){s+=cumpr(st.ac,m,st.grupo,st.dps);k++;}});mpM.push(k?s/k:0);}
+ const queda=mpM[mpM.length-2]>0&&mpM[mpM.length-4]>0?(mpM[mpM.length-2]<mpM[mpM.length-4]):false;const gAg=g['Água'],gFi=g['Fitness'];
  function tn(c){return c==='g'?C.green:c==='y'?C.yellow:C.red;}
  const I=[];
  I.push({c:A.metaMed>=0.7?'g':(A.metaMed>=0.5?'y':'r'),big:pct(A.metaMed),h:'Frequência média da unidade',t:'Em média, cada aluno cumpriu este % da meta da sua categoria (ponderado pela base de '+A.base+' alunos).'});
@@ -686,7 +686,7 @@ function renderInsights(L,A){const act=monthActives(L);const g=grp(L,'grupo');co
 
 function renderCharts(L,A){evolChart('cEvol',L);
  const avg=monthAvgPerActive(L);
- document.getElementById('capEvol').innerHTML='<b>Como ler:</b> as <b>barras</b> = volume (total de acessos) — junho aparece menor só porque o mês está em curso, <b>não é queda</b>. A <b>linha preta</b> = média de treinos por aluno ativo: é o termômetro de <b>engajamento e retenção</b> e independe do tamanho da base. O ponto de junho é <b>ritmo projetado</b> (pontilhado): '+avg[5].toFixed(1)+'×/aluno até o dia '+(state.cutoff||16)+' → projeção de <b>~'+(avg[5]*30/(state.cutoff||16)).toFixed(1)+'×</b> no fechamento, em linha com os meses anteriores. <b>Quando essa linha cai de forma consistente, é o sinal antecipado de evasão</b> — quem treina menos costuma ser quem sai.';
+ document.getElementById('capEvol').innerHTML='<b>Como ler:</b> as <b>barras</b> = volume (total de acessos) — junho aparece menor só porque o mês está em curso, <b>não é queda</b>. A <b>linha preta</b> = média de treinos por aluno ativo: é o termômetro de <b>engajamento e retenção</b> e independe do tamanho da base. O ponto de junho é <b>ritmo projetado</b> (pontilhado): '+avg[avg.length-1].toFixed(1)+'×/aluno até o dia '+(state.cutoff||16)+' → projeção de <b>~'+(avg[avg.length-1]*30/(state.cutoff||16)).toFixed(1)+'×</b> no fechamento, em linha com os meses anteriores. <b>Quando essa linha cai de forma consistente, é o sinal antecipado de evasão</b> — quem treina menos costuma ser quem sai.';
  vennChart('cVenn',A.meta-A.both,A.eng-A.both,A.both);
  document.getElementById('capVenn').innerHTML='<b>O que significa:</b> são eixos diferentes. <b>Meta</b> = nível de frequência (≥90% da meta da categoria). <b>Engajado</b> = comportamento consistente. '+A.both+' estão em ambos; '+(A.eng-A.both)+' são consistentes mas abaixo da meta (ex.: hábito de 2x) — não são risco.';
  donut('cRisco',['Baixo','Médio','Alto'],[A.risk.Baixo,A.risk['Médio'],A.risk.Alto],[C.green,C.yellow,C.red]);
@@ -708,9 +708,9 @@ function renderClusters(L,A){if(state.from===state.to){destroy('cClu');destroy('
  barChart('cCiclo',co,co.map(k=>cic[k]),co.map(k=>CICLOCOL[k]),false,true);
  document.getElementById('cCicloLeg').innerHTML=co.map(k=>'<span class="lchip"><i style="background:'+CICLOCOL[k]+'"></i>'+k+' · <b>'+cic[k]+'</b></span>').join('')+'<span class="lchip muted">Estágios: Novo → Crescendo → Consolidado → Em risco → Saindo</span>';}
 
-function renderFlow(L){if(state.from===state.to){destroy('cFlow');document.getElementById('churnAssoc').innerHTML='';return;}const first=[0,0,0,0,0,0],last=[0,0,0,0,0,0];
- L.forEach(s=>{const ai=[];for(let i=0;i<6;i++)if(s.ac[i]>0)ai.push(i);if(ai.length){first[ai[0]]++;last[ai[ai.length-1]]++;}});
- const entradas=[null,first[1],first[2],first[3],first[4],first[5]],saidas=[last[0],last[1],last[2],last[3],null,null];
+function renderFlow(L){if(state.from===state.to){destroy('cFlow');document.getElementById('churnAssoc').innerHTML='';return;}const first=new Array(MES.length).fill(0),last=new Array(MES.length).fill(0);
+ L.forEach(s=>{const ai=[];for(let i=0;i<MES.length;i++)if(s.ac[i]>0)ai.push(i);if(ai.length){first[ai[0]]++;last[ai[ai.length-1]]++;}});
+ const entradas=[null].concat(first.slice(1)),saidas=last.slice(0,MES.length-2).concat([null,null]);
  destroy('cFlow');ch['cFlow']=new Chart(document.getElementById('cFlow'),{type:'bar',data:{labels:MES,datasets:[
   {label:'Entradas (1ª aparição)',data:entradas,backgroundColor:C.green,borderRadius:5,maxBarThickness:24,_f:v=>v,_lc:C.green},
   {label:'Saídas (último acesso)',data:saidas,backgroundColor:C.red,borderRadius:5,maxBarThickness:24,_f:v=>v,_lc:C.red}]},
@@ -1118,7 +1118,7 @@ function renderPerdas(L){
   +card(novosTot,'Entradas (novos)',C.green,'+ '+BRL(entradasRS),cmpP(wNovos,false,false))
   +card((saldoTot>=0?'+':'')+saldoTot,'Saldo líquido',saldoTot>=0?C.green:C.red,'',cmpP(wSaldo,false,false));
  const _cc=document.getElementById('perdasCmpCap');
- if(_cc)_cc.innerHTML=(momT||qoqT)?('<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 3 meses antes · <span style="color:'+C.green+'">▲/▼ verde = melhora</span> · <span style="color:'+C.red+'">vermelho = piora</span>. <b>YoY suprimido</b> (sem 2025). Aparece "—" quando não há janela anterior suficiente.'+(state.to===6?' A janela inclui <b>junho (parcial)</b> — perdas e entradas ficam subestimadas; para leitura limpa selecione sub-janelas fechadas (ex.: Abr+Mai) ou <b>Período → Meses fechados</b>.':'')):'';
+ if(_cc)_cc.innerHTML=(momT||qoqT)?('<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 3 meses antes · <span style="color:'+C.green+'">▲/▼ verde = melhora</span> · <span style="color:'+C.red+'">vermelho = piora</span>. <b>YoY suprimido</b> (sem 2025). Aparece "—" quando não há janela anterior suficiente.'+(state.to===MES.length?' A janela inclui <b>junho (parcial)</b> — perdas e entradas ficam subestimadas; para leitura limpa selecione sub-janelas fechadas (ex.: Abr+Mai) ou <b>Período → Meses fechados</b>.':'')):'';
  // movimentação
  destroy('cMov');
  ch['cMov']=new Chart(document.getElementById('cMov'),{data:{labels,datasets:[
@@ -1240,7 +1240,7 @@ function downloadCSV(){
  document.getElementById('uHead').textContent=uLabel();
  document.getElementById('fSel').onchange=e=>{const v=e.target.value;if(v==='all'){state.cat='Total';state.mod='Todas';}else if(v.indexOf('cat:')===0){state.cat=v.slice(4);state.mod='Todas';}else{state.mod=v.slice(4);state.cat='Total';}render();};
  document.getElementById('fUnit').onchange=e=>{state.unit=e.target.value;document.getElementById('uHead').textContent=uLabel();setFoot();render();};
- document.getElementById('reset').onclick=()=>{Object.assign(state,{cat:'Total',mod:'Todas',unit:'REDE',from:1,to:6,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16});computeDias();document.getElementById('fSel').value='all';document.querySelectorAll('#perMonths input').forEach(x=>x.checked=true);document.getElementById('perBtnLbl').textContent='Todos os meses';document.getElementById('fUnit').value='REDE';document.getElementById('uHead').textContent=uLabel();setFoot();render();};
+ document.getElementById('reset').onclick=()=>{Object.assign(state,{cat:'Total',mod:'Todas',unit:'REDE',from:1,to:MES.length,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16});computeDias();document.getElementById('fSel').value='all';document.querySelectorAll('#perMonths input').forEach(x=>x.checked=true);document.getElementById('perBtnLbl').textContent='Todos os meses';document.getElementById('fUnit').value='REDE';document.getElementById('uHead').textContent=uLabel();setFoot();render();};
  var fTog=document.getElementById('filtToggle');if(fTog){fTog.onclick=()=>{const ff2=document.getElementById('filterFields');ff2.classList.toggle('open');document.getElementById('filtState').textContent=ff2.classList.contains('open')?'▴':'▾';};}
  document.querySelectorAll('#riscoFilter .stbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('#riscoFilter .stbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');rf=b.dataset.rf;pgR=1;renderRisco(withM(filtered()));});
  document.querySelectorAll('#metaFilter .stbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('#metaFilter .stbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');mf=b.dataset.mf;pgM=1;renderMeta(withM(filtered()));});
