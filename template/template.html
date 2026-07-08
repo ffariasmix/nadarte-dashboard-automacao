@@ -267,9 +267,9 @@ header.top{position:static!important}
 .perdrop{position:relative}
 .perbtn{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .percaret{color:var(--muted);font-size:11px}
-.perpanel{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:80;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.14);padding:11px;min-width:248px}
+.perpanel{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:80;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.14);padding:11px;min-width:312px;max-width:360px}
 .perpanel.open{display:block}
-.perquick{display:flex;flex-direction:column;gap:6px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.perquick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--line)}.pergran{display:flex;gap:4px;margin-bottom:9px;background:var(--bg);border-radius:9px;padding:3px}.pergran button{flex:1;border:none;background:none;border-radius:7px;padding:6px 4px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}.pergran button.active{background:var(--surface);color:var(--orange);box-shadow:var(--shadow)}.perlist{max-height:260px;overflow-y:auto}.peryear{display:flex;align-items:flex-start;gap:8px;padding:4px 0}.perylbl{font-size:11px;font-weight:800;color:var(--muted);min-width:34px;padding-top:5px}.perchips{display:flex;flex-wrap:wrap;gap:5px}.perchip{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:5px 9px;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .12s}.perchip:hover{border-color:var(--orange);color:var(--orange)}
 .perquick button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--graphite);cursor:pointer;text-align:left}
 .perquick button:hover{background:var(--orange-soft);border-color:var(--orange)}
 .permonths{display:flex;flex-direction:column;gap:2px}
@@ -290,9 +290,10 @@ header.top{position:static!important}
 <div class="perdrop" id="perDrop">
 <button type="button" class="perbtn" id="perBtn"><span id="perBtnLbl">Todos os meses</span><span class="percaret">▾</span></button>
 <div class="perpanel" id="perPanel">
-<div class="perquick"><button type="button" data-q="closed">Todos os meses fechados</button><button type="button" data-q="all">Todos os meses</button></div>
-<div class="permonths" id="perMonths"></div>
-<p class="perhint">Marque os meses para analisar (ex.: Mai + Jun). A janela usa do 1º ao último mês marcado.</p>
+<div class="perquick"><button type="button" data-q="last12">Últimos 12 meses</button><button type="button" data-q="year">Este ano</button><button type="button" data-q="closed">Meses fechados</button><button type="button" data-q="all">Tudo</button></div>
+<div class="pergran" id="perGran"><button type="button" data-g="mes" class="active">Mês</button><button type="button" data-g="tri">Trimestre</button><button type="button" data-g="sem">Semestre</button><button type="button" data-g="ano">Ano</button></div>
+<div class="perlist" id="perList"></div>
+<p class="perhint">Escolha um atalho ou um período. A janela vai do 1º ao último mês do período.</p>
 </div>
 </div>
 </div>
@@ -1221,14 +1222,21 @@ function downloadCSV(){
  document.getElementById('fSel').innerHTML='<option value="all">Todas as categorias</option>'+'<optgroup label="Por categoria">'+catList.map(c=>'<option value="cat:'+c[0]+'">'+c[1]+'</option>').join('')+'</optgroup>';
  document.getElementById('fUnit').innerHTML=(DATA.unidades||[]).map(u=>'<option value="'+u.key+'">'+u.label+'</option>').join('');
  document.getElementById('fUnit').value='REDE';
- document.getElementById('perMonths').innerHTML=MES.map((m,i)=>'<label class="permo"><input type="checkbox" value="'+(i+1)+'"> '+m+(i===MES.length-1?' (em curso)':'')+'</label>').join('');
- function perSel(){return [...document.querySelectorAll('#perMonths input:checked')].map(x=>+x.value).sort((a,b)=>a-b);}
- function perLabel(){const s=perSel();if(!s.length)return '—';if(s.length===MES.length)return 'Todos os meses';if(s.length===MES.length-1&&s[s.length-1]===MES.length-1)return 'Meses fechados (Jan–'+MES[MES.length-2]+')';if(s.length===1)return MES[s[0]-1];return MES[s[0]-1]+'–'+MES[s[s.length-1]-1];}
- function applyPer(){const s=perSel();if(!s.length)return;state.from=s[0];state.to=s[s.length-1];document.getElementById('perBtnLbl').textContent=perLabel();render();}
- function setPerChecks(arr){document.querySelectorAll('#perMonths input').forEach(x=>x.checked=arr.indexOf(+x.value)>=0);document.getElementById('perBtnLbl').textContent=perLabel();}
- setPerChecks(MES.map((_,i)=>i+1));
- document.getElementById('perMonths').addEventListener('change',applyPer);
- document.querySelectorAll('#perDrop .perquick button').forEach(b=>b.onclick=()=>{const q=b.dataset.q,all=MES.map((_,i)=>i+1);setPerChecks(q==='closed'?all.filter(i=>i<=MES.length-1):all);applyPer();document.getElementById('perPanel').classList.remove('open');});
+ var MABBR=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+ var MINFO=MES.map(function(lbl,i){var p=String(lbl).split('.');return {i:i+1,y:2000+parseInt(p[1]||'0',10),m:Math.max(1,MABBR.indexOf(p[0])+1),lbl:lbl};});
+ var YEARS=[...new Set(MINFO.map(function(o){return o.y;}))].sort(function(a,b){return a-b;});
+ function idxRange(pred){var xs=MINFO.filter(pred);return xs.length?[xs[0].i,xs[xs.length-1].i]:null;}
+ function setWindow(f,tt,label){state.from=f;state.to=tt;document.getElementById('perBtnLbl').textContent=label;document.getElementById('perPanel').classList.remove('open');render();}
+ function buildPerList(g){var host=document.getElementById('perList');var html='';
+  if(g==='mes'){YEARS.forEach(function(y){var ms=MINFO.filter(function(o){return o.y===y;});html+='<div class="peryear"><span class="perylbl">'+y+'</span><div class="perchips">'+ms.map(function(o){return '<button type="button" class="perchip" data-f="'+o.i+'" data-t="'+o.i+'" data-l="'+o.lbl+'">'+MABBR[o.m-1]+'</button>';}).join('')+'</div></div>';});}
+  else if(g==='tri'||g==='sem'){var G=(g==='tri')?[[1,3,'T1'],[4,6,'T2'],[7,9,'T3'],[10,12,'T4']]:[[1,6,'S1'],[7,12,'S2']];YEARS.forEach(function(y){var chips='';G.forEach(function(q){var r=idxRange(function(o){return o.y===y&&o.m>=q[0]&&o.m<=q[1];});if(r)chips+='<button type="button" class="perchip" data-f="'+r[0]+'" data-t="'+r[1]+'" data-l="'+q[2]+'/'+String(y).slice(2)+'">'+q[2]+'</button>';});if(chips)html+='<div class="peryear"><span class="perylbl">'+y+'</span><div class="perchips">'+chips+'</div></div>';});}
+  else{html+='<div class="perchips" style="padding:3px 1px">'+YEARS.map(function(y){var r=idxRange(function(o){return o.y===y;});return '<button type="button" class="perchip" data-f="'+r[0]+'" data-t="'+r[1]+'" data-l="Ano '+y+'">'+y+'</button>';}).join('')+'</div>';}
+  host.innerHTML=html;host.querySelectorAll('.perchip').forEach(function(bb){bb.onclick=function(){setWindow(+bb.dataset.f,+bb.dataset.t,bb.dataset.l);};});}
+ function perQuick(q){var N=MES.length,last=MINFO[N-1];if(q==='last12')setWindow(Math.max(1,N-11),N,'Últimos 12 meses');else if(q==='all')setWindow(1,N,'Tudo ('+MINFO[0].lbl+'–'+last.lbl+')');else if(q==='closed')setWindow(1,Math.max(1,N-1),'Meses fechados');else if(q==='year'){var r=idxRange(function(o){return o.y===last.y;});setWindow(r[0],r[1],'Este ano ('+last.y+')');}}
+ document.querySelectorAll('#perDrop .perquick button').forEach(function(bq){bq.onclick=function(){perQuick(bq.dataset.q);};});
+ document.querySelectorAll('#perGran button').forEach(function(bg){bg.onclick=function(){document.querySelectorAll('#perGran button').forEach(function(x){x.classList.remove('active');});bg.classList.add('active');buildPerList(bg.dataset.g);};});
+ buildPerList('mes');
+ (function(){var N=MES.length;if(N>12){state.from=N-11;state.to=N;document.getElementById('perBtnLbl').textContent='Últimos 12 meses';}else{state.from=1;state.to=N;document.getElementById('perBtnLbl').textContent='Tudo';}})();
  document.getElementById('perBtn').onclick=ev=>{ev.stopPropagation();document.getElementById('perPanel').classList.toggle('open');};
  document.addEventListener('click',ev=>{var dd=document.getElementById('perDrop');if(dd&&!dd.contains(ev.target))document.getElementById('perPanel').classList.remove('open');});
  computeDias();
@@ -1240,7 +1248,7 @@ function downloadCSV(){
  document.getElementById('uHead').textContent=uLabel();
  document.getElementById('fSel').onchange=e=>{const v=e.target.value;if(v==='all'){state.cat='Total';state.mod='Todas';}else if(v.indexOf('cat:')===0){state.cat=v.slice(4);state.mod='Todas';}else{state.mod=v.slice(4);state.cat='Total';}render();};
  document.getElementById('fUnit').onchange=e=>{state.unit=e.target.value;document.getElementById('uHead').textContent=uLabel();setFoot();render();};
- document.getElementById('reset').onclick=()=>{Object.assign(state,{cat:'Total',mod:'Todas',unit:'REDE',from:1,to:MES.length,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16});computeDias();document.getElementById('fSel').value='all';document.querySelectorAll('#perMonths input').forEach(x=>x.checked=true);document.getElementById('perBtnLbl').textContent='Todos os meses';document.getElementById('fUnit').value='REDE';document.getElementById('uHead').textContent=uLabel();setFoot();render();};
+ document.getElementById('reset').onclick=()=>{Object.assign(state,{cat:'Total',mod:'Todas',unit:'REDE',from:1,to:MES.length,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16});computeDias();document.getElementById('fSel').value='all';(function(){var N=MES.length;if(N>12){state.from=N-11;state.to=N;document.getElementById('perBtnLbl').textContent='Últimos 12 meses';}else{state.from=1;state.to=N;document.getElementById('perBtnLbl').textContent='Tudo';}})();document.getElementById('fUnit').value='REDE';document.getElementById('uHead').textContent=uLabel();setFoot();render();};
  var fTog=document.getElementById('filtToggle');if(fTog){fTog.onclick=()=>{const ff2=document.getElementById('filterFields');ff2.classList.toggle('open');document.getElementById('filtState').textContent=ff2.classList.contains('open')?'▴':'▾';};}
  document.querySelectorAll('#riscoFilter .stbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('#riscoFilter .stbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');rf=b.dataset.rf;pgR=1;renderRisco(withM(filtered()));});
  document.querySelectorAll('#metaFilter .stbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('#metaFilter .stbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');mf=b.dataset.mf;pgM=1;renderMeta(withM(filtered()));});

@@ -410,31 +410,40 @@ def all_active(m):
     for unit in UNIT_KEYS: s |= active[(m,unit)]
     return s
 MIN_ACTIVE=500; MIN_OVERLAP=0.60; MIN_ACC=500
+# Os gates de integridade so ABORTAM para os meses RECENTES (janela historica de 2022+
+# tem, de forma legitima, chain menor, mais churn e catraca parcial nos meses antigos).
+# Meses fora da janela recente viram nota informativa ([hist]), nunca erro.
+GATE_MONTHS = int(os.environ.get("PACTO_GATE_MONTHS", "6"))
+GATE_START = max(0, NMONTHS - GATE_MONTHS)   # so enforce dos ultimos GATE_MONTHS meses
 month_active=[all_active(m) for m in range(NMONTHS)]
-errs=[]
+errs=[]; hist=[]
+def _flag(m, msg):
+    (errs if m >= GATE_START else hist).append(msg)
 for m in range(NMONTHS):
     if len(month_active[m])<MIN_ACTIVE:
-        errs.append(f"mes {MESES[m]}: {len(month_active[m])} alunos ativos (<{MIN_ACTIVE}) - falha de leitura/juncao")
+        _flag(m, f"mes {MESES[m]}: {len(month_active[m])} alunos ativos (<{MIN_ACTIVE})")
 for m in range(NMONTHS-1):
     A,B=month_active[m],month_active[m+1]
     ratio=len(A&B)/(min(len(A),len(B)) or 1)
     if ratio<MIN_OVERLAP:
-        errs.append(f"overlap REDE {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - chave suspeita")
+        _flag(m, f"overlap REDE {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
 for unit in UNIT_KEYS:
     for m in range(NMONTHS-1):
         A=active[(m,unit)]; B=active[(m+1,unit)]
         if not A or not B: continue
         ratio=len(A&B)/(min(len(A),len(B)) or 1)
         if ratio<MIN_OVERLAP:
-            errs.append(f"overlap {unit} {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%}) - juncao suspeita na unidade")
+            _flag(m, f"overlap {unit} {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
 for m in range(NMONTHS):
     tot=sum(sum(acc[(unit,m)].values()) for unit in UNIT_KEYS)
     if tot<MIN_ACC:
-        errs.append(f"acessos {MESES[m]}: {tot} (<{MIN_ACC}) - catraca vazia/nao juntou")
+        _flag(m, f"acessos {MESES[m]}: {tot} (<{MIN_ACC})")
+if hist:
+    print(f"[hist] {len(hist)} avisos em meses antigos (fora dos ultimos {GATE_MONTHS}; nao abortam):\n  "+"\n  ".join(hist), file=sys.stderr)
 if errs:
-    print("[ERRO VALIDACAO] dados nao confiaveis, NAO publicando:\n  "+"\n  ".join(errs), file=sys.stderr)
+    print("[ERRO VALIDACAO] dados nao confiaveis nos meses recentes, NAO publicando:\n  "+"\n  ".join(errs), file=sys.stderr)
     sys.exit(1)
-print("[ok] gate de validacao passou (overlaps e volumes plausiveis)", file=sys.stderr)
+print(f"[ok] gate de validacao passou (recentes: ultimos {GATE_MONTHS} meses)", file=sys.stderr)
 
 meta={}
 try: meta=json.load(open(os.path.join(DATA_DIR,"meta.json")))
