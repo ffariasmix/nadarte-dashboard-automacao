@@ -1,349 +1,95 @@
--- ============================================================================
--- Sistema de Controle de Bonificação Nad'Arte — Schema do Banco (Fase 1)
--- Alvo: Cloudflare D1 / SQLite (portável para PostgreSQL com ajustes mínimos).
--- Baseado no DER do PRD (Seção 11) + campos reais confirmados no spike Pacto.
---
--- Convenções:
---  * Dinheiro em INTEGER de CENTAVOS (evita erro de ponto flutuante).
---  * Datas em TEXT ISO-8601 (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SSZ).
---  * IDs internos: INTEGER PRIMARY KEY AUTOINCREMENT. IDs da Pacto guardados
---    em colunas *_pacto para reconciliação (de-para).
---  * Soft delete via coluna 'status'; nada é apagado fisicamente.
---  * Auditoria: criado_em / criado_por / atualizado_em em tabelas mutáveis.
--- ============================================================================
+# .github/workflows/spike-pacto.yml  (v4)
+# Confirma a atribuicao venda->consultor no modulo Comissao Consultor (endpoints reais).
 
-PRAGMA foreign_keys = ON;
+name: Spike Pacto
 
--- ---------------------------------------------------------------------------
--- 1. ORGANIZAÇÃO E PESSOAS
--- ---------------------------------------------------------------------------
+on:
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Unidade (sufixo do secret PACTO_KEY_<UNIDADE>)"
+        required: true
+        default: "716NORTE"
 
-CREATE TABLE unidades (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  empresa_id_pacto  INTEGER UNIQUE,                 -- empresa.codigo na Pacto
-  nome              TEXT NOT NULL,
-  cidade            TEXT,
-  uf                TEXT,
-  status            TEXT NOT NULL DEFAULT 'ativa',   -- ativa | inativa
-  criado_em         TEXT DEFAULT (datetime('now')),
-  atualizado_em     TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE profissionais (
-  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_unidade            INTEGER NOT NULL REFERENCES unidades(id),
-  nome                  TEXT NOT NULL,
-  cargo                 TEXT NOT NULL,               -- consultor | gerente | admin | master
-  -- de-para Pacto:
-  codigo_consultor_pacto  INTEGER,                   -- /comissao-consultor/consultores
-  codigo_colaborador_pacto INTEGER,                  -- /comissao-consultor/colaboradores
-  codigo_pessoa_pacto     INTEGER,
-  status                TEXT NOT NULL DEFAULT 'ativo',
-  data_entrada          TEXT,
-  data_saida            TEXT,
-  criado_em             TEXT DEFAULT (datetime('now')),
-  atualizado_em         TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_prof_unidade ON profissionais(id_unidade);
-CREATE INDEX ix_prof_consultor_pacto ON profissionais(codigo_consultor_pacto);
-
-CREATE TABLE alunos (
-  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_unidade            INTEGER REFERENCES unidades(id),
-  nome                  TEXT,
-  -- de-para Pacto (confirmados no spike):
-  matricula_pacto       INTEGER,                     -- /clientes/simples.matricula
-  codigo_cliente_pacto  INTEGER,                     -- codigoCliente
-  codigo_pessoa_pacto   INTEGER,                     -- codigoPessoa (ponte p/ acessos)
-  cpf                   TEXT,
-  situacao              TEXT,                        -- ATIVO | INATIVO ...
-  data_matricula        TEXT,
-  risco_churn           TEXT,                        -- dados-pessoais.riscoChurn (bônus)
-  criado_em             TEXT DEFAULT (datetime('now')),
-  atualizado_em         TEXT DEFAULT (datetime('now'))
-);
-CREATE UNIQUE INDEX ux_alunos_matricula ON alunos(matricula_pacto);
-CREATE INDEX ix_alunos_codpessoa ON alunos(codigo_pessoa_pacto);
-CREATE INDEX ix_alunos_unidade ON alunos(id_unidade);
-
--- ---------------------------------------------------------------------------
--- 2. CATÁLOGO DE PLANOS
--- ---------------------------------------------------------------------------
-
-CREATE TABLE planos (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  codigo_pacto      INTEGER,
-  descricao         TEXT,
-  tipo              TEXT NOT NULL,                   -- mensal | trimestral | semestral | anual
-  duracao_meses     INTEGER,
-  bonus_b3_bps      INTEGER NOT NULL DEFAULT 0,      -- bônus B3 em basis points (ex.: 200 = +2,0%)
-  status            TEXT NOT NULL DEFAULT 'ativo',
-  criado_em         TEXT DEFAULT (datetime('now'))
-);
-
--- ---------------------------------------------------------------------------
--- 3. VENDAS: CONTRATOS E PARCELAS
--- ---------------------------------------------------------------------------
-
-CREATE TABLE contratos (
-  id                        INTEGER PRIMARY KEY AUTOINCREMENT,
-  contrato_pacto            INTEGER,                 -- parcelas.contrato
-  id_aluno                  INTEGER NOT NULL REFERENCES alunos(id),
-  id_unidade                INTEGER NOT NULL REFERENCES unidades(id),
-  id_plano                  INTEGER REFERENCES planos(id),
-  -- atribuição da venda (fonte: Comissão Consultor / Boletim de Vendas):
-  id_consultor              INTEGER REFERENCES profissionais(id),
-  codigo_atendente_pacto    INTEGER,                 -- 'atendente' no relatório de comissão
-  vinculo_confirmado        INTEGER NOT NULL DEFAULT 0, -- 0 até casar consultor via BV
-  -- valores (derivados da soma das parcelas):
-  valor_contratado_centavos INTEGER,
-  data_venda                TEXT,
-  data_lancamento           TEXT,
-  inicio                    TEXT,
-  fim                       TEXT,
-  status                    TEXT NOT NULL DEFAULT 'ativo', -- ativo | cancelado | trancado ...
-  data_cancelamento         TEXT,
-  criado_em                 TEXT DEFAULT (datetime('now')),
-  atualizado_em             TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_contratos_aluno ON contratos(id_aluno);
-CREATE INDEX ix_contratos_consultor ON contratos(id_consultor);
-CREATE INDEX ix_contratos_pacto ON contratos(contrato_pacto);
-
-CREATE TABLE parcelas (
-  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-  codigo_pacto          INTEGER,                     -- parcelas.codigo
-  id_contrato           INTEGER REFERENCES contratos(id),
-  contrato_pacto        INTEGER,                     -- parcelas.contrato (reconciliação)
-  id_aluno              INTEGER REFERENCES alunos(id),
-  valor_centavos        INTEGER NOT NULL,            -- parcelas.valor
-  data_lancamento       TEXT,
-  data_vencimento       TEXT,
-  data_pagamento        TEXT,                        -- vazio = em aberto (base das Perdas)
-  situacao              TEXT,                        -- PG | EA | RG | CA | atraso
-  situacao_descricao    TEXT,
-  descricao             TEXT,
-  sincronizado_em       TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_parcelas_contrato ON parcelas(id_contrato);
-CREATE INDEX ix_parcelas_aluno ON parcelas(id_aluno);
-CREATE INDEX ix_parcelas_situacao ON parcelas(situacao);
-
--- ---------------------------------------------------------------------------
--- 4. FREQUÊNCIA (PRESENÇA) E ONBOARDING
--- ---------------------------------------------------------------------------
-
-CREATE TABLE acessos (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_aluno          INTEGER NOT NULL REFERENCES alunos(id),
-  id_unidade        INTEGER REFERENCES unidades(id),
-  data_acesso       TEXT NOT NULL,                   -- catraca via /acessos-cliente/by-pessoa
-  sincronizado_em   TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_acessos_aluno_data ON acessos(id_aluno, data_acesso);
-
-CREATE TABLE onboarding (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_aluno          INTEGER NOT NULL REFERENCES alunos(id),
-  id_contrato       INTEGER REFERENCES contratos(id),
-  avaliacao_ok      INTEGER NOT NULL DEFAULT 0,      -- App Treino
-  treino_ok         INTEGER NOT NULL DEFAULT 0,      -- App Treino
-  presenca_media    REAL,                            -- catraca (x/semana)
-  presenca_ok       INTEGER NOT NULL DEFAULT 0,      -- >= limiar da modalidade
-  blocos_completos  INTEGER NOT NULL DEFAULT 0,      -- 0..3
-  janela_inicio     TEXT,
-  janela_fim        TEXT,
-  status            TEXT NOT NULL DEFAULT 'em_andamento', -- em_andamento | concluido | excecao | cancelado
-  criado_em         TEXT DEFAULT (datetime('now')),
-  atualizado_em     TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_onboarding_aluno ON onboarding(id_aluno);
-
-CREATE TABLE excecoes_onboarding (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_onboarding INTEGER NOT NULL REFERENCES onboarding(id),
-  tipo          TEXT NOT NULL,                       -- atestado | trancamento | transferencia | modalidade | falha_integracao
-  tratamento    TEXT,                                -- pausa_janela | estende_janela | exclui | ...
-  responsavel   TEXT,
-  data          TEXT DEFAULT (datetime('now'))
-);
-
--- ---------------------------------------------------------------------------
--- 5. PERDAS
--- ---------------------------------------------------------------------------
-
-CREATE TABLE perdas (
-  id                          INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_contrato                 INTEGER NOT NULL REFERENCES contratos(id),
-  id_aluno                    INTEGER REFERENCES alunos(id),
-  id_profissional             INTEGER REFERENCES profissionais(id),
-  tipo_perda                  TEXT,                  -- cancelamento_antecipado ...
-  receita_futura_perdida_centavos INTEGER NOT NULL, -- soma das parcelas em aberto/futuras
-  percentual_aplicado_bps     INTEGER NOT NULL,      -- média 6m ou 60 (=0,6%)
-  valor_ajuste_centavos       INTEGER NOT NULL,
-  status                      TEXT NOT NULL DEFAULT 'previsto',
-  criado_em                   TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_perdas_contrato ON perdas(id_contrato);
-
--- ---------------------------------------------------------------------------
--- 6. METAS, COMPETÊNCIAS E REGRAS
--- ---------------------------------------------------------------------------
-
-CREATE TABLE competencias (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  mes_ref           TEXT NOT NULL UNIQUE,            -- 'YYYY-MM'
-  status            TEXT NOT NULL DEFAULT 'aberta',  -- aberta | em_conferencia | homologada | paga | reaberta
-  data_fechamento   TEXT,
-  data_conferencia  TEXT,
-  data_homologacao  TEXT
-);
-
-CREATE TABLE metas (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_competencia    INTEGER NOT NULL REFERENCES competencias(id),
-  id_unidade        INTEGER NOT NULL REFERENCES unidades(id),
-  atingimento_pct   REAL,                            -- vem do painel /api/data
-  faixa             TEXT,                            -- N1..N5 ou 'abaixo'
-  fonte             TEXT DEFAULT 'painel_metas',
-  data_fechamento   TEXT,
-  UNIQUE(id_competencia, id_unidade)
-);
-
-CREATE TABLE regras_bonificacao (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  versao            TEXT NOT NULL,
-  tipo_regra        TEXT NOT NULL,                   -- B1 | B2 | B3 | AP | META
-  vigencia_inicio   TEXT NOT NULL,
-  vigencia_fim      TEXT,
-  formula           TEXT,                            -- descrição/param serializada (JSON)
-  responsavel       TEXT,
-  status            TEXT NOT NULL DEFAULT 'vigente',
-  criado_em         TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE faixas_bonificacao (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_regra          INTEGER REFERENCES regras_bonificacao(id),
-  tipo              TEXT NOT NULL,                   -- B1 | B2
-  nivel             TEXT NOT NULL,                   -- abaixo | N1..N5
-  criterio_min_pct  REAL,                            -- ex.: 10, 15, 20, 25, 30 (B1) / 50,70,80,90,100 (B2)
-  percentual_bps    INTEGER NOT NULL                 -- ex.: 50 (=0,5%), 60, 70... / 10..50 (B2)
-);
-
--- ---------------------------------------------------------------------------
--- 7. APURAÇÃO E MEMÓRIA DE CÁLCULO
--- ---------------------------------------------------------------------------
-
-CREATE TABLE apuracoes (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_competencia    INTEGER NOT NULL REFERENCES competencias(id),
-  id_profissional   INTEGER NOT NULL REFERENCES profissionais(id),
-  id_unidade        INTEGER NOT NULL REFERENCES unidades(id),
-  b1_centavos       INTEGER NOT NULL DEFAULT 0,
-  b2_centavos       INTEGER NOT NULL DEFAULT 0,
-  b3_centavos       INTEGER NOT NULL DEFAULT 0,
-  ap_centavos       INTEGER NOT NULL DEFAULT 0,      -- Ajuste por Perdas (subtrai)
-  valor_final_centavos INTEGER NOT NULL DEFAULT 0,
-  status            TEXT NOT NULL DEFAULT 'em_processamento',
-  versao_regra      TEXT,
-  id_snapshot       INTEGER,
-  criado_em         TEXT DEFAULT (datetime('now')),
-  atualizado_em     TEXT DEFAULT (datetime('now')),
-  UNIQUE(id_competencia, id_profissional)
-);
-CREATE INDEX ix_apur_competencia ON apuracoes(id_competencia);
-
-CREATE TABLE memoria_calculo (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_apuracao       INTEGER NOT NULL REFERENCES apuracoes(id),
-  bloco             TEXT NOT NULL,                   -- B1 | B2 | B3 | AP
-  descricao         TEXT,
-  base_centavos     INTEGER,
-  percentual_bps    INTEGER,
-  valor_centavos    INTEGER,
-  detalhe_json      TEXT                             -- itens que compõem o valor
-);
-CREATE INDEX ix_memoria_apuracao ON memoria_calculo(id_apuracao);
-
--- ---------------------------------------------------------------------------
--- 8. GOVERNANÇA: CONTESTAÇÃO, HOMOLOGAÇÃO, SNAPSHOT
--- ---------------------------------------------------------------------------
-
-CREATE TABLE contestacoes (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_apuracao       INTEGER NOT NULL REFERENCES apuracoes(id),
-  autor             TEXT NOT NULL,
-  evidencia_ref     TEXT,                            -- ref R2 / anexo
-  justificativa     TEXT,
-  status            TEXT NOT NULL DEFAULT 'aberta',  -- aberta | deferida | indeferida
-  decisor           TEXT,
-  resultado         TEXT,
-  criado_em         TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE homologacoes (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_competencia    INTEGER NOT NULL REFERENCES competencias(id),
-  homologador       TEXT NOT NULL,                   -- ex.: Camila (admin/master)
-  autorizado_pagamento INTEGER NOT NULL DEFAULT 0,   -- gate explícito
-  versao_regra      TEXT,
-  hash_snapshot     TEXT,
-  data_hora         TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE snapshots_competencia (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_competencia    INTEGER NOT NULL REFERENCES competencias(id),
-  ref_r2            TEXT,                            -- base imutável no R2
-  hash              TEXT,
-  criado_em         TEXT DEFAULT (datetime('now'))
-);
-
--- ---------------------------------------------------------------------------
--- 9. INTEGRAÇÃO, ACESSO E AUDITORIA
--- ---------------------------------------------------------------------------
-
-CREATE TABLE integracao_execucoes (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  fonte             TEXT NOT NULL,                   -- pacto | catraca | app_treino | painel_metas | comissao_consultor
-  endpoint          TEXT,
-  timestamp         TEXT DEFAULT (datetime('now')),
-  status            TEXT,                            -- ok | erro
-  http_status       INTEGER,
-  registros         INTEGER,
-  erro              TEXT
-);
-CREATE INDEX ix_integ_fonte ON integracao_execucoes(fonte, timestamp);
-
-CREATE TABLE usuarios (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  identidade        TEXT NOT NULL UNIQUE,            -- e-mail / sub do Cloudflare Access
-  id_profissional   INTEGER REFERENCES profissionais(id),
-  perfil            TEXT NOT NULL,                   -- consultor | gerente | admin_dp | master | auditor
-  escopo_unidade    INTEGER REFERENCES unidades(id), -- NULL = todas
-  ativo             INTEGER NOT NULL DEFAULT 1,
-  criado_em         TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE logs_auditoria (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  usuario           TEXT,
-  acao              TEXT NOT NULL,                   -- login | leitura | alteracao | exportacao | contestacao | homologacao
-  entidade          TEXT,
-  entidade_id       INTEGER,
-  antes_json        TEXT,
-  depois_json       TEXT,
-  ip                TEXT,
-  data_hora         TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX ix_log_data ON logs_auditoria(data_hora);
-
--- ============================================================================
--- FIM DO SCHEMA
--- Notas:
---  * PostgreSQL: trocar 'INTEGER PRIMARY KEY AUTOINCREMENT' por 'BIGSERIAL PRIMARY KEY',
---    datetime('now') por now(), e TEXT-datas por TIMESTAMP/DATE conforme preferência.
---  * contratos.id_consultor / codigo_atendente_pacto são populados a partir do
---    relatório Comissão Consultor (venda -> consultor). Até lá, vinculo_confirmado = 0.
--- ============================================================================
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    env:
+      UNIT: ${{ inputs.unit }}
+      PACTO_KEY_716NORTE: ${{ secrets.PACTO_KEY_716NORTE }}
+      PACTO_KEY_905SUL: ${{ secrets.PACTO_KEY_905SUL }}
+      PACTO_KEY_604NORTE: ${{ secrets.PACTO_KEY_604NORTE }}
+      PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
+      PACTO_KEY_LAGOSUL: ${{ secrets.PACTO_KEY_LAGOSUL }}
+    steps:
+      - name: Rodar spike (inline, resultado no log)
+        run: |
+          python3 - <<'PY'
+          import os, json, time, urllib.request, urllib.error, urllib.parse
+          import datetime as dt
+          G = "https://apigw.pactosolucoes.com.br"
+          unit = os.environ.get("UNIT", "716NORTE").upper()
+          KEY = os.environ.get("PACTO_KEY_" + unit, "").strip()
+          if not KEY:
+              print("[erro] variavel PACTO_KEY_" + unit + " nao definida."); raise SystemExit(0)
+          def call(path, headers=None):
+              h = {"Authorization": "Bearer " + KEY}
+              if headers: h.update(headers)
+              req = urllib.request.Request(G + path, headers=h)
+              t = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      body = r.read().decode("utf-8", "replace"); code = r.status
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode("utf-8", "replace"); code = e.code
+              except Exception as e:
+                  return {"status": "EXC", "erro": str(e)[:120]}, None
+              return {"status": code, "ms": round((time.time() - t) * 1000)}, body
+          def parse(body):
+              try: j = json.loads(body)
+              except Exception: return None
+              return j.get("content", j) if isinstance(j, dict) else j
+          def show(tag, path, rec, core=None, raw=None):
+              info = {"tag": tag, "path": path, "status": rec.get("status"), "ms": rec.get("ms")}
+              if core is not None:
+                  if isinstance(core, list):
+                      info["tipo"] = "list(len=%d)" % len(core)
+                      if core and isinstance(core[0], dict): info["campos"] = sorted(core[0].keys())[:30]
+                  elif isinstance(core, dict):
+                      info["campos"] = sorted(core.keys())[:30]
+                  elif isinstance(core, str):
+                      info["valor_str"] = core[:120]
+              if raw is not None and core is None:
+                  info["raw"] = str(raw)[:160]
+              print(json.dumps(info, ensure_ascii=False))
+          now = dt.date.today()
+          d0 = (now - dt.timedelta(days=120)).strftime("%Y-%m-%d")
+          d1 = now.strftime("%Y-%m-%d")
+          print("=== SPIKE Pacto v4 — Comissao Consultor — unidade " + unit + " ===")
+          rec, body = call("/clientes/simples?page=0&size=5"); core = parse(body)
+          mat = None
+          if isinstance(core, list) and core:
+              mat = str(core[0].get("matricula") or core[0].get("codigoCliente") or "")
+          emp = None
+          if mat:
+              rec, body = call("/clientes/%s/dados-pessoais" % mat); core = parse(body)
+              if isinstance(core, dict) and isinstance(core.get("empresa"), dict):
+                  emp = str(core["empresa"].get("codigo") or "")
+          print("[info] empresaId: " + str(emp))
+          emph = {"empresaId": emp} if emp else None
+          rec, body = call("/comissao-consultor/consultores", emph)
+          show("cc-consultores", "/comissao-consultor/consultores", rec, parse(body))
+          rec, body = call("/comissao-consultor/colaboradores", emph)
+          show("cc-colaboradores", "/comissao-consultor/colaboradores", rec, parse(body))
+          rec, body = call("/comissao-consultor/periodicidades", emph)
+          show("cc-periodicidades", "/comissao-consultor/periodicidades", rec, parse(body))
+          filt = urllib.parse.quote(json.dumps({
+              "empresa": emp, "dataInicio": d0, "dataFinal": d1,
+              "dataContratosLancadosAPartir": d0
+          }))
+          for tipo in ("excel", "pdf"):
+              rec, body = call("/comissao-consultor/gerar-relatorio/%s?filters=%s" % (tipo, filt), emph)
+              show("cc-gerar-relatorio(%s)" % tipo, "/comissao-consultor/gerar-relatorio/%s" % tipo, rec, parse(body), raw=body)
+          print("=== fim (nenhuma chave impressa) ===")
+          print("Meta: confirmar que Comissao Consultor lista consultores/colaboradores e que gerar-relatorio devolve dados/URL com venda por consultor.")
+          PY
