@@ -1,0 +1,143 @@
+# .github/workflows/spike-pacto.yml
+# Spike Pacto — arquivo UNICO, Python embutido, resultado direto no log.
+# Usa as chaves que ja existem nos GitHub Secrets. Nenhuma chave e impressa.
+# Rodar: aba Actions -> "Spike Pacto" -> Run workflow -> escolher unidade.
+
+name: Spike Pacto
+
+on:
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Unidade (sufixo do secret PACTO_KEY_<UNIDADE>)"
+        required: true
+        default: "716NORTE"
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    env:
+      UNIT: ${{ inputs.unit }}
+      PACTO_KEY_716NORTE: ${{ secrets.PACTO_KEY_716NORTE }}
+      PACTO_KEY_905SUL: ${{ secrets.PACTO_KEY_905SUL }}
+      PACTO_KEY_604NORTE: ${{ secrets.PACTO_KEY_604NORTE }}
+      PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
+      PACTO_KEY_LAGOSUL: ${{ secrets.PACTO_KEY_LAGOSUL }}
+    steps:
+      - name: Rodar spike (inline, resultado no log)
+        run: |
+          python3 - <<'PY'
+          import os, json, time, re, urllib.request, urllib.error, urllib.parse
+          import datetime as dt
+          G = "https://apigw.pactosolucoes.com.br"
+          unit = os.environ.get("UNIT", "716NORTE").upper()
+          KEY = os.environ.get("PACTO_KEY_" + unit, "").strip()
+          if not KEY:
+              print("[erro] variavel PACTO_KEY_" + unit + " nao definida.")
+              raise SystemExit(0)
+          MONEY = re.compile(r"(valor|preco|total|montante|mensalidade|receita|faturament|ticket|parcela)", re.I)
+          LINK = re.compile(r"(consultor|vendedor|colaborador|funcionario|professor|responsavel|matricul|codpessoa|codigo)", re.I)
+          def walk(o, p=""):
+              if isinstance(o, dict):
+                  for k, v in o.items():
+                      q = (p + "." + k) if p else k
+                      if isinstance(v, (dict, list)):
+                          for x in walk(v, q): yield x
+                      else:
+                          yield q, v
+              elif isinstance(o, list):
+                  if o:
+                      for x in walk(o[0], p + "[0]"): yield x
+          def diag(b):
+              try:
+                  j = json.loads(b)
+              except Exception:
+                  return {"formato": "nao-JSON " + str(len(b)) + "b", "valor": [], "vinculo": []}
+              core = j["content"] if isinstance(j, dict) and "content" in j else j
+              if isinstance(j, dict) and isinstance(j.get("meta"), dict) and j["meta"].get("error"):
+                  return {"formato": "meta.error " + str(j["meta"].get("message")), "valor": [], "vinculo": []}
+              if isinstance(core, list):
+                  shape = "content:list(len=" + str(len(core)) + ")"
+              elif isinstance(core, dict):
+                  shape = "content:dict keys=" + str(sorted(core.keys())[:14])
+              else:
+                  shape = type(core).__name__
+              money = []; link = []
+              for path, val in walk(core):
+                  leaf = path.split(".")[-1].split("[")[0]
+                  if MONEY.search(leaf) and isinstance(val, (int, float)) and path not in money:
+                      money.append(path)
+                  elif LINK.search(leaf) and path not in link:
+                      link.append(path)
+              return {"formato": shape, "valor": money[:10], "vinculo": link[:10]}
+          def call(path, headers=None):
+              h = {"Authorization": "Bearer " + KEY}
+              if headers: h.update(headers)
+              req = urllib.request.Request(G + path, headers=h)
+              t = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=40) as r:
+                      body = r.read().decode("utf-8", "replace"); code = r.status
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode("utf-8", "replace"); code = e.code
+              except Exception as e:
+                  return {"path": path, "status": "EXC", "erro": str(e)[:120]}, None
+              d = diag(body); d.update({"path": path, "status": code, "ms": round((time.time() - t) * 1000)})
+              return d, body
+          def show(r): print(json.dumps(r, ensure_ascii=False))
+          now = dt.date.today().replace(day=1); ini = (now - dt.timedelta(days=60)).replace(day=1)
+          ms = lambda d: int(dt.datetime(d.year, d.month, d.day).timestamp() * 1000)
+          print("=== SPIKE Pacto — unidade " + unit + " ===")
+          r, body = call("/v1/plano"); show(r)
+          emp = None
+          try:
+              j = json.loads(body); core = j.get("content", j)
+              def fe(o):
+                  if isinstance(o, dict):
+                      if isinstance(o.get("empresa"), dict) and "codigo" in o["empresa"]:
+                          return str(o["empresa"]["codigo"])
+                      for k, v in o.items():
+                          if k.lower() == "empresaid" and not isinstance(v, (dict, list)):
+                              return str(v)
+                          x = fe(v)
+                          if x: return x
+                  elif isinstance(o, list):
+                      for it in o:
+                          x = fe(it)
+                          if x: return x
+              emp = fe(core)
+          except Exception:
+              pass
+          print("[info] empresaId: " + str(emp))
+          r, _ = call("/v1/bi/resumo?mesInicial=%d&mesFinal=%d" % (ms(ini), ms(now)), {"empresaId": emp} if emp else None); show(r)
+          r, body = call("/clientes/simples?page=0&size=5"); show(r)
+          mat = None
+          try:
+              j = json.loads(body); core = j.get("content", j)
+              first = core[0] if isinstance(core, list) and core else (core if isinstance(core, dict) else {})
+              for k in ("matricula", "codigo", "codPessoa"):
+                  if k in first:
+                      mat = str(first[k]); break
+          except Exception:
+              pass
+          print("[info] matricula amostra: " + str(mat))
+          if mat:
+              r, body = call("/clientes/%s/dados-pessoais" % mat); show(r)
+              cp = None
+              try:
+                  j = json.loads(body); core = j.get("content", j)
+                  cp = str(core.get("codPessoa") or core.get("codigo") or "")
+              except Exception:
+                  pass
+              if cp:
+                  r, _ = call("/acessos-cliente/by-pessoa/%s?page=0&size=5" % cp); show(r)
+              print("=== VALOR via parcelas ===")
+              r, _ = call("/parcelas/by-matricula/%s?page=0&size=10&sort=dataVencimento,asc" % mat); show(r)
+          print("=== vinculo consultor ===")
+          if emp:
+              r, _ = call("/gestao-vendas-online/consultores/" + emp); show(r)
+          pag = urllib.parse.quote('{"page":0,"size":5}')
+          r, _ = call("/gestao-vendas-online/vendas-realizadas?paginadorDTO=" + pag); show(r)
+          print("=== fim (nenhuma chave impressa) ===")
+          print("Metas: (1) parcelas com 'valor' -> base e Perdas OK; (2) achar 'vinculo' consultor em vendas-realizadas.")
+          PY
