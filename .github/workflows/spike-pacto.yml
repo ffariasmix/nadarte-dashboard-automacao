@@ -1,7 +1,7 @@
-# .github/workflows/spike-pacto.yml
-# Spike Pacto — arquivo UNICO, Python embutido, resultado direto no log.
-# Usa as chaves que ja existem nos GitHub Secrets. Nenhuma chave e impressa.
-# Rodar: aba Actions -> "Spike Pacto" -> Run workflow -> escolher unidade.
+# .github/workflows/spike-pacto.yml  (v2)
+# Spike Pacto — arquivo UNICO, Python embutido, resultado no log.
+# v2: pega empresaId do dados-pessoais, corrige codigoPessoa, varre ate achar aluno
+#     com parcelas (mostra campos: valor/situacao/dataVencimento), e caca o consultor.
 
 name: Spike Pacto
 
@@ -27,7 +27,7 @@ jobs:
       - name: Rodar spike (inline, resultado no log)
         run: |
           python3 - <<'PY'
-          import os, json, time, re, urllib.request, urllib.error, urllib.parse
+          import os, json, time, urllib.request, urllib.error, urllib.parse
           import datetime as dt
           G = "https://apigw.pactosolucoes.com.br"
           unit = os.environ.get("UNIT", "716NORTE").upper()
@@ -35,41 +35,6 @@ jobs:
           if not KEY:
               print("[erro] variavel PACTO_KEY_" + unit + " nao definida.")
               raise SystemExit(0)
-          MONEY = re.compile(r"(valor|preco|total|montante|mensalidade|receita|faturament|ticket|parcela)", re.I)
-          LINK = re.compile(r"(consultor|vendedor|colaborador|funcionario|professor|responsavel|matricul|codpessoa|codigo)", re.I)
-          def walk(o, p=""):
-              if isinstance(o, dict):
-                  for k, v in o.items():
-                      q = (p + "." + k) if p else k
-                      if isinstance(v, (dict, list)):
-                          for x in walk(v, q): yield x
-                      else:
-                          yield q, v
-              elif isinstance(o, list):
-                  if o:
-                      for x in walk(o[0], p + "[0]"): yield x
-          def diag(b):
-              try:
-                  j = json.loads(b)
-              except Exception:
-                  return {"formato": "nao-JSON " + str(len(b)) + "b", "valor": [], "vinculo": []}
-              core = j["content"] if isinstance(j, dict) and "content" in j else j
-              if isinstance(j, dict) and isinstance(j.get("meta"), dict) and j["meta"].get("error"):
-                  return {"formato": "meta.error " + str(j["meta"].get("message")), "valor": [], "vinculo": []}
-              if isinstance(core, list):
-                  shape = "content:list(len=" + str(len(core)) + ")"
-              elif isinstance(core, dict):
-                  shape = "content:dict keys=" + str(sorted(core.keys())[:14])
-              else:
-                  shape = type(core).__name__
-              money = []; link = []
-              for path, val in walk(core):
-                  leaf = path.split(".")[-1].split("[")[0]
-                  if MONEY.search(leaf) and isinstance(val, (int, float)) and path not in money:
-                      money.append(path)
-                  elif LINK.search(leaf) and path not in link:
-                      link.append(path)
-              return {"formato": shape, "valor": money[:10], "vinculo": link[:10]}
           def call(path, headers=None):
               h = {"Authorization": "Bearer " + KEY}
               if headers: h.update(headers)
@@ -81,63 +46,79 @@ jobs:
               except urllib.error.HTTPError as e:
                   body = e.read().decode("utf-8", "replace"); code = e.code
               except Exception as e:
-                  return {"path": path, "status": "EXC", "erro": str(e)[:120]}, None
-              d = diag(body); d.update({"path": path, "status": code, "ms": round((time.time() - t) * 1000)})
-              return d, body
-          def show(r): print(json.dumps(r, ensure_ascii=False))
+                  return {"status": "EXC", "erro": str(e)[:120]}, None
+              return {"status": code, "ms": round((time.time() - t) * 1000)}, body
+          def parse(body):
+              try:
+                  j = json.loads(body)
+              except Exception:
+                  return None
+              return j.get("content", j) if isinstance(j, dict) else j
+          def show(tag, path, rec, core=None, extra=""):
+              info = {"tag": tag, "path": path, "status": rec.get("status"), "ms": rec.get("ms")}
+              if core is not None:
+                  if isinstance(core, list):
+                      info["tipo"] = "list(len=%d)" % len(core)
+                      if core and isinstance(core[0], dict):
+                          info["campos"] = sorted(core[0].keys())[:25]
+                  elif isinstance(core, dict):
+                      info["campos"] = sorted(core.keys())[:25]
+              if extra:
+                  info["obs"] = extra
+              print(json.dumps(info, ensure_ascii=False))
           now = dt.date.today().replace(day=1); ini = (now - dt.timedelta(days=60)).replace(day=1)
           ms = lambda d: int(dt.datetime(d.year, d.month, d.day).timestamp() * 1000)
-          print("=== SPIKE Pacto — unidade " + unit + " ===")
-          r, body = call("/v1/plano"); show(r)
-          emp = None
-          try:
-              j = json.loads(body); core = j.get("content", j)
-              def fe(o):
-                  if isinstance(o, dict):
-                      if isinstance(o.get("empresa"), dict) and "codigo" in o["empresa"]:
-                          return str(o["empresa"]["codigo"])
-                      for k, v in o.items():
-                          if k.lower() == "empresaid" and not isinstance(v, (dict, list)):
-                              return str(v)
-                          x = fe(v)
-                          if x: return x
-                  elif isinstance(o, list):
-                      for it in o:
-                          x = fe(it)
-                          if x: return x
-              emp = fe(core)
-          except Exception:
-              pass
-          print("[info] empresaId: " + str(emp))
-          r, _ = call("/v1/bi/resumo?mesInicial=%d&mesFinal=%d" % (ms(ini), ms(now)), {"empresaId": emp} if emp else None); show(r)
-          r, body = call("/clientes/simples?page=0&size=5"); show(r)
-          mat = None
-          try:
-              j = json.loads(body); core = j.get("content", j)
-              first = core[0] if isinstance(core, list) and core else (core if isinstance(core, dict) else {})
-              for k in ("matricula", "codigo", "codPessoa"):
-                  if k in first:
-                      mat = str(first[k]); break
-          except Exception:
-              pass
-          print("[info] matricula amostra: " + str(mat))
-          if mat:
-              r, body = call("/clientes/%s/dados-pessoais" % mat); show(r)
-              cp = None
-              try:
-                  j = json.loads(body); core = j.get("content", j)
-                  cp = str(core.get("codPessoa") or core.get("codigo") or "")
-              except Exception:
-                  pass
-              if cp:
-                  r, _ = call("/acessos-cliente/by-pessoa/%s?page=0&size=5" % cp); show(r)
-              print("=== VALOR via parcelas ===")
-              r, _ = call("/parcelas/by-matricula/%s?page=0&size=10&sort=dataVencimento,asc" % mat); show(r)
+          print("=== SPIKE Pacto v2 — unidade " + unit + " ===")
+          # 1) clientes: coletar varias matriculas
+          rec, body = call("/clientes/simples?page=0&size=30")
+          core = parse(body); show("clientes", "/clientes/simples", rec, core)
+          mats = []
+          if isinstance(core, list):
+              for it in core:
+                  if isinstance(it, dict):
+                      m = it.get("matricula") or it.get("codigoCliente") or it.get("codigo")
+                      if m is not None: mats.append(str(m))
+          print("[info] matriculas coletadas: " + str(len(mats)))
+          # 2) dados-pessoais do primeiro -> codigoPessoa + empresaId
+          emp = None; codpessoa = None
+          if mats:
+              rec, body = call("/clientes/%s/dados-pessoais" % mats[0])
+              core = parse(body); show("dados-pessoais", "/clientes/{mat}/dados-pessoais", rec, core)
+              if isinstance(core, dict):
+                  codpessoa = str(core.get("codigoPessoa") or core.get("codPessoa") or "")
+                  e = core.get("empresa")
+                  if isinstance(e, dict): emp = str(e.get("codigo") or "")
+          print("[info] codigoPessoa: " + str(codpessoa) + " | empresaId: " + str(emp))
+          # 3) presenca (acessos)
+          if codpessoa:
+              rec, body = call("/acessos-cliente/by-pessoa/%s?page=0&size=5" % codpessoa)
+              show("acessos", "/acessos-cliente/by-pessoa/{cod}", rec, parse(body))
+          # 4) faturamento com empresaId
+          if emp:
+              rec, body = call("/v1/bi/resumo?mesInicial=%d&mesFinal=%d" % (ms(ini), ms(now)), {"empresaId": emp})
+              show("faturamento", "/v1/bi/resumo", rec, parse(body))
+          # 5) PARCELAS: varrer ate achar aluno com parcelas (revela campos: valor/situacao/dataVencimento)
+          print("=== VALOR via parcelas (varrendo ate achar aluno com parcelas) ===")
+          achou = False; testados = 0
+          for m in mats[:25]:
+              testados += 1
+              rec, body = call("/parcelas/by-matricula/%s?page=0&size=10&sort=dataVencimento,asc" % m)
+              core = parse(body)
+              if isinstance(core, list) and len(core) > 0:
+                  show("parcelas", "/parcelas/by-matricula/{mat}", rec, core, extra="ALUNO COM PARCELAS apos %d testados" % testados)
+                  achou = True
+                  break
+          if not achou:
+              print("[info] nenhum dos %d alunos amostrados tinha parcelas — testar outra unidade/aluno ativo." % testados)
+          # 6) vinculo consultor
           print("=== vinculo consultor ===")
           if emp:
-              r, _ = call("/gestao-vendas-online/consultores/" + emp); show(r)
-          pag = urllib.parse.quote('{"page":0,"size":5}')
-          r, _ = call("/gestao-vendas-online/vendas-realizadas?paginadorDTO=" + pag); show(r)
+              rec, body = call("/gestao-vendas-online/consultores/" + emp)
+              show("consultores", "/gestao-vendas-online/consultores/{emp}", rec, parse(body))
+          vazio = urllib.parse.quote("{}")
+          for variante in ['{"page":0,"size":5}', '{"pagina":0,"tamanho":5}']:
+              q = urllib.parse.quote(variante)
+              rec, body = call("/gestao-vendas-online/vendas-realizadas?paginadorDTO=%s&filters=%s" % (q, vazio))
+              show("vendas-realizadas", "vendas-realizadas paginadorDTO=" + variante, rec, parse(body))
           print("=== fim (nenhuma chave impressa) ===")
-          print("Metas: (1) parcelas com 'valor' -> base e Perdas OK; (2) achar 'vinculo' consultor em vendas-realizadas.")
           PY
