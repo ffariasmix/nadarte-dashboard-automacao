@@ -318,12 +318,12 @@ print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)
 
 # ---- montar students (apenas ativos do mes-base) ----
 students=[]
-for (pos,unit),keys in active.items():
+for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' durante a iteracao
     if pos!=base_pos: continue
     for key in keys:
         a = attrs[base_pos].get((unit,key),{})
-        ac = [acc[(unit,mm)].get(key,0) for mm in range(NMONTHS)]
-        act= [1 if key in active[(mm,unit)] else 0 for mm in range(NMONTHS)]
+        ac = [acc.get((unit,mm),{}).get(key,0) for mm in range(NMONTHS)]
+        act= [1 if key in active.get((mm,unit),()) else 0 for mm in range(NMONTHS)]  # .get: nao cria chave em defaultdict
         students.append({
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Outros"),"mod":a.get("mod","")[:40],

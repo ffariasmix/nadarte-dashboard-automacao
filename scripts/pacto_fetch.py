@@ -322,14 +322,20 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
 def coleta_unidade(unit_key, unit_label, key):
     """FULL-API com FILA DE RE-TENTATIVA: quem falha (rate-limit) volta pra fila e e
     recoletado em ate RETRY_ROUNDS rodadas. Nada e descartado silenciosamente."""
-    wmonths = set(window_months(WINDOW_START, WINDOW_END))
+    all_months = window_months(WINDOW_START, WINDOW_END)
+    wmonths = set(all_months)   # janela completa: usada nos arrays de acesso (historico)
+    # BASE = so quem esteve ativo nos ultimos INCLUDE_MONTHS meses (evita puxar todo mundo que
+    # passou pela rede desde 2022). O historico completo continua nos arrays desses alunos.
+    INCLUDE_MONTHS = int(os.environ.get("PACTO_INCLUDE_MONTHS", "12"))
+    recent = set(all_months[-INCLUDE_MONTHS:]) if len(all_months) > INCLUDE_MONTHS else wmonths
     prof_by_id, prof_by_nome = (fotos_professores(key) if FOTOS else ({}, {}))
     if FOTOS:
         print(f"[fotos] {unit_key}: {len(prof_by_id)} professores mapeados", file=sys.stderr)
     full = roster_full(key)
     win = [c for c in full
            if any(active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), y, m, gv(c, "situacao"))
-                  for (y, m) in wmonths)]
+                  for (y, m) in recent)]
+    print(f"[base] {unit_key}: {len(win)} alunos (ativos nos ultimos {INCLUDE_MONTHS}m) de {len(full)} no historico", file=sys.stderr)
     t0 = time.time()
     recs = []
     pending = list(win)
