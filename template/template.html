@@ -616,7 +616,7 @@ function renderKPIs(L,A){
  const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
  const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  const cards=[
- {c:C.blue,ic:IC.base,val:A.base,lab:'Base de alunos',def:'Total de alunos no período/filtro selecionado.'},
+ {c:C.blue,ic:IC.base,val:A.base,lab:'Base de alunos',def:'Total de alunos no período/filtro selecionado.',cmp:cmpRow(A.base,mom&&mom.base,qoq&&qoq.base,false,false)},
  {c:A.metaMed>=0.7?C.green:(A.metaMed>=0.5?C.yellow:C.red),ic:IC.freq,val:pct(A.metaMed),lab:'Frequência média',def:'Em média, cada aluno cumpriu este % da meta da SUA categoria (ponderado pela base). 100% = todos batendo a meta.',cmp:cmpRow(cur.freqMed,mom&&mom.freqMed,qoq&&qoq.freqMed,true,false)},
  {c:C.blue,ic:IC.meta,val:A.meta,lab:'Meta atingida',def:pct0(A.meta/Math.max(A.base,1))+' da base cumpriu ≥90% da meta da própria categoria (cada categoria pela sua meta semanal).',cmp:cmpRow(cur.meta,mom&&mom.meta,qoq&&qoq.meta,false,false)},
  {c:'#7A5AA8',ic:IC.eng,val:A.eng,lab:'Engajados',def:pct0(A.eng/Math.max(A.base,1))+' da base com hábito consistente (Fiel/Regular), sem queda — independe do nível de frequência.',cmp:cmpRow(cur.eng,mom&&mom.eng,qoq&&qoq.eng,false,false)},
