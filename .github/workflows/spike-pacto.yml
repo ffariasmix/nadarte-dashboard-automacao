@@ -1,0 +1,95 @@
+# .github/workflows/spike-pacto.yml  (v4)
+# Confirma a atribuicao venda->consultor no modulo Comissao Consultor (endpoints reais).
+
+name: Spike Pacto
+
+on:
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Unidade (sufixo do secret PACTO_KEY_<UNIDADE>)"
+        required: true
+        default: "716NORTE"
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    env:
+      UNIT: ${{ inputs.unit }}
+      PACTO_KEY_716NORTE: ${{ secrets.PACTO_KEY_716NORTE }}
+      PACTO_KEY_905SUL: ${{ secrets.PACTO_KEY_905SUL }}
+      PACTO_KEY_604NORTE: ${{ secrets.PACTO_KEY_604NORTE }}
+      PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
+      PACTO_KEY_LAGOSUL: ${{ secrets.PACTO_KEY_LAGOSUL }}
+    steps:
+      - name: Rodar spike (inline, resultado no log)
+        run: |
+          python3 - <<'PY'
+          import os, json, time, urllib.request, urllib.error, urllib.parse
+          import datetime as dt
+          G = "https://apigw.pactosolucoes.com.br"
+          unit = os.environ.get("UNIT", "716NORTE").upper()
+          KEY = os.environ.get("PACTO_KEY_" + unit, "").strip()
+          if not KEY:
+              print("[erro] variavel PACTO_KEY_" + unit + " nao definida."); raise SystemExit(0)
+          def call(path, headers=None):
+              h = {"Authorization": "Bearer " + KEY}
+              if headers: h.update(headers)
+              req = urllib.request.Request(G + path, headers=h)
+              t = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      body = r.read().decode("utf-8", "replace"); code = r.status
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode("utf-8", "replace"); code = e.code
+              except Exception as e:
+                  return {"status": "EXC", "erro": str(e)[:120]}, None
+              return {"status": code, "ms": round((time.time() - t) * 1000)}, body
+          def parse(body):
+              try: j = json.loads(body)
+              except Exception: return None
+              return j.get("content", j) if isinstance(j, dict) else j
+          def show(tag, path, rec, core=None, raw=None):
+              info = {"tag": tag, "path": path, "status": rec.get("status"), "ms": rec.get("ms")}
+              if core is not None:
+                  if isinstance(core, list):
+                      info["tipo"] = "list(len=%d)" % len(core)
+                      if core and isinstance(core[0], dict): info["campos"] = sorted(core[0].keys())[:30]
+                  elif isinstance(core, dict):
+                      info["campos"] = sorted(core.keys())[:30]
+                  elif isinstance(core, str):
+                      info["valor_str"] = core[:120]
+              if raw is not None and core is None:
+                  info["raw"] = str(raw)[:160]
+              print(json.dumps(info, ensure_ascii=False))
+          now = dt.date.today()
+          d0 = (now - dt.timedelta(days=120)).strftime("%Y-%m-%d")
+          d1 = now.strftime("%Y-%m-%d")
+          print("=== SPIKE Pacto v4 — Comissao Consultor — unidade " + unit + " ===")
+          rec, body = call("/clientes/simples?page=0&size=5"); core = parse(body)
+          mat = None
+          if isinstance(core, list) and core:
+              mat = str(core[0].get("matricula") or core[0].get("codigoCliente") or "")
+          emp = None
+          if mat:
+              rec, body = call("/clientes/%s/dados-pessoais" % mat); core = parse(body)
+              if isinstance(core, dict) and isinstance(core.get("empresa"), dict):
+                  emp = str(core["empresa"].get("codigo") or "")
+          print("[info] empresaId: " + str(emp))
+          emph = {"empresaId": emp} if emp else None
+          rec, body = call("/comissao-consultor/consultores", emph)
+          show("cc-consultores", "/comissao-consultor/consultores", rec, parse(body))
+          rec, body = call("/comissao-consultor/colaboradores", emph)
+          show("cc-colaboradores", "/comissao-consultor/colaboradores", rec, parse(body))
+          rec, body = call("/comissao-consultor/periodicidades", emph)
+          show("cc-periodicidades", "/comissao-consultor/periodicidades", rec, parse(body))
+          filt = urllib.parse.quote(json.dumps({
+              "empresa": emp, "dataInicio": d0, "dataFinal": d1,
+              "dataContratosLancadosAPartir": d0
+          }))
+          for tipo in ("excel", "pdf"):
+              rec, body = call("/comissao-consultor/gerar-relatorio/%s?filters=%s" % (tipo, filt), emph)
+              show("cc-gerar-relatorio(%s)" % tipo, "/comissao-consultor/gerar-relatorio/%s" % tipo, rec, parse(body), raw=body)
+          print("=== fim (nenhuma chave impressa) ===")
+          print("Meta: confirmar que Comissao Consultor lista consultores/colaboradores e que gerar-relatorio devolve dados/URL com venda por consultor.")
+          PY
