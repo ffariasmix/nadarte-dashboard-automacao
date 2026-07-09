@@ -548,7 +548,8 @@ function agg(L){const risk={Baixo:0,'Médio':0,Alto:0},clu={};let mpS=0,nf=0,sum
   if(m.cluster==='Em evasão')evas++; if(m.cluster==='Fiel')fiel++;
   if(m.eng)eng++; if(m.atingiu)meta++; if(m.atingiu&&m.eng)both++;});
  return{base:L.length,risk,clu,metaMed:nf?mpS/nf:0,sumiram,evas,fiel,eng,meta,both};}
-const SCORE_META={ouro:0.025,prata:0.035,bronze:0.040,basico:0.045};function churnAcum(unit){const tr=(DATA.churn[unit]&&DATA.churn[unit].trans)||[];const last=MES[MES.length-1];const cl=tr.filter(function(t){return t.para!==last&&t.base;});const rs=cl.map(function(t){return t.perdas/t.base;});return rs.length?rs.reduce(function(a,b){return a+b;},0)/rs.length:0;}function churnBand(c){return c<=SCORE_META.ouro?"Ouro":c<=SCORE_META.prata?"Prata":c<=SCORE_META.bronze?"Bronze":c<=SCORE_META.basico?"B\u00e1sico":"Fora da meta";}function retScore(c){if(c<=SCORE_META.ouro)return 1;if(c<=SCORE_META.basico)return 1-0.4*((c-SCORE_META.ouro)/(SCORE_META.basico-SCORE_META.ouro));return Math.max(0,0.6*(1-(c-SCORE_META.basico)/(2*SCORE_META.basico)));}function unitScore(L,A){const ev=A.risk.Alto/Math.max(A.base,1),e=A.eng/Math.max(A.base,1);const rs=retScore(churnAcum(state.unit));return Math.round(100*(0.35*A.metaMed+0.25*e+0.10*(1-ev)+0.30*rs));}
+const SCORE_META={ouro:0.025,prata:0.035,bronze:0.040,basico:0.045};function mYear(i){var p=String(MES[i-1]||'').split('.');return 2000+parseInt(p[1]||'0',10);}
+function churnAcum(unit,yr){const tr=(DATA.churn[unit]&&DATA.churn[unit].trans)||[];const last=MES[MES.length-1];const cl=tr.filter(function(t){if(t.para===last||!t.base)return false;if(yr){var _p=String(t.para).split('.');if(2000+parseInt(_p[1]||'0',10)!==yr)return false;}return true;});const rs=cl.map(function(t){return t.perdas/t.base;});return rs.length?rs.reduce(function(a,b){return a+b;},0)/rs.length:0;}function churnBand(c){return c<=SCORE_META.ouro?"Ouro":c<=SCORE_META.prata?"Prata":c<=SCORE_META.bronze?"Bronze":c<=SCORE_META.basico?"B\u00e1sico":"Fora da meta";}function retScore(c){if(c<=SCORE_META.ouro)return 1;if(c<=SCORE_META.basico)return 1-0.4*((c-SCORE_META.ouro)/(SCORE_META.basico-SCORE_META.ouro));return Math.max(0,0.6*(1-(c-SCORE_META.basico)/(2*SCORE_META.basico)));}function unitScore(L,A,yr){const ev=A.risk.Alto/Math.max(A.base,1),e=A.eng/Math.max(A.base,1);const rs=retScore(churnAcum(state.unit,yr));return Math.round(100*(0.35*A.metaMed+0.25*e+0.10*(1-ev)+0.30*rs));}
 
 // ===== charts =====
 const VL={id:'vl',afterDatasetsDraw(ch){const{ctx}=ch;ch.data.datasets.forEach((ds,di)=>{const mt=ch.getDatasetMeta(di);if(mt.hidden||ds._skip)return;const isLine=(ds.type||ch.config.type)==='line';mt.data.forEach((el,i)=>{const v=ds.data[i];if(v==null||v==='')return;const txt=ds._f?ds._f(v):v;ctx.save();ctx.font='700 10px Inter';ctx.fillStyle=ds._lc||C.graphite;ctx.textAlign='center';if(ch.config.options.indexAxis==='y'){ctx.textAlign='left';ctx.fillStyle=C.graphite;ctx.fillText(txt,el.x+6,el.y+3);}else{ctx.fillText(txt,el.x,el.y-6);}ctx.restore();});});}};
@@ -598,7 +599,7 @@ function acaoMeta(m){return m.atingiu?'Reconhecer e manter: parabéns + indicar 
 function situEng(m){return 'Comportamento consistente ('+m.cluster+') — sem alteração de hábito.';}
 function acaoEng(m){return m.cluster==='Fiel'?'Programa de indicação / embaixador + benefício de fidelidade.':m.cluster==='Em ascensão'?'Celebrar a evolução e consolidar com um desafio.':'Valorizar a constância; propor evolução leve da meta.';}
 
-function renderScore(L,A){const sc=unitScore(L,A);
+function renderScore(L,A){var _yr=mYear(state.to),_curYr=mYear(MES.length),_cur=(_yr===_curYr),_ms=[];for(var _i=1;_i<=MES.length;_i++){if(mYear(_i)===_yr&&!(_cur&&_i===MES.length))_ms.push(_i);}var _sf=_ms.length?_ms[0]:state.from,_st=_ms.length?_ms[_ms.length-1]:state.to;var _of=state.from,_ot=state.to;state.from=_sf;state.to=_st;var Ly=withM(filtered()),Ay=agg(Ly);state.from=_of;state.to=_ot;A=Ay;const sc=unitScore(Ly,Ay,_yr);
  const zone=sc>=70?C.green:sc>=40?C.yellow:C.red,zt=sc>=70?'Saudável':sc>=40?'Atenção':'Crítico';
  const e=A.eng/Math.max(A.base,1),ev=A.risk.Alto/Math.max(A.base,1);
  document.getElementById('scoreWrap').innerHTML='<h3>Score da unidade '+tip('Régua 0–100 da saúde de frequência e retenção da unidade.')+'</h3>'
@@ -606,14 +607,14 @@ function renderScore(L,A){const sc=unitScore(L,A);
  +'<div style="flex:1;min-width:240px"><div class="gauge"><div class="gline"><div class="gmark" style="left:calc('+sc+'% - 2px)"></div></div><div class="gscale"><span>0 Crítico</span><span>40</span><span>70</span><span>100 Saudável</span></div></div></div>'
  +'<div><span class="clchip" style="background:'+tint(zone)+';color:'+zone+';font-size:13px">'+zt+'</span></div></div>'
  +'<div class="scoretxt"><b>Como é composto:</b> 35% × frequência (vs meta) + 25% × % engajados + 10% × (1 − % risco alto) + <b>30% × retenção realizada (churn vs meta)</b>. '
- +'<br>Hoje: frequência <b>'+pct0(A.metaMed)+'</b> · engajados <b>'+pct0(e)+'</b> · risco alto <b>'+pct0(ev)+'</b> · churn médio (meses fechados) <b>'+pct(churnAcum(state.unit))+'</b> → faixa <b>'+churnBand(churnAcum(state.unit))+'</b> <span style="color:var(--muted)">(meta: Ouro 2,5% · Prata 3,5% · Bronze 4,0% · Básico 4,5%; gap até Básico '+pct(Math.max(0,churnAcum(state.unit)-SCORE_META.basico))+')</span> → score <b style="color:'+zone+'">'+sc+'</b>.</div>';}
+ +'<br>'+(_cur?('Em '+_yr+' (até '+MES[_st-1]+' · mês corrente fora): '):('Em '+_yr+' — ano fechado: '))+'frequência <b>'+pct0(A.metaMed)+'</b> · engajados <b>'+pct0(e)+'</b> · risco alto <b>'+pct0(ev)+'</b> · churn médio (meses fechados) <b>'+pct(churnAcum(state.unit))+'</b> → faixa <b>'+churnBand(churnAcum(state.unit))+'</b> <span style="color:var(--muted)">(meta: Ouro 2,5% · Prata 3,5% · Bronze 4,0% · Básico 4,5%; gap até Básico '+pct(Math.max(0,churnAcum(state.unit)-SCORE_META.basico))+')</span> → score <b style="color:'+zone+'">'+sc+'</b>.</div>';}
 
 function renderKPIs(L,A){
  const baixo=Math.max(0,A.base-A.risk.Alto-A.risk['Médio']);
  const IC={base:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>',freq:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',meta:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6"/>',eng:'<path d="M19 14c1.5-1.5 3-3.4 3-5.5C22 5.4 19.6 3 16.5 3 14.7 3 13 4 12 5.5 11 4 9.3 3 7.5 3 4.4 3 2 5.4 2 8.5c0 2.1 1.5 4 3 5.5l7 6.5z"/>',alto:'<path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/>',medio:'<circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/>',sumir:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
  const cur=winAgg(L,state.from,state.to);
- const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
- const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
+ const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
+ const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  const cards=[
  {c:C.blue,ic:IC.base,val:A.base,lab:'Base de alunos',def:'Total de alunos no período/filtro selecionado.'},
  {c:A.metaMed>=0.7?C.green:(A.metaMed>=0.5?C.yellow:C.red),ic:IC.freq,val:pct(A.metaMed),lab:'Frequência média',def:'Em média, cada aluno cumpriu este % da meta da SUA categoria (ponderado pela base). 100% = todos batendo a meta.',cmp:cmpRow(cur.freqMed,mom&&mom.freqMed,qoq&&qoq.freqMed,true,false)},
@@ -653,11 +654,11 @@ function renderRiskMoney(L){
  if(vIdx>=1){const cur=ser.vals[vIdx],prev=ser.vals[vIdx-1],dlt=cur-prev,worse=dlt>0,col=worse?C.red:C.green,arr=worse?'▲':'▼',pc=prev?Math.round(Math.abs(dlt)/prev*100):0;momHtml='<div style="font-size:13px;font-weight:800;color:'+col+';margin-top:4px">'+arr+' '+BRL(Math.abs(dlt))+' ('+pc+'%) '+ser.labels[vIdx]+' vs '+ser.labels[vIdx-1]+' — '+(worse?'piorando':'melhorando')+(junePart?' <span style="font-weight:600;color:var(--muted)">(meses fechados; junho à parte)</span>':'')+'</div>';}
  const juneCaveat=junePart?'<p class="cap" style="margin:7px 0 0;background:var(--orange-soft);border-radius:8px;padding:8px 11px">Inclui <b>junho (mês em curso)</b> — quem ainda não voltou no mês parcial entra como inativo, então o risco fica <b>superestimado</b>. Para a leitura limpa use <b>Período → Meses fechados</b>.</p>':'';
  box.innerHTML='<div class="panel" style="border-left:5px solid '+C.red+';padding:16px 18px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">'
-  +'<div style="min-width:240px"><div style="font-size:11px;font-weight:800;color:'+C.red+';text-transform:uppercase;letter-spacing:.04em">Receita em risco · público Alto + Médio</div>'
+  +'<div style="min-width:240px"><div style="font-size:11px;font-weight:800;color:'+C.red+';text-transform:uppercase;letter-spacing:.04em">'+(PINFO.isPast?'Receita perdida (realizada) · público que ficou Alto + Médio':'Receita em risco · público Alto + Médio')+'</div>'
   +'<div style="font-size:30px;font-weight:900;line-height:1.05;margin:4px 0 2px;color:'+C.red+'">'+BRL2(v)+'<span style="font-size:14px;font-weight:700;color:var(--muted)"> /mês</span></div>'
-  +'<div style="font-size:12.5px;color:var(--muted)">'+c+' alunos em risco · projeção <b>'+BRL2(v*12)+'/ano</b> caso evadam</div>'+momHtml+'</div>'
-  +'<div style="text-align:right;min-width:150px"><div style="font-size:11px;font-weight:800;color:'+C.red+';text-transform:uppercase">Só Risco Alto</div><div style="font-size:21px;font-weight:800;color:'+C.red+'">'+BRL2(vA)+'<span style="font-size:12px;font-weight:600;color:var(--muted)">/mês</span></div><div style="font-size:12px;color:var(--muted)">'+cA+' alunos · resgate urgente</div></div></div>'
-  +'<p class="cap" style="margin:11px 0 0"><b>Como é calculado:</b> nº de alunos em <b>Risco Alto</b> (parou 2+ meses) + <b>Risco Médio</b> (faltou 1 mês após rotina ou caiu ≥40%) × o <b>ticket médio da unidade de cada aluno</b> (Faturamento ÷ alunos — determinado <b>somente pela unidade</b>, sem relação com modalidade/categoria). É a <b>receita mensal recorrente exposta</b> se esse público evadir — exposição, não perda confirmada.</p>'+juneCaveat+(state.unit==='LagoNorte'?'<p class="cap" style="margin:7px 0 0;background:var(--yellow-soft);border-radius:8px;padding:8px 11px"><b>Lago Norte:</b> alunos exclusivos de Água/Luta ficam fora da base (a piscina não tem catraca), mas o faturamento da unidade inclui a receita deles — então o <b>ticket médio e esta receita em risco ficam levemente superestimados</b>. Será ajustado quando houver catraca na piscina.</p>':'')+'</div>';
+  +'<div style="font-size:12.5px;color:var(--muted)">'+c+' '+(PINFO.isPast?'alunos evadiram no período · <b>'+BRL2(v*12)+'/ano</b> de receita perdida':'alunos em risco · projeção <b>'+BRL2(v*12)+'/ano</b> caso evadam')+'</div>'+momHtml+'</div>'
+  +'<div style="text-align:right;min-width:150px"><div style="font-size:11px;font-weight:800;color:'+C.red+';text-transform:uppercase">Só Risco Alto</div><div style="font-size:21px;font-weight:800;color:'+C.red+'">'+BRL2(vA)+'<span style="font-size:12px;font-weight:600;color:var(--muted)">/mês</span></div><div style="font-size:12px;color:var(--muted)">'+cA+' alunos · '+(PINFO.isPast?'perda já realizada':'resgate urgente')+'</div></div></div>'
+  +'<p class="cap" style="margin:11px 0 0"><b>Como é calculado:</b> nº de alunos em <b>Risco Alto</b> (parou 2+ meses) + <b>Risco Médio</b> (faltou 1 mês após rotina ou caiu ≥40%) × o <b>ticket médio da unidade de cada aluno</b> (Faturamento ÷ alunos — determinado <b>somente pela unidade</b>, sem relação com modalidade/categoria). É a <b>'+(PINFO.isPast?'receita mensal recorrente</b> do público que evadiu/parou no período — <b>perda realizada</b>.':'receita mensal recorrente exposta</b> se esse público evadir — exposição, não perda confirmada.')+'</p>'+juneCaveat+(state.unit==='LagoNorte'?'<p class="cap" style="margin:7px 0 0;background:var(--yellow-soft);border-radius:8px;padding:8px 11px"><b>Lago Norte:</b> alunos exclusivos de Água/Luta ficam fora da base (a piscina não tem catraca), mas o faturamento da unidade inclui a receita deles — então o <b>ticket médio e esta receita em risco ficam levemente superestimados</b>. Será ajustado quando houver catraca na piscina.</p>':'')+'</div>';
  const w=document.getElementById('riskMoneyChartWrap');if(w)w.style.display='';
  destroy('cRiskMoney');
  ch['cRiskMoney']=new Chart(document.getElementById('cRiskMoney'),{data:{labels:ser.labels,datasets:[{type:'bar',label:'Receita em risco (R$/mês)',data:ser.vals,backgroundColor:ser.vals.map((_,i)=>(junePart&&i===ser.vals.length-1)?'#F3C4AE':tint(C.red)),borderColor:C.red,borderWidth:1.5,borderRadius:5,maxBarThickness:54,_f:v=>BRL(v)}]},options:bo({layout:{padding:{top:20}},plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:C.line},beginAtZero:true,ticks:{callback:v=>'R$ '+Math.round(v/1000)+'k'}}}}),plugins:[VL]});
@@ -699,8 +700,8 @@ function renderCharts(L,A){evolChart('cEvol',L);
  document.getElementById('capCat').innerHTML='<b>O que significa:</b> cumprimento médio da meta por bloco. Cada categoria tem cor própria. Blocos mais baixos concentram risco de evasão.';}
 
 function renderClusters(L,A){if(state.from===state.to){destroy('cClu');destroy('cCiclo');document.getElementById('clcards').innerHTML='';document.getElementById('cCluLeg').innerHTML='';document.getElementById('cCicloLeg').innerHTML='';return;}const order=['Fiel','Regular','Em ascensão','Novo','Retorno','Esporádico','Em declínio','Em evasão'];
- const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
- const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
+ const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
+ const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  const cmpC=k=>cmpRow(A.clu[k]||0,mom?(mom.clu[k]||0):null,qoq?(qoq.clu[k]||0):null,false,CLU[k].r!=='Baixo');
  document.getElementById('clcards').innerHTML=order.filter(k=>A.clu[k]).map(k=>{const o=CLU[k],n=A.clu[k];return '<div class="clcard" style="border-top-color:'+o.c+'"><div class="hd"><span class="nm" style="color:'+o.c+'">'+k+'</span><span class="ct" style="color:'+o.c+'">'+n+'</span></div><div class="pc2">'+pct0(n/A.base)+' da base · risco '+o.r+'</div>'+cmpC(k)+'<div class="ds">'+o.d+'</div></div>';}).join('');
  const ck=order.filter(k=>A.clu[k]);barChart('cClu',ck,ck.map(k=>A.clu[k]),ck.map(k=>CLU[k].c),false,true);
@@ -860,8 +861,8 @@ function closeAluno(){var d=document.getElementById('alunoDrawer'),o=document.ge
 function renderRisco(L){if(state.from===state.to){document.getElementById('riscoAvisos').innerHTML='';document.getElementById('triscob').innerHTML='';document.getElementById('riscoPager').innerHTML='';return;}const A=agg(L);
  const lastM=MES[state.to-1];
  const cur=winAgg(L,state.from,state.to);
- const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
- const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
+ const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
+ const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  const fval=(o,f)=>!o?null:(f==='Alto'?o.risk.Alto:f==='Médio'?o.risk['Médio']:o[f]);
  const _rs=(pred)=>{let v=0,c=0;L.forEach(s=>{if(pred(s)){v+=ticketU(s.u);c++;}});return{v,c};};
  const rboxes=[
@@ -892,12 +893,12 @@ function cmpRow(curV,momV,qoqV,isPct,invert){
  const seg=(v,lab)=>{if(v==null||v===undefined)return '<span style="color:var(--muted)">'+lab+' —</span>';
    const d=curV-v;const better=invert?(d<=0):(d>=0);const col=(d===0)?'var(--muted)':(better?C.green:C.red);const arr=d>0?'▲':(d<0?'▼':'•');
    return '<span style="color:'+col+';font-weight:700">'+lab+' '+arr+' '+fmt(d)+'</span>';};
- return '<div style="font-size:11px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">'+seg(momV,'MoM')+seg(qoqV,'QoQ')+'</div>';}
+ return '<div style="font-size:11px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">'+(PINFO.showPop?seg(momV,PINFO.popLabel):'')+(PINFO.showYoY?seg(qoqV,'YoY'):'')+'</div>';}
 function cmpBox(c,ico,v,l,cmpHtml,desc){return '<div class="flagbox" style="border-left:4px solid '+c+'"><div class="ico" style="background:'+tint(c)+';color:'+c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+c+'">'+v+'</div><div class="l">'+l+'</div>'+(cmpHtml||'')+'<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+desc+'</div></div></div>';}
 function renderMeta(L){const wm=withM(L);const single=state.from===state.to;
  const cur=winAgg(L,state.from,state.to);
- const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
- const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
+ const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
+ const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  let html='';
  html+=cmpBox(C.blue,IC_OK,cur.meta,'Atingiram a meta',cmpRow(cur.meta,mom&&mom.meta,qoq&&qoq.meta,false,false),'Alunos com frequência <b>≥90%</b> da meta da sua categoria no período (prorrateado por dias úteis; junho parcial também é prorrateado).');
  html+=cmpBox(C.muted,IC_OK,pct0(cur.rate),'% da base',cmpRow(cur.rate,mom&&mom.rate,qoq&&qoq.rate,true,false),'Proporção da base ativa ('+cur.base+') que bateu a meta. Comparativo em pontos percentuais (pp).');
@@ -912,8 +913,8 @@ function drawM(){paginate(cM,(s,i)=>'<tr><td style="color:var(--muted);font-weig
 
 function renderEng(L){if(state.from===state.to){document.getElementById('engAvisos').innerHTML='';document.getElementById('tengb').innerHTML='';document.getElementById('engPager').innerHTML='';return;}
  const cur=winAgg(L,state.from,state.to);
- const mom=state.from-1>=1?winAgg(L,state.from-1,state.to-1):null;
- const qoq=state.from-3>=1?winAgg(L,state.from-3,state.to-3):null;
+ const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
+ const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  let html='';
  html+=cmpBox('#2E7D4F',IC_HE,cur.fiel,'Fiéis',cmpRow(cur.fiel,mom&&mom.fiel,qoq&&qoq.fiel,false,false),'Alta frequência recorrente, presente na maioria dos meses, sem queda.');
  html+=cmpBox(C.purple,IC_HE,cur.eng,'Engajados (consistentes)',cmpRow(cur.eng,mom&&mom.eng,qoq&&qoq.eng,false,false),'Não alteraram o hábito (Fiel + Regular), em qualquer nível de frequência.');
@@ -1184,7 +1185,9 @@ function renderPerdas(L){
  const bO=['0–11','12–17','18–29','30–44','45–59','60+','N/D'].filter(k=>baseBand[k]);
  barChart('cBaseBand',bO,bO.map(k=>baseBand[k]),bO.map(_=>C.blue),false,false);
 }
+var PINFO={showPop:false,showYoY:false,popLabel:'MoM'};
 function render(){const L=withM(filtered());const A=agg(L);
+ (function(){var len=state.to-state.from+1;PINFO={len:len,popFrom:state.from-len,popTo:state.to-len,yoyFrom:state.from-12,yoyTo:state.to-12,popLabel:(len===1?'MoM':len===3?'QoQ':len===6?'SoS':len===12?'YoY':'vs per. ant.'),showPop:(len<12&&state.from-len>=1),showYoY:(state.from-12>=1),isPast:(state.to<MES.length)};})();
  const jn=document.getElementById('juneNote');const single=state.from===state.to;const ALR='<svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/></svg>';
  if(single){jn.style.display='';jn.innerHTML=ALR+'<div><b>Você selecionou um único mês ('+MES[state.from-1]+').</b> A análise de <b>comportamento e risco precisa de 2+ meses</b> (ela compara a trajetória do aluno). Com 1 mês só, quem teve acesso aparece como "Novo" e quem não teve como "Sem acesso" — use um intervalo para ver risco/evasão de verdade. Frequência e meta do mês continuam válidas.</div>';}
  else{jn.style.display='none';}
