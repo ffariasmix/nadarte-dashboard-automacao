@@ -75,7 +75,7 @@ DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
 # catraca: emite meses a partir daqui. Alinhado ao recorte de "ativos" disponivel
 # (o motor precisa de roster ATIVO em todo mes da timeline; senao o gate barra).
 # Configuravel por env p/ crescer quando entrarem mais meses reais.
-WINDOW_START = tuple(int(x) for x in os.environ.get("PACTO_WINDOW_START", "2022-01").split("-"))
+WINDOW_START = tuple(int(x) for x in os.environ.get("PACTO_WINDOW_START", "2026-01").split("-"))
 NOW = datetime.date.today()
 ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
 
