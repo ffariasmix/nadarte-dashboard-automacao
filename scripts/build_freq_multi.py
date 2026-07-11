@@ -349,11 +349,20 @@ def pre(lst):
     return mean,zero
 
 trans_pairs=[(i,i+1) for i in range(NMONTHS-1)]
+# CARENCIA: "perda" so conta apos N meses de inatividade real (1 mes de lapso e perdoado).
+# Base com carencia = ativo no mes OU nos (N-1) meses anteriores. Mantem a identidade de
+# conjuntos (base+novos-perdas=base seguinte), entao a checagem de consistencia continua fechando.
+CARENCIA = int(os.environ.get("PACTO_CARENCIA", "2"))
+def act_g(m, u):
+    s = set()
+    for d in range(max(1, CARENCIA)):
+        s |= active.get((m - d, u), set())
+    return s
 churn={}; unit_data={}
 for unit in UNIT_KEYS:
     trans=[]; ev=[]; ret=[]
     for a,b in trans_pairs:
-        A=active[(a,unit)]; B=active[(b,unit)]
+        A=act_g(a,unit); B=act_g(b,unit)   # base com carencia (nao mais o snapshot cru)
         perdas=A-B; novos=B-A; retidos=A&B
         cC,cS,cB=profile(perdas,a,unit)
         trans.append({"de":MESES[a],"para":MESES[b],"perdas":len(perdas),"novos":len(novos),

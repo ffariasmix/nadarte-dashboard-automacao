@@ -535,16 +535,16 @@ function metaInfo(ac,frm,to,g,dps){const rng=ac.slice(frm-1,to);const ai=[];for(
   let s=0,k=0;for(let m=frm-1+ai[0];m<to;m++){s+=cumpr(ac,m,g,dps);k++;}const mp=k?s/k:0;return{metaPct:mp,atingiu:mp>=state.thr};}
 function met(s){const c=cluster(s.ac,state.from,state.to,s.fs,isNovoCad(s));const rng=s.ac.slice(state.from-1,state.to);const mi=metaInfo(s.ac,state.from,state.to,s.grupo,s.dps);
   const eng=(c.cluster==='Fiel'||c.cluster==='Regular');
-  return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng});}
+  return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng,ativoAtual:((s.active&&s.active.length>=state.to)?(s.active[state.to-1]===1):true)});}
 function filtered(){return DATA.students.filter(s=>(state.unit==='REDE'||s.u===state.unit)&&(state.cat==='Total'||s.grupo===state.cat)&&(state.mod==='Todas'||s.mod===state.mod));}
 function withM(L){return L.map(s=>Object.assign({},s,{m:met(s)}));}
 function monthTotals(L){const o=[];for(let m=0;m<MES.length;m++)o.push(L.reduce((a,s)=>a+s.ac[m],0));return o;}
 function monthActives(L){const o=[];for(let m=0;m<MES.length;m++)o.push(L.reduce((a,s)=>a+(s.ac[m]>0?1:0),0));return o;}
 function monthAvgPerActive(L){const t=monthTotals(L),a=monthActives(L);return t.map((v,i)=>a[i]?v/a[i]:0);}
 function agg(L){const risk={Baixo:0,'Médio':0,Alto:0},clu={};let mpS=0,nf=0,sumiram=0,evas=0,fiel=0,eng=0,meta=0,both=0;
- L.forEach(s=>{const m=s.m;risk[m.risco]++;clu[m.cluster]=(clu[m.cluster]||0)+1;
+ L.forEach(s=>{const m=s.m;if(m.ativoAtual)risk[m.risco]++;clu[m.cluster]=(clu[m.cluster]||0)+1;
   if(m.tot>0){mpS+=m.metaPct;nf++;}
-  if(m.inativo>=1&&m.tot>0&&m.ult!==MES[state.to-1])sumiram++;
+  if(m.inativo>=1&&m.tot>0&&m.ult!==MES[state.to-1]&&m.ativoAtual)sumiram++;
   if(m.cluster==='Em evasão')evas++; if(m.cluster==='Fiel')fiel++;
   if(m.eng)eng++; if(m.atingiu)meta++; if(m.atingiu&&m.eng)both++;});
  return{base:L.length,risk,clu,metaMed:nf?mpS/nf:0,sumiram,evas,fiel,eng,meta,both};}
@@ -643,9 +643,9 @@ function renderCmp(L,A){const mp=[];for(let m=0;m<MES.length;m++){let s=0,k=0;L.
 function renderRiskMoney(L){
  const box=document.getElementById('riskMoney');const single=state.from===state.to;
  if(single){box.innerHTML='<div class="panel" style="border-left:4px solid var(--muted);padding:15px 17px"><div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Receita em risco (R$)</div><div style="font-size:14px;color:var(--muted);margin-top:6px">Selecione <b>2+ meses</b> para estimar — o risco depende da trajetória do aluno (comparação entre meses).</div></div>';const w=document.getElementById('riskMoneyChartWrap');if(w)w.style.display='none';destroy('cRiskMoney');return;}
- let v=0,c=0,vA=0,cA=0;L.forEach(s=>{const r=s.m.risco;if(r==='Alto'||r==='Médio'){const tk=ticketU(s.u);v+=tk;c++;if(r==='Alto'){vA+=tk;cA++;}}});
+ let v=0,c=0,vA=0,cA=0;L.forEach(s=>{const r=s.m.risco;if((r==='Alto'||r==='Médio')&&s.m.ativoAtual){const tk=ticketU(s.u);v+=tk;c++;if(r==='Alto'){vA+=tk;cA++;}}});
  const ser={labels:[],vals:[]};
- for(let m=state.from+1;m<=state.to;m++){let mv=0;L.forEach(s=>{const r=cluster(s.ac,state.from,m,s.fs,isNovoCad(s)).risco;if(r==='Alto'||r==='Médio')mv+=ticketU(s.u);});ser.labels.push(MES[m-1]);ser.vals.push(Math.round(mv));}
+ for(let m=state.from+1;m<=state.to;m++){let mv=0;L.forEach(s=>{const r=cluster(s.ac,state.from,m,s.fs,isNovoCad(s)).risco;if((r==='Alto'||r==='Médio')&&s.active&&s.active[m-1]===1)mv+=ticketU(s.u);});ser.labels.push(MES[m-1]);ser.vals.push(Math.round(mv));}
  const junePart=(state.to===MES.length);
  let momHtml='';
  const lastIdx=ser.vals.length-1,vIdx=(junePart&&ser.vals.length>=3)?lastIdx-1:lastIdx;
