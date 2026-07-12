@@ -632,13 +632,14 @@ function renderKPIs(L,A){
 function renderCatBoxes(L,A){const g=grp(L,'grupo');const order=CATORD.filter(k=>g[k]);
  document.getElementById('catboxes').innerHTML=order.map(k=>{const o=g[k];const col=GCOL[k];return '<div class="catbox" style="border-top-color:'+col+'"><div class="cbval" style="color:'+col+'">'+pct0(o.f)+'</div><div class="cbname">'+(k==='Água'?'Natação/Água':k)+'</div><div class="cbsub">'+o.n+' alunos · meta '+fmtVez(state.vezG[k])+'x/sem · '+o.meta+' batem a meta</div></div>';}).join('');
  document.getElementById('catboxesCap').innerHTML='<b>Como o geral é calculado:</b> cada categoria é medida pela <b>sua própria meta</b> semanal. A <b>frequência média da unidade ('+pct(A.metaMed)+')</b> é a média ponderada: soma do cumprimento de cada categoria pelo seu nº de alunos, dividida pela base total ('+A.base+' alunos).';}
-function renderCmp(L,A){const mp=[];for(let m=0;m<MES.length;m++){let s=0,k=0;L.forEach(st=>{if(st.ac[m]>0){s+=cumpr(st.ac,m,st.grupo,st.dps);k++;}});mp.push(k?s/k:0);}
- const to=state.to-1,prev=to-1;const mom=(prev>=0&&mp[prev]>0)?(mp[to]/mp[prev]-1):null;
- const cards=[{t:'Cumprimento — '+MES[to],v:pct(mp[to]),s:'média entre quem treinou no mês'},
-  {t:'MoM (vs '+(prev>=0?MES[prev]:'—')+')',v:mom==null?'—':sig(mom),s:mom==null?'sem mês anterior':(mom>=0?'evoluindo':'em queda'),c:mom==null?C.muted:(mom>=0?C.green:C.red)}];
+function renderCmp(L,A){const mp=[];for(let m=0;m<MES.length;m++){let hit=0;L.forEach(st=>{if(cumpr(st.ac,m,st.grupo,st.dps)>=state.thr)hit++;});mp.push(L.length?hit/L.length:0);}
+ const to=state.to-1,prev=to-1;const momPP=(prev>=0)?(mp[to]-mp[prev]):null;
+ const nTo=Math.round(mp[to]*L.length),nPrev=(prev>=0)?Math.round(mp[prev]*L.length):null;
+ const cards=[{t:'Bateram a meta — '+MES[to],v:pct(mp[to]),s:nTo+' de '+L.length+' alunos (≥90% da meta no mês)'},
+  {t:'MoM (vs '+(prev>=0?MES[prev]:'—')+')',v:momPP==null?'—':((momPP>=0?'▲ +':'▼ ')+Math.abs(momPP*100).toFixed(1)+' pp'),s:momPP==null?'sem mês anterior':((momPP>=0?'mais gente batendo':'menos gente batendo')+(nPrev!=null?' ('+nTo+' vs '+nPrev+')':'')),c:momPP==null?C.muted:(momPP>=0?C.green:C.red)}];
  document.getElementById('cmp').innerHTML=cards.map(c=>'<div class="cmpc'+(c.wait?' wait':'')+'"><div class="t">'+c.t+(c.tp?tip(c.tp):'')+'</div><div class="v" style="color:'+(c.c||C.graphite)+'">'+c.v+'</div><div class="s">'+c.s+'</div></div>').join('');
  const part=(to===5)?' <b>'+MES[to]+' está em curso</b> (mês parcial), então tende a parecer mais alto.':'';
- document.getElementById('cmpCap').innerHTML='<b>Como ler o \"Cumprimento de '+MES[to]+'\":</b> é a média — <b>só entre os alunos que treinaram em '+MES[to]+'</b> — de quanto cada um cumpriu da meta da sua categoria <b>naquele mês</b>. É diferente da <b>Frequência média do topo ('+pct(A.metaMed)+')</b>, que mede cada aluno em <b>todo o período</b> e conta como zero os meses em que ele faltou. Por isso o número de um único mês (e ainda mais o parcial) costuma ser maior.'+part;}
+ document.getElementById('cmpCap').innerHTML='<b>Como ler:</b> percentual da <b>base de alunos</b> que bateu a meta (≥90% da frequência da sua categoria) <b>em '+MES[to]+'</b>. O <b>MoM</b> é a variação em <b>pontos percentuais</b> vs o mês anterior — sobe = mais gente batendo a meta.'+part;}
 
 function renderRiskMoney(L){
  const box=document.getElementById('riskMoney');const single=state.from===state.to;
