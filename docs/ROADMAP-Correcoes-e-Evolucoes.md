@@ -5,6 +5,16 @@
 
 ---
 
+## Como o dado atualiza (snapshot diário D-1) — não é tempo real
+
+O dashboard é um **HTML estático** (snapshot), não uma tela conectada à API ao vivo. Quem roda ao vivo é o **pipeline**: às **04:00 BRT, todo dia**, o GitHub Actions conecta na API da Pacto, puxa os dados reais e **republica** o dashboard. Ao abrir o link, o usuário vê os números do **último run** (não consulta a API na hora, e não muda ao longo do dia).
+
+- Inclui o **mês corrente parcial**, com dados até **D-1** (ontem).
+- Leitura correta: *"atualizado diariamente, sozinho, com dado de D-1"* — não *"streaming ao vivo"*.
+- Frequência/retenção mudam devagar → diário é o ponto ótimo (economiza chamadas de API + minutos). Dá pra adicionar mais horários no cron se necessário.
+
+---
+
 ## Princípios (o que orienta as decisões)
 
 - **Snapshot, não tempo real.** O dashboard é HTML estático regerado pelo pipeline (GitHub Actions) — não há backend consultando a Pacto ao vivo. "Vivo o suficiente" = run diário + mês corrente com D-1.
