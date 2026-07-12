@@ -83,16 +83,17 @@ def _prev_month(ym):
     y, m = ym
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
-# fim da janela = ULTIMO MES COMPLETO (o mes corrente e' parcial -> fica de fora).
-# NOTA: incluir o mes corrente ao vivo (PACTO_INCLUDE_PARTIAL) sobrecarregou o runner
-# (#72 morreu por CPU/Memoria em 1h+). Ficou desligado ate reprojetar o fetch mais leve.
-# Para reativar o mes parcial: env PACTO_INCLUDE_PARTIAL=1 (ou PACTO_WINDOW_END=YYYY-MM).
+# fim da janela = MES CORRENTE (parcial, dados ate D-1). O mes corrente entra nos ARRAYS de
+# acesso, mas NAO no filtro de 'win' (ver coleta_unidade): o conjunto de alunos e definido so
+# por meses FECHADOS, ficando identico ao run sem parcial -> custo identico (os acessos do mes
+# corrente ja sao baixados de qualquer forma). Foi isso que resolveu o timeout do #72.
+# Override: PACTO_WINDOW_END=YYYY-MM (ex.: fechar so ate o mes completo anterior).
 if os.environ.get("PACTO_WINDOW_END"):
     WINDOW_END = tuple(int(x) for x in os.environ["PACTO_WINDOW_END"].split("-"))
-elif os.environ.get("PACTO_INCLUDE_PARTIAL", "").strip() in ("1", "true", "True", "sim"):
-    WINDOW_END = (NOW.year, NOW.month)
 else:
-    WINDOW_END = _prev_month((NOW.year, NOW.month))
+    WINDOW_END = (NOW.year, NOW.month)
+# o mes-base e' o mes corrente (parcial)? -> exclui esse mes do filtro de 'win'
+BASE_IS_CURRENT = (WINDOW_END == (NOW.year, NOW.month))
 
 # unidade -> (label do motor, nome do Secret). Natal fora ate ago/2026 (confirmar).
 UNITS = [
@@ -327,11 +328,17 @@ def coleta_unidade(unit_key, unit_label, key):
     """FULL-API com FILA DE RE-TENTATIVA: quem falha (rate-limit) volta pra fila e e
     recoletado em ate RETRY_ROUNDS rodadas. Nada e descartado silenciosamente."""
     all_months = window_months(WINDOW_START, WINDOW_END)
-    wmonths = set(all_months)   # janela completa: usada nos arrays de acesso (historico)
+    wmonths = set(all_months)   # janela completa (INCL. mes corrente parcial): arrays de acesso
     # BASE = so quem esteve ativo nos ultimos INCLUDE_MONTHS meses (evita puxar todo mundo que
     # passou pela rede desde 2022). O historico completo continua nos arrays desses alunos.
     INCLUDE_MONTHS = int(os.environ.get("PACTO_INCLUDE_MONTHS", "12"))
-    recent = set(all_months[-INCLUDE_MONTHS:]) if len(all_months) > INCLUDE_MONTHS else wmonths
+    # IMPORTANTE (fix do timeout #72): o mes corrente parcial NAO define o conjunto de alunos.
+    # Como todo membro ATIVO conta em qualquer mes desde que entrou, incluir o mes corrente no
+    # filtro incharia 'win' para toda a base ativa. Aqui 'win' e definido so por meses FECHADOS
+    # -> identico ao run que funcionava. Os acessos do mes corrente ja vem no size=1000 e entram
+    # via wmonths. Alunos que so entraram no mes corrente ficam de fora ate o mes fechar.
+    closed_months = all_months[:-1] if (BASE_IS_CURRENT and len(all_months) > 1) else all_months
+    recent = set(closed_months[-INCLUDE_MONTHS:]) if len(closed_months) > INCLUDE_MONTHS else set(closed_months)
     prof_by_id, prof_by_nome = (fotos_professores(key) if FOTOS else ({}, {}))
     if FOTOS:
         print(f"[fotos] {unit_key}: {len(prof_by_id)} professores mapeados", file=sys.stderr)
