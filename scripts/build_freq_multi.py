@@ -426,8 +426,14 @@ GATE_MONTHS = int(os.environ.get("PACTO_GATE_MONTHS", "6"))
 GATE_START = max(0, NMONTHS - GATE_MONTHS)   # so enforce dos ultimos GATE_MONTHS meses
 month_active=[all_active(m) for m in range(NMONTHS)]
 errs=[]; hist=[]
+# mes parcial (mes corrente, em curso ate D-1): seus avisos NAO abortam o publish
+# (naturalmente tem menos acessos e overlap diferente por estar incompleto).
+_today_g = datetime.date.today()
+PARTIAL_M = base_pos if (tuple(ORDERED[base_pos]) == (_today_g.year, _today_g.month)) else -1
+if PARTIAL_M >= 0:
+    print(f"[info] gate: mes-base {MESES[PARTIAL_M]} e' parcial (em curso) -> avisos dele viram nota, nao abortam", file=sys.stderr)
 def _flag(m, msg):
-    (errs if m >= GATE_START else hist).append(msg)
+    (errs if (m >= GATE_START and m != PARTIAL_M) else hist).append(msg)
 for m in range(NMONTHS):
     if len(month_active[m])<MIN_ACTIVE:
         _flag(m, f"mes {MESES[m]}: {len(month_active[m])} alunos ativos (<{MIN_ACTIVE})")
@@ -435,14 +441,14 @@ for m in range(NMONTHS-1):
     A,B=month_active[m],month_active[m+1]
     ratio=len(A&B)/(min(len(A),len(B)) or 1)
     if ratio<MIN_OVERLAP:
-        _flag(m, f"overlap REDE {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
+        _flag(PARTIAL_M if (m+1==PARTIAL_M) else m, f"overlap REDE {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
 for unit in UNIT_KEYS:
     for m in range(NMONTHS-1):
         A=active[(m,unit)]; B=active[(m+1,unit)]
         if not A or not B: continue
         ratio=len(A&B)/(min(len(A),len(B)) or 1)
         if ratio<MIN_OVERLAP:
-            _flag(m, f"overlap {unit} {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
+            _flag(PARTIAL_M if (m+1==PARTIAL_M) else m, f"overlap {unit} {MESES[m]}->{MESES[m+1]}: {ratio:.0%} (<{MIN_OVERLAP:.0%})")
 for m in range(NMONTHS):
     tot=sum(sum(acc[(unit,m)].values()) for unit in UNIT_KEYS)
     if tot<MIN_ACC:
@@ -475,9 +481,14 @@ try:
 except Exception as _e:
     print(f"[ticket] valores fixos (sem faturamento.json): {_e}", file=sys.stderr)
 
+# basePartial: o mes-base (mais recente) e' o mes corrente do calendario? -> ultimo mes e' parcial (D-1)
+_today = datetime.date.today()
+BASE_PARTIAL = (tuple(ORDERED[base_pos]) == (_today.year, _today.month))
+print(f"[info] basePartial={BASE_PARTIAL} (mes-base {ORDERED[base_pos]} vs hoje {(_today.year,_today.month)})", file=sys.stderr)
+
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
-       "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,
+       "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
        "lagoUnit":LAGO_UNIT,"lagoExcluded":len(LAGO_EXCLUDED),
        "lagoFitCats":sorted(LAGO_FIT_CATS),
        "baseUpdated":meta.get("baseUpdated",""),

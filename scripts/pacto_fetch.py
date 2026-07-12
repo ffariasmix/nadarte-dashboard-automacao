@@ -83,12 +83,13 @@ def _prev_month(ym):
     y, m = ym
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
-# fim da janela = ULTIMO MES COMPLETO (o mes corrente e' parcial -> fica de fora do gate).
-# override por env PACTO_WINDOW_END=YYYY-MM se quiser.
+# fim da janela = MES CORRENTE (parcial, com dados ate D-1). O ultimo mes entra marcado
+# como "em curso"; o gate de integridade nao aborta por ele (ver build_freq_multi.py).
+# override por env PACTO_WINDOW_END=YYYY-MM (ex.: para fechar so ate o mes completo anterior).
 if os.environ.get("PACTO_WINDOW_END"):
     WINDOW_END = tuple(int(x) for x in os.environ["PACTO_WINDOW_END"].split("-"))
 else:
-    WINDOW_END = _prev_month((NOW.year, NOW.month))
+    WINDOW_END = (NOW.year, NOW.month)
 
 # unidade -> (label do motor, nome do Secret). Natal fora ate ago/2026 (confirmar).
 UNITS = [
