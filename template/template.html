@@ -291,7 +291,7 @@ header.top{position:static!important}
 <button type="button" class="perbtn" id="perBtn"><span id="perBtnLbl">Todos os meses</span><span class="percaret">▾</span></button>
 <div class="perpanel" id="perPanel">
 <div class="perquick"><button type="button" data-q="last12">Últimos 12 meses</button><button type="button" data-q="year">Este ano</button><button type="button" data-q="closed">Meses fechados</button><button type="button" data-q="all">Tudo</button></div>
-<div class="pergran" id="perGran"><button type="button" data-g="mes" class="active">Mês</button><button type="button" data-g="tri">Trimestre</button><button type="button" data-g="sem">Semestre</button><button type="button" data-g="ano">Ano</button></div>
+<div class="pergran" id="perGran"><button type="button" data-g="mes" class="active">Mês</button><button type="button" data-g="bim">Bimestre</button><button type="button" data-g="tri">Trimestre</button><button type="button" data-g="sem">Semestre</button><button type="button" data-g="ano">Ano</button></div>
 <div class="perlist" id="perList"></div>
 <p class="perhint">Escolha um atalho ou um período. A janela vai do 1º ao último mês do período.</p>
 </div>
@@ -1274,7 +1274,7 @@ function renderPerdas(L){
 }
 var PINFO={showPop:false,showYoY:false,popLabel:'MoM'};
 function render(){const L=withM(filtered());const A=agg(L);
- (function(){var len=state.to-state.from+1;PINFO={len:len,popFrom:state.from-len,popTo:state.to-len,yoyFrom:state.from-12,yoyTo:state.to-12,popLabel:(len===1?'MoM':len===3?'QoQ':len===6?'SoS':len===12?'YoY':'vs per. ant.'),showPop:(len<12&&state.from-len>=1),showYoY:(state.from-12>=1),isPast:(state.to<MES.length)};})();
+ (function(){var len=state.to-state.from+1;PINFO={len:len,popFrom:state.from-len,popTo:state.to-len,yoyFrom:state.from-12,yoyTo:state.to-12,popLabel:(len===1?'MoM':len===2?'BoB':len===3?'QoQ':len===6?'SoS':len===12?'YoY':'vs per. ant.'),showPop:(len<12&&state.from-len>=1),showYoY:(state.from-12>=1),isPast:(state.to<MES.length)};})();
  const jn=document.getElementById('juneNote');const single=state.from===state.to;const ALR='<svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/></svg>';
  if(single){jn.style.display='';jn.innerHTML=ALR+'<div><b>Você selecionou um único mês ('+MES[state.from-1]+').</b> A análise de <b>comportamento e risco precisa de 2+ meses</b> (ela compara a trajetória do aluno). Com 1 mês só, quem teve acesso aparece como "Novo" e quem não teve como "Sem acesso" — use um intervalo para ver risco/evasão de verdade. Frequência e meta do mês continuam válidas.</div>';}
  else{jn.style.display='none';}
@@ -1319,7 +1319,7 @@ function downloadCSV(){
  function setWindow(f,tt,label){state.from=f;state.to=tt;document.getElementById('perBtnLbl').textContent=label;document.getElementById('perPanel').classList.remove('open');render();}
  function buildPerList(g){var host=document.getElementById('perList');var html='';
   if(g==='mes'){YEARS.forEach(function(y){var ms=MINFO.filter(function(o){return o.y===y;});html+='<div class="peryear"><span class="perylbl">'+y+'</span><div class="perchips">'+ms.map(function(o){return '<button type="button" class="perchip" data-f="'+o.i+'" data-t="'+o.i+'" data-l="'+o.lbl+'">'+MABBR[o.m-1]+'</button>';}).join('')+'</div></div>';});}
-  else if(g==='tri'||g==='sem'){var G=(g==='tri')?[[1,3,'T1'],[4,6,'T2'],[7,9,'T3'],[10,12,'T4']]:[[1,6,'S1'],[7,12,'S2']];YEARS.forEach(function(y){var chips='';G.forEach(function(q){var r=idxRange(function(o){return o.y===y&&o.m>=q[0]&&o.m<=q[1];});if(r)chips+='<button type="button" class="perchip" data-f="'+r[0]+'" data-t="'+r[1]+'" data-l="'+q[2]+'/'+String(y).slice(2)+'">'+q[2]+'</button>';});if(chips)html+='<div class="peryear"><span class="perylbl">'+y+'</span><div class="perchips">'+chips+'</div></div>';});}
+  else if(g==='bim'||g==='tri'||g==='sem'){var G=(g==='bim')?[[1,2,'B1'],[3,4,'B2'],[5,6,'B3'],[7,8,'B4'],[9,10,'B5'],[11,12,'B6']]:(g==='tri')?[[1,3,'T1'],[4,6,'T2'],[7,9,'T3'],[10,12,'T4']]:[[1,6,'S1'],[7,12,'S2']];YEARS.forEach(function(y){var chips='';G.forEach(function(q){var r=idxRange(function(o){return o.y===y&&o.m>=q[0]&&o.m<=q[1];});if(r)chips+='<button type="button" class="perchip" data-f="'+r[0]+'" data-t="'+r[1]+'" data-l="'+q[2]+'/'+String(y).slice(2)+'">'+q[2]+'</button>';});if(chips)html+='<div class="peryear"><span class="perylbl">'+y+'</span><div class="perchips">'+chips+'</div></div>';});}
   else{html+='<div class="perchips" style="padding:3px 1px">'+YEARS.map(function(y){var r=idxRange(function(o){return o.y===y;});return '<button type="button" class="perchip" data-f="'+r[0]+'" data-t="'+r[1]+'" data-l="Ano '+y+'">'+y+'</button>';}).join('')+'</div>';}
   host.innerHTML=html;host.querySelectorAll('.perchip').forEach(function(bb){bb.onclick=function(){setWindow(+bb.dataset.f,+bb.dataset.t,bb.dataset.l);};});}
  function perQuick(q){var N=MES.length,last=MINFO[N-1];if(q==='last12')setWindow(Math.max(1,N-11),N,'Últimos 12 meses');else if(q==='all')setWindow(1,N,'Tudo ('+MINFO[0].lbl+'–'+last.lbl+')');else if(q==='closed')setWindow(1,Math.max(1,N-1),'Meses fechados');else if(q==='year'){var r=idxRange(function(o){return o.y===last.y;});setWindow(r[0],r[1],'Este ano ('+last.y+')');}}
