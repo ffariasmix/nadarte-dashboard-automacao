@@ -329,6 +329,80 @@ def fs_index(key):
     return YM2POS.get(ym, -1)  # -1 = 1a aparicao ANTES da janela (base arquivada): nunca 'novo'
 print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)", file=sys.stderr)
 
+# ==== Onda 2: SCORE DE CHURN no build (FONTE ÚNICA p/ dashboard + Agenda Tática) ====
+# Espelha exatamente o scoreOf(s) do template. Constantes calibráveis abaixo (mudar num lugar só).
+_TODAY = datetime.date.today()
+BASE_PARTIAL = (tuple(ORDERED[base_pos]) == (_TODAY.year, _TODAY.month))
+VEZ_META = {CAT_FIT:3, CAT_AGUA:1.5, CAT_LUTA:1.5, CAT_AF:3, CAT_AL:2, CAT_FL:3, CAT_AFL:3, CAT_OUT:1.5}
+def _op_cutoff():
+    return max_base_date.day if (BASE_PARTIAL and max_base_date) else calendar.monthrange(*ORDERED[base_pos])[1]
+def _days_between(a, b):
+    if not a or not b: return None
+    return (b - a).days
+def _meses_desde(dm_iso, today):
+    d = parse_dt(dm_iso)
+    if not d: return None
+    return (today.year - d.year)*12 + (today.month - d.month) - (1 if today.day < d.day else 0)
+def score_of(ac, active, last_date, wk, venc_iso, dm_iso, grupo, dps, is_novo, today=None):
+    today = today or _TODAY
+    reasons=[]; pts=0
+    ativo = (active[-1]==1) if active else True
+    # 1) aderência do mês corrente (máx 25)
+    dias=_op_cutoff(); semanas=max(0.3, dias/dps); expected=VEZ_META.get(grupo,3)*semanas
+    acm = ac[base_pos] if base_pos < len(ac) else 0
+    ad = min(1.0, acm/expected) if expected>0 else 0.0
+    pAd = 0 if ad>=0.9 else 5 if ad>=0.7 else 12 if ad>=0.5 else 18 if ad>=0.3 else 25
+    if pAd: reasons.append((pAd, f"Aderência do mês {round(ad*100)}%"))
+    pts += pAd
+    # 2) recência (máx 25)
+    rec = _days_between(last_date, today)
+    pRec = 0 if rec is None else 0 if rec<=7 else 12 if rec<=14 else 18 if rec<=21 else 22 if rec<=30 else 25
+    if pRec: reasons.append((pRec, f"Recência: {rec} dias sem visita"))
+    pts += pRec
+    # 3) velocidade de queda (máx 15)
+    K=len(wk); vel=None; pVel=0
+    if K>=6:
+        recent=(wk[K-1]+wk[K-2])/2; parr=wk[max(0,K-8):K-2]; prior=(sum(parr)/len(parr)) if parr else 0
+        if prior>0:
+            vel=(prior-recent)/prior; pVel = 15 if vel>=0.4 else 10 if vel>=0.2 else 5 if vel>0.05 else 0
+    if pVel: reasons.append((pVel, f"Velocidade de queda {round(vel*100)}% (2 últ. sem. vs anteriores)"))
+    pts += pVel
+    # 4) vencimento (máx 15)
+    dv = _days_between(today, parse_dt(venc_iso)); pVenc=0
+    if ativo and dv is not None and dv>=0:
+        pVenc = 15 if dv<=7 else 12 if dv<=15 else 8 if dv<=30 else 4 if dv<=60 else 0
+    if pVenc: reasons.append((pVenc, f"Contrato vence em {dv} dias"))
+    pts += pVenc
+    # 5) constância (máx 10)
+    pCon=0; con=None
+    if K>=4:
+        wwin=wk[max(0,K-8):]; pres=sum(1 for v in wwin if v>0); con=pres/len(wwin) if wwin else 1
+        pCon = 0 if con>=0.8 else 3 if con>=0.6 else 6 if con>=0.4 else 10
+    if pCon: reasons.append((pCon, f"Constância {round(con*100)}% das últimas semanas"))
+    pts += pCon
+    # 6) coorte / tempo de casa (máx 10)
+    meses=_meses_desde(dm_iso, today); pCo=0
+    if meses is not None:
+        pCo = 0 if meses<1 else 6 if meses<=3 else 10 if meses<=6 else 4 if meses<=12 else 2
+    if pCo: reasons.append((pCo, f"Tempo de casa: {meses} meses" + (" (janela de evasão)" if (meses>=3 and meses<=6) else "")))
+    pts += pCo
+    weeks_data = sum(1 for v in wk if v>0)
+    conf = "Alta" if (meses is not None and meses>2 and weeks_data>=4) else ("Média" if (meses is not None and meses>=1) else "Baixa")
+    if is_novo: conf="Baixa"
+    justif = "Contrato inativo (perda realizada, não risco)" if not ativo else ("Matriculado no mês — novo demais p/ classificar" if is_novo else None)
+    score = max(0, min(100, round(pts)))
+    reasons.sort(key=lambda r: -r[0])
+    band = "Justificado" if justif else ("Risco elevado" if score>=70 else "Queda relevante" if score>=50 else "Atenção inicial" if score>=30 else "Dentro do padrão")
+    if justif: prio="—"
+    elif dv is not None and 0<=dv<=15 and score>=50: prio="P0"
+    elif score>=70 and (rec is None or rec<=45): prio="P0"
+    elif score>=70: prio="P1"
+    elif score>=50: prio="P1"
+    elif score>=30: prio="P2"
+    else: prio="P3"
+    return {"score":score,"band":band,"prio":prio,"conf":conf,"justif":justif,
+            "reasons":[{"p":p,"t":t} for p,t in reasons[:5]], "rec":rec, "dv":dv}
+
 # ---- montar students (apenas ativos do mes-base) ----
 students=[]
 for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' durante a iteracao
@@ -337,12 +411,16 @@ for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' du
         a = attrs[base_pos].get((unit,key),{})
         ac = [acc.get((unit,mm),{}).get(key,0) for mm in range(NMONTHS)]
         act= [1 if key in active.get((mm,unit),()) else 0 for mm in range(NMONTHS)]  # .get: nao cria chave em defaultdict
+        _dmd = parse_dt(a.get("dm",""))
+        _is_novo = bool(_dmd and (_dmd.year,_dmd.month)==tuple(ORDERED[base_pos]))
+        _sc = score_of(ac, act, last_acc.get(key), week_acc.get(key,[0]*WEEKS_KEEP), a.get("venc",""), a.get("dm",""), a.get("grupo","Outros"), UDPS[unit], _is_novo)
         students.append({
             "u":unit,"mat":a.get("mat",""),"nome":a.get("nome",""),
             "grupo":a.get("grupo","Outros"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
             "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),"dm":a.get("dm",""),
             "venc":a.get("venc",""),"ult":(last_acc[key].isoformat() if key in last_acc else ""),"wk":week_acc.get(key,[0]*WEEKS_KEEP),
+            "score":_sc["score"],"scoreBand":_sc["band"],"scorePrio":_sc["prio"],"scoreConf":_sc["conf"],"scoreReasons":_sc["reasons"],"scoreJustif":(_sc["justif"] or ""),
             "foto":a.get("foto",""),"prof":a.get("prof",""),"profRole":a.get("profRole",""),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))

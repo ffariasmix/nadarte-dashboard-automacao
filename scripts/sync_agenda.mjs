@@ -20,6 +20,9 @@ const META_MES = { agua:6, lutas:6, fitness:12, ambos:12 };
 const CAP = { em_risco:40, sumiu:20, caiu_ritmo:30, resgate:15, aniversario:9999 };
 const TITULO = { em_risco:'Em risco de parar', sumiu:'Sumiu no mês', caiu_ritmo:'Aluno caiu de ritmo', aniversario:'Aniversariante da semana', resgate:'Resgate de alto valor' };
 const PRIO = { em_risco:'Alta', sumiu:'Alta', caiu_ritmo:'Média', aniversario:'Baixa', resgate:'Alta' };
+// Onda 2: score vem do build (fonte única). Prioridade P0-P3 mapeada p/ o vocabulário da Agenda; SLA por prioridade.
+const SLA = { P0:'24h', P1:'48h', P2:'72h', P3:'esta semana' };
+const PRIO_FROM_SCORE = { P0:'Alta', P1:'Alta', P2:'Média', P3:'Baixa' };
 
 // ── Mapa de capacidade: "esta unidade MEDE frequência nesta categoria?" ──
 // Sem catraca ≠ zero visitas. Onde não há medição, NÃO classificamos churn por
@@ -67,7 +70,14 @@ const PRAZO = PROX_DOM.toISOString().slice(0,10); // domingo da semana seguinte
 
 const buckets = {};
 const push=(slug,tipo,it)=>{ const k=`${slug}|${tipo}`; (buckets[k]||(buckets[k]=[])).push(it); };
-const mk=(slug,cat,tipo,s,desc,rank=0)=>({ unidade_id:slug, categoria_id:cat, tipo, titulo:TITULO[tipo], prioridade:PRIO[tipo], aluno_nome:s.nome, matricula:String(s.mat||''), descricao:desc, rank, venc:(s.venc||''), valor_mensal:(tickets[s.u]||''), foto:(s.foto||'') });
+const mk=(slug,cat,tipo,s,desc,rank=0)=>{
+  const isRisk = tipo!=='aniversario';
+  const sp=s.scorePrio, scv=s.score, cf=s.scoreConf;
+  const prioridade = (isRisk&&sp)?(PRIO_FROM_SCORE[sp]||PRIO[tipo]):PRIO[tipo];
+  const tag = (isRisk&&scv!=null)?`[Score ${scv} · ${sp} · conf. ${cf} · SLA ${SLA[sp]||'—'}] `:'';
+  const rk = (isRisk&&scv!=null)?scv:rank;   // ordena a fila da Agenda pelo score (mais alto primeiro)
+  return { unidade_id:slug, categoria_id:cat, tipo, titulo:TITULO[tipo], prioridade, aluno_nome:s.nome, matricula:String(s.mat||''), descricao:tag+desc, rank:rk, venc:(s.venc||''), valor_mensal:(tickets[s.u]||''), foto:(s.foto||'') };
+};
 
 for(const s of students){
   const slug=UNIDADE_SLUG[s.u]; if(!slug) continue;
