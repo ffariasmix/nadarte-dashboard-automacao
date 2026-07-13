@@ -425,6 +425,32 @@ for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' du
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 
+# ==== CALIBRAÇÃO: PRIORIDADE POR CAPACIDADE (top-K por unidade) ====
+# P0 = a fila que a equipe consegue ligar na semana (~5% da base ativa da unidade ≈ capacidade:
+# 4 consultoras × 2h/dia × 5 dias ÷ 12 min ≈ 200/semana ≈ 40/unidade). Rankeia por SCORE DENTRO da
+# unidade (não por corte absoluto) → volume estável mesmo com o score inflando no mês parcial.
+# Piso de score evita "inventar" P0 em unidade calma. Tudo calibrável por env.
+P0_FRAC  = float(os.environ.get("PACTO_P0_FRAC",  "0.05"))
+P1_FRAC  = float(os.environ.get("PACTO_P1_FRAC",  "0.12"))
+P2_FRAC  = float(os.environ.get("PACTO_P2_FRAC",  "0.25"))
+P0_FLOOR = int(os.environ.get("PACTO_P0_FLOOR", "45"))
+_by_unit = defaultdict(list)
+for _s in students:
+    _by_unit[_s["u"]].append(_s)
+for _u, _lst in _by_unit.items():
+    _act = [s for s in _lst if not s.get("scoreJustif")]   # acionáveis (contrato ativo, não justificado)
+    _act.sort(key=lambda s: -s.get("score", 0))
+    _n = len(_act)
+    _k0 = int(round(_n*P0_FRAC)); _k1 = int(round(_n*P1_FRAC)); _k2 = int(round(_n*P2_FRAC))
+    for _i, _s in enumerate(_act):
+        if _i < _k0 and _s.get("score", 0) >= P0_FLOOR: _s["scorePrio"] = "P0"
+        elif _i < _k0 + _k1:              _s["scorePrio"] = "P1"
+        elif _i < _k0 + _k1 + _k2:        _s["scorePrio"] = "P2"
+        else:                             _s["scorePrio"] = "P3"
+    for _s in _lst:
+        if _s.get("scoreJustif"): _s["scorePrio"] = "—"
+print(f"[calib] prioridade por capacidade: P0={P0_FRAC:.0%}/unid (piso score {P0_FLOOR}), P1={P1_FRAC:.0%}, P2={P2_FRAC:.0%}", file=sys.stderr)
+
 # ---- churn set-based (secao 8) ----
 def profile(mats, pos, unit):
     cat=Counter(); sex=Counter(); bnd=Counter()
@@ -608,3 +634,26 @@ _feed = {"gerado": datetime.date.today().isoformat(), "baseMonth": MESES[base_po
 with open("presenca.json","w") as _f:   # raiz do repo (nao gitignorado)
     json.dump(_feed,_f,ensure_ascii=False,separators=(",",":"))
 print(f"[ponte] presenca.json: {len(_presenca)} alunos (matricula hasheada, sem PII)", file=sys.stderr)
+
+# ---- Onda 3: SCORE_HISTORY — snapshot SEMANAL de score/prioridade por aluno (raiz, commitado) ----
+# Rotulo do backtest: "qual era o score quando o alerta saiu". Matricula HASHEADA (mesmo _pmh, sem PII).
+# 1 snapshot por semana ISO (idempotente: reruns na mesma semana sobrescrevem). Poda p/ HIST_WEEKS semanas.
+SCORE_HIST_PATH = "score_history.json"
+HIST_WEEKS = int(os.environ.get("PACTO_SCORE_HIST_WEEKS", "26"))
+try:
+    _hist = json.load(open(SCORE_HIST_PATH))
+    if not isinstance(_hist, dict): _hist = {}
+except Exception:
+    _hist = {}
+_wk_key = REF_MON.isoformat()   # segunda-feira da semana corrente = chave do snapshot
+_snap = {}
+for _s in students:
+    _m = _s.get("mat")
+    if not _m: continue
+    _snap[_pmh(_m)] = [_s.get("score", 0), _s.get("scorePrio", "")]
+_hist[_wk_key] = _snap          # idempotente: sobrescreve a semana corrente
+for _old in sorted(_hist.keys())[:-HIST_WEEKS]:   # poda: mantem as ultimas HIST_WEEKS semanas
+    del _hist[_old]
+with open(SCORE_HIST_PATH, "w") as _f:
+    json.dump(_hist, _f, ensure_ascii=False, separators=(",", ":"))
+print(f"[hist] score_history.json: semana {_wk_key}, {len(_snap)} alunos, {len(_hist)} semanas retidas", file=sys.stderr)

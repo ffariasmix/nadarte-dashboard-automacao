@@ -21,7 +21,7 @@ const CAP = { em_risco:40, sumiu:20, caiu_ritmo:30, resgate:15, aniversario:9999
 const TITULO = { em_risco:'Em risco de parar', sumiu:'Sumiu no mês', caiu_ritmo:'Aluno caiu de ritmo', aniversario:'Aniversariante da semana', resgate:'Resgate de alto valor' };
 const PRIO = { em_risco:'Alta', sumiu:'Alta', caiu_ritmo:'Média', aniversario:'Baixa', resgate:'Alta' };
 // Onda 2: score vem do build (fonte única). Prioridade P0-P3 mapeada p/ o vocabulário da Agenda; SLA por prioridade.
-const SLA = { P0:'24h', P1:'48h', P2:'72h', P3:'esta semana' };
+const SLA = { P0:'48h', P1:'96h', P2:'esta semana', P3:'—' };  // ajustado à capacidade (~40 P0/unidade/semana)
 const PRIO_FROM_SCORE = { P0:'Alta', P1:'Alta', P2:'Média', P3:'Baixa' };
 
 // ── Mapa de capacidade: "esta unidade MEDE frequência nesta categoria?" ──
