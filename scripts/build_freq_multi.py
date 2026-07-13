@@ -227,6 +227,7 @@ for mk, path in alunos_files.items():
         c_nasc=find_col(colmap,"NASCIMENTO"); c_sexo=find_col(colmap,"SEXO"); c_mod=find_col(colmap,"MODALIDADE")
         c_dm=find_col(colmap,"DATA MATRICULA","DATA DE MATRICULA","DT MATRICULA","DATA MATR")
         c_foto=find_col(colmap,"FOTO"); c_prof=find_col(colmap,"PROF NOME","PROFESSOR"); c_prole=find_col(colmap,"PROF TIPO","PROF FOTO")
+        c_venc=find_col(colmap,"VENCIMENTO","FIM CONTRATO","DATA FIM","VENC","FIM")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -250,12 +251,20 @@ for mk, path in alunos_files.items():
                 "sexo": sexo_of(r[c_sexo]) if (c_sexo is not None and c_sexo<len(r)) else "N/D",
                 "band": band_of(BAND_REF,by,bm,bd), "bm":bm,"bd":bd,"by":by,
                 "dm": (parse_dt(r[c_dm]).isoformat() if (c_dm is not None and c_dm<len(r) and parse_dt(r[c_dm])) else ""),
+                "venc": (parse_dt(r[c_venc]).isoformat() if (c_venc is not None and c_venc<len(r) and parse_dt(r[c_venc])) else ""),
                 "foto": _cell(c_foto), "prof": _cell(c_prof), "profRole": _cell(c_prole),
             }
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----
 acc = defaultdict(lambda: defaultdict(int)); anchor = {}; max_base_date=None
 first_acc = {}  # key -> 1a data de acesso (catraca) de todos os tempos na janela
+# ---- Onda 1a: recencia (ultima visita) + acessos por SEMANA (ultimas WEEKS_KEEP semanas) ----
+# Sem custo extra de API: as datas ja estao na catraca; so agregamos por semana e guardamos a ultima.
+last_acc = {}   # key -> ultima data de acesso (recencia)
+def _monday(d): return d - datetime.timedelta(days=d.weekday())
+REF_MON = _monday(datetime.date.today())                       # segunda-feira da semana corrente (build)
+WEEKS_KEEP = int(os.environ.get("PACTO_WEEKS_KEEP", "10"))     # janela semanal retida por aluno
+week_acc = defaultdict(lambda: [0]*WEEKS_KEEP)                 # key -> [contagens] (wk[-1] = semana atual)
 for unit, path in catraca_files.items():
     wb = load_wb(path); total=0; people=set()
     for sn in wb.sheetnames:
@@ -283,6 +292,10 @@ for unit, path in catraca_files.items():
                 if d:
                     if pos==base_pos and (max_base_date is None or d>max_base_date): max_base_date=d
                     if key not in first_acc or d<first_acc[key]: first_acc[key]=d
+                    if key not in last_acc or d>last_acc[key]: last_acc[key]=d
+                    _wi = (_monday(d) - REF_MON).days // 7       # 0=semana atual, -1=passada...
+                    _idx = WEEKS_KEEP-1 + _wi
+                    if 0 <= _idx < WEEKS_KEEP: week_acc[key][_idx]+=1
     anchor[unit]=(total,len(people))
 print("[info] catraca anchor:", {u:anchor[u] for u in UNIT_KEYS}, file=sys.stderr)
 JUN_MAX = max_base_date.strftime("%d/%m/%Y") if max_base_date else ""
@@ -329,6 +342,7 @@ for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' du
             "grupo":a.get("grupo","Outros"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
             "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),"dm":a.get("dm",""),
+            "venc":a.get("venc",""),"ult":(last_acc[key].isoformat() if key in last_acc else ""),"wk":week_acc.get(key,[0]*WEEKS_KEEP),
             "foto":a.get("foto",""),"prof":a.get("prof",""),"profRole":a.get("profRole",""),
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
@@ -489,6 +503,7 @@ print(f"[info] basePartial={BASE_PARTIAL} (mes-base {ORDERED[base_pos]} vs hoje 
 out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
+       "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,
        "lagoUnit":LAGO_UNIT,"lagoExcluded":len(LAGO_EXCLUDED),
        "lagoFitCats":sorted(LAGO_FIT_CATS),
        "baseUpdated":meta.get("baseUpdated",""),

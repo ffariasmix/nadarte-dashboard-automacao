@@ -376,7 +376,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","FOTO","PROF NOME","PROF TIPO"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -385,7 +385,7 @@ def write_alunos_wb(path, unit_label_to_rows):
         ws = wb.create_sheet(title=label[:31])
         ws.append(AL_HEADER)
         for r in rows:
-            ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"],
+            ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"], r.get("fim",""),
                        r.get("foto",""), r.get("prof",""), r.get("profRole","")])
     wb.save(path)
 
