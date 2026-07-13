@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO · Inteligência de Retenção — Nad'Arte</title>
+<style>
+  :root{
+    --bg:#F5F4F1; --card:#FFFFFF; --ink:#1A1A1A; --muted:#7C786F; --line:#ECEAE5;
+    --orange:#E8521A; --green:#5BAD6F; --red:#D64545; --yellow:#E0A93B; --blue:#3E6DAA; --purple:#7A5AA8;
+    --green-soft:#E2F1E7; --red-soft:#F8E3E3; --yellow-soft:#FBF1DA; --blue-soft:#E1EAF5; --orange-soft:#FBE4DA;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 18px 60px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:42px;height:42px;border-radius:11px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;letter-spacing:-.5px}
+  .brand h1{font-size:18px;margin:0;font-weight:800}
+  .brand .sub{font-size:12px;color:var(--muted);margin-top:1px}
+  .demo-badge{background:#111;color:#fff;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.04em;text-transform:uppercase}
+  .ref{font-size:12px;color:var(--muted);text-align:right}
+  .ref b{color:var(--ink)}
+  .disclaimer{background:var(--yellow-soft);border:1px solid #EAD9AE;border-radius:11px;padding:10px 14px;font-size:12.5px;color:#7a5c15;margin:14px 0 22px}
+  h2.sec{font-size:15px;font-weight:800;margin:34px 0 4px;display:flex;align-items:center;gap:9px}
+  h2.sec .tag{font-size:10px;font-weight:800;color:#fff;background:var(--orange);padding:2px 8px;border-radius:6px;letter-spacing:.03em}
+  .sec-sub{font-size:12.5px;color:var(--muted);margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .pad{padding:16px 18px}
+
+  /* IOD gauge */
+  .iodbox{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+  .iodbox .expl{flex:1;min-width:240px;font-size:13px;color:var(--muted)}
+  .iodbox .expl b{color:var(--ink)}
+  .gauge{display:flex;flex-direction:column;align-items:center;min-width:150px}
+  .gauge .big{font-size:34px;font-weight:900;color:var(--orange);line-height:1}
+  .gauge .lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+
+  /* antes x depois */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+  .p-red{background:var(--red-soft);color:#a2302f} .p-green{background:var(--green-soft);color:#2f6b45}
+  .p-yellow{background:var(--yellow-soft);color:#7a5c15} .p-blue{background:var(--blue-soft);color:#2b527e}
+  .old{color:var(--red);font-weight:700} .new{color:var(--green);font-weight:800}
+  .arrow{color:var(--muted);padding:0 4px}
+  .capt{font-size:11.5px;color:var(--muted);margin:10px 2px 0}
+
+  /* score card */
+  .scorewrap{display:grid;grid-template-columns:200px 1fr;gap:0}
+  @media(max-width:640px){.scorewrap{grid-template-columns:1fr}}
+  .scoreleft{background:linear-gradient(160deg,#fff,#FBE4DA);border-right:1px solid var(--line);padding:20px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  @media(max-width:640px){.scoreleft{border-right:none;border-bottom:1px solid var(--line)}}
+  .ring{position:relative;width:132px;height:132px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .val .n{font-size:34px;font-weight:900;color:var(--red);line-height:1}
+  .ring .val .d{font-size:11px;color:var(--muted);font-weight:700}
+  .conf{margin-top:12px;font-size:12px}
+  .conf b{color:var(--ink)}
+  .scoreright{padding:18px 20px}
+  .aluno-nome{font-size:16px;font-weight:800;margin:0 0 2px}
+  .aluno-meta{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .fator{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .fator .b{background:var(--red-soft);color:#a2302f;font-weight:800;font-size:11px;border-radius:6px;padding:2px 7px;min-width:38px;text-align:center;flex:none}
+  .fator.aten .b{background:var(--green-soft);color:#2f6b45}
+  .acao{margin-top:14px;background:var(--blue-soft);border-radius:10px;padding:11px 13px;font-size:13px}
+  .acao b{color:#2b527e}
+
+  /* fila */
+  .filacard{overflow-x:auto}
+  .fila{min-width:820px}
+  .fila td{vertical-align:middle}
+  .prio{font-weight:800;font-size:12px;border-radius:6px;padding:2px 8px;color:#fff}
+  .P0{background:var(--red)} .P1{background:var(--orange)} .P2{background:var(--yellow)} .P3{background:var(--muted)}
+  .scoredot{font-weight:800;font-variant-numeric:tabular-nums}
+  .mini{font-size:11px;color:var(--muted)}
+  .status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f0efec;color:var(--muted)}
+  .status.aberta{background:var(--blue-soft);color:#2b527e}
+  .acaobtn{font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);background:none;border-radius:7px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+
+  /* evolucao */
+  .evorow{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
+  .legend{font-size:11.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+  footer{margin-top:40px;font-size:11.5px;color:var(--muted);text-align:center;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo">N</div>
+      <div>
+        <h1>Inteligência de Retenção — Nad'Arte</h1>
+        <div class="sub">Frequência &amp; Retenção · protótipo de visualização</div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <span class="demo-badge">Demo · dados fictícios</span>
+      <div class="ref" style="margin-top:8px">Data de corte: <b>12/07/2026</b><br>Julho em curso · dados até <b>11/07 (D-1)</b></div>
+    </div>
+  </header>
+
+  <div class="disclaimer">
+    ⚠️ <b>Protótipo para aprovação visual.</b> Todos os nomes e números são fictícios e ilustram <b>como ficará</b> a leitura após as correções (Onda 0) e o novo modelo de risco (Onda 1). Nada aqui vem da base real nem afeta o pipeline.
+  </div>
+
+  <!-- ============ SEÇÃO A ============ -->
+  <h2 class="sec"><span class="tag">A</span> Mês corrente corrigido — antes × depois</h2>
+  <p class="sec-sub">O erro atual: julho (parcial) é comparado como se fosse mês inteiro. A correção normaliza pelo <b>Índice de Oportunidades Decorridas (IOD)</b> — quantas oportunidades de treino já deveriam ter ocorrido até hoje.</p>
+
+  <div class="card pad">
+    <div class="iodbox">
+      <div class="gauge">
+        <div class="big">35,5%</div>
+        <div class="lbl">IOD — julho</div>
+      </div>
+      <div class="expl">
+        <b>Como se lê:</b> hoje é 12/07. Passaram <b>11 dias operacionais</b> de 31 → só <b>35,5%</b> das oportunidades do mês já ocorreram.
+        Logo, o "esperado até hoje" = meta mensal × 35,5%. Comparar o realizado de julho com o total de um mês fechado (sem isso) <b>infla o alerta</b> e marca aluno normal como "em queda".
+      </div>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>Aluno (fictício)</th><th>Categoria / meta</th><th class="num">Visitas até 11/07</th>
+        <th class="num">Cálculo ATUAL (errado)</th><th class="num">Cálculo CORRIGIDO</th><th>Leitura correta</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>Larissa G.</td><td>Fitness · 3×/sem</td><td class="num">3</td>
+          <td class="num"><span class="old">43%</span><br><span class="mini">3 ÷ 6,9 (16 dias fixos)</span></td>
+          <td class="num"><span class="new">64%</span><br><span class="mini">3 ÷ 4,7 (meta × IOD)</span></td>
+          <td><span class="pill p-green">Dentro do padrão</span></td>
+        </tr>
+        <tr>
+          <td>Ana P.</td><td>Água · 1,5×/sem</td><td class="num">2</td>
+          <td class="num"><span class="old">58%</span><br><span class="mini">2 ÷ 3,4</span></td>
+          <td class="num"><span class="new">87%</span><br><span class="mini">2 ÷ 2,3</span></td>
+          <td><span class="pill p-green">Dentro do padrão</span></td>
+        </tr>
+        <tr>
+          <td>Marcos R.</td><td>Fitness · 3×/sem</td><td class="num">1</td>
+          <td class="num"><span class="old">14%</span><br><span class="mini">1 ÷ 6,9</span></td>
+          <td class="num"><span class="new">21%</span><br><span class="mini">1 ÷ 4,7</span></td>
+          <td><span class="pill p-red">Queda relevante</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="capt"><b>Junho também é corrigido:</b> hoje o código prorrateia junho (mês fechado) a 16 dias e <b>infla</b> a meta. Corrigido, junho volta a contar o mês inteiro — comparação MoM jun × mai passa a ser justa.</p>
+  </div>
+
+  <!-- ============ SEÇÃO B ============ -->
+  <h2 class="sec"><span class="tag">B</span> Score de risco explicável</h2>
+  <p class="sec-sub">Nunca uma "caixa-preta". Cada aluno tem um número auditável, o nível de confiança, os fatores que pesaram, os atenuantes e a ação recomendada.</p>
+
+  <div class="card">
+    <div class="scorewrap">
+      <div class="scoreleft">
+        <div class="ring">
+          <svg width="132" height="132" viewBox="0 0 132 132">
+            <circle cx="66" cy="66" r="58" fill="none" stroke="#ECEAE5" stroke-width="12"/>
+            <circle cx="66" cy="66" r="58" fill="none" stroke="#D64545" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="364.4" stroke-dashoffset="80.2"/>
+          </svg>
+          <div class="val"><div class="n">78</div><div class="d">/ 100</div></div>
+        </div>
+        <div style="margin-top:10px"><span class="pill p-red">Risco elevado</span></div>
+        <div class="conf">Confiança: <b>Alta</b><br><span class="mini">histórico individual robusto</span></div>
+      </div>
+      <div class="scoreright">
+        <p class="aluno-nome">Marcos R. <span class="mini" style="font-weight:600">· mat. 8421 · 604 Norte</span></p>
+        <p class="aluno-meta">Fitness · 3×/sem · cliente há 4 meses · Prof. responsável: Bruno</p>
+        <div class="fator"><span class="b">+22</span><div>Frequência <b>52% abaixo</b> do baseline individual do aluno.</div></div>
+        <div class="fator"><span class="b">+18</span><div><b>11 dias</b> sem visita (última em 01/07).</div></div>
+        <div class="fator"><span class="b">+14</span><div>Ritmo caiu <b>−40%</b>: 2 últimas semanas vs 6 anteriores.</div></div>
+        <div class="fator"><span class="b">+12</span><div>Contrato <b>vence em 18 dias</b> (30/07).</div></div>
+        <div class="fator"><span class="b">+8</span><div>Coorte <b>91–180 dias</b> — janela de maior evasão.</div></div>
+        <div class="fator aten"><span class="b">−0</span><div>Sem atenuantes registrados (sem férias/atestado informado).</div></div>
+        <div class="acao">🎯 <b>Ação sugerida:</b> contato acolhedor do <b>professor</b> em até <b>24h</b> (WhatsApp/presencial) — retomar rotina antes do vencimento. <span class="mini">Playbook: Queda de frequência.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SEÇÃO C ============ -->
+  <h2 class="sec"><span class="tag">C</span> Fila priorizada de ação</h2>
+  <p class="sec-sub">Prioridade <b>≠</b> risco. Ordena por <b>risco × valor do contrato × urgência (vencimento) × chance de recuperação</b>. Um risco médio vencendo em 5 dias sobe na fila; um risco alto com férias registradas não gera ruído.</p>
+
+  <div class="card pad filacard">
+    <table class="fila">
+      <thead><tr>
+        <th>Prio</th><th>Aluno</th><th>Unidade</th><th>Risco</th><th>Motivo principal</th>
+        <th>Últ. visita</th><th>Vence em</th><th class="num">R$/mês</th><th>Ação · prazo</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="prio P0">P0</span></td><td>Marcos R.</td><td>604 Norte</td>
+          <td><span class="scoredot" style="color:var(--red)">78</span> <span class="mini">Alta</span></td>
+          <td>Queda 52% + vence em 18d</td><td>01/07</td><td><span class="p-yellow pill">18 dias</span></td>
+          <td class="num">R$ 189</td><td>Professor · 24h</td><td><button class="acaobtn">→ Agenda</button></td>
+        </tr>
+        <tr>
+          <td><span class="prio P0">P0</span></td><td>Cláudia M.</td><td>716 Norte</td>
+          <td><span class="scoredot" style="color:var(--red)">74</span> <span class="mini">Alta</span></td>
+          <td>Vence em 6 dias + ritmo caindo</td><td>05/07</td><td><span class="p-red pill">6 dias</span></td>
+          <td class="num">R$ 249</td><td>Comercial · hoje</td><td><button class="acaobtn">→ Agenda</button></td>
+        </tr>
+        <tr>
+          <td><span class="prio P1">P1</span></td><td>Rafael T.</td><td>905 Sul</td>
+          <td><span class="scoredot" style="color:var(--red)">71</span> <span class="mini">Média</span></td>
+          <td>Sumiu há 2 meses (evasão)</td><td>—</td><td><span class="mini">140 dias</span></td>
+          <td class="num">R$ 189</td><td>Resgate · 24h</td><td><button class="acaobtn">→ Agenda</button></td>
+        </tr>
+        <tr>
+          <td><span class="prio P1">P1</span></td><td>Juliana F.</td><td>604 Norte</td>
+          <td><span class="scoredot" style="color:var(--yellow)">58</span> <span class="mini">Alta</span></td>
+          <td>Ritmo −38% nas últimas 2 semanas</td><td>08/07</td><td><span class="mini">90 dias</span></td>
+          <td class="num">R$ 209</td><td>Professor · 48h</td><td><span class="status aberta">Ação aberta</span></td>
+        </tr>
+        <tr>
+          <td><span class="prio P2">P2</span></td><td>Pedro H.</td><td>716 Norte</td>
+          <td><span class="scoredot" style="color:var(--yellow)">49</span> <span class="mini">Média</span></td>
+          <td>Constância caindo (coorte 31–90d)</td><td>09/07</td><td><span class="mini">210 dias</span></td>
+          <td class="num">R$ 179</td><td>Professor · 72h</td><td><button class="acaobtn">→ Agenda</button></td>
+        </tr>
+        <tr style="opacity:.6">
+          <td><span class="prio P3">—</span></td><td>Sofia L.</td><td>Lago Sul</td>
+          <td><span class="scoredot" style="color:var(--muted)">62</span> <span class="mini">—</span></td>
+          <td>Férias informada até 20/07</td><td>28/06</td><td><span class="mini">120 dias</span></td>
+          <td class="num">R$ 199</td><td><span class="mini">Não acionar</span></td><td><span class="status">Justificado</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="capt">A última linha mostra a <b>atenuação</b>: aluno com férias registrada <b>não vira tarefa</b> — evita ruído e preserva a relação. R$/mês = ticket de referência da unidade (proxy).</p>
+  </div>
+
+  <!-- ============ SEÇÃO D ============ -->
+  <h2 class="sec"><span class="tag">D</span> Evolução — com julho plotado (corrigido)</h2>
+  <p class="sec-sub">Hoje o gráfico não plota julho (arrays fixos de 6 meses). Corrigido, julho aparece marcado como <b>parcial/projetado</b>, sem parecer queda.</p>
+
+  <div class="card pad">
+    <div class="evorow">
+      <svg width="620" height="200" viewBox="0 0 620 200" style="max-width:100%;height:auto">
+        <!-- baseline -->
+        <line x1="40" y1="165" x2="600" y2="165" stroke="#ECEAE5"/>
+        <!-- bars: Jan..Jul (7) total acessos (fictício) -->
+        <!-- helper spacing: 7 bars -->
+        <g font-family="Inter" font-size="10" fill="#7C786F" text-anchor="middle">
+          <!-- Jan -->
+          <rect x="52"  y="70"  width="44" height="95" rx="4" fill="#E8521A"/><text x="74" y="180">Jan</text>
+          <rect x="130" y="60"  width="44" height="105" rx="4" fill="#E8521A"/><text x="152" y="180">Fev</text>
+          <rect x="208" y="66"  width="44" height="99" rx="4" fill="#E8521A"/><text x="230" y="180">Mar</text>
+          <rect x="286" y="58"  width="44" height="107" rx="4" fill="#E8521A"/><text x="308" y="180">Abr</text>
+          <rect x="364" y="62"  width="44" height="103" rx="4" fill="#E8521A"/><text x="386" y="180">Mai</text>
+          <rect x="442" y="64"  width="44" height="101" rx="4" fill="#E8521A"/><text x="464" y="180">Jun</text>
+          <!-- Jul partial (light) -->
+          <rect x="520" y="120" width="44" height="45" rx="4" fill="#F3C4AE"/><text x="542" y="180" font-weight="700" fill="#E8521A">Jul*</text>
+        </g>
+        <!-- projected marker for Jul -->
+        <line x1="520" y1="60" x2="564" y2="60" stroke="#2D2D2D" stroke-width="2" stroke-dasharray="5,4"/>
+        <circle cx="542" cy="60" r="5" fill="#fff" stroke="#2D2D2D" stroke-width="2"/>
+        <text x="542" y="50" font-family="Inter" font-size="9.5" fill="#2D2D2D" text-anchor="middle" font-weight="700">projeção</text>
+      </svg>
+      <div style="min-width:170px">
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">
+          <b style="color:var(--ink)">Jul*</b> = mês em curso (parcial, até 11/07). A barra clara é o <b>realizado</b>; o marcador tracejado é a <b>projeção de fechamento</b> — nunca apresentada como fato.
+        </div>
+        <div class="legend">
+          <span><i style="background:#E8521A"></i>Mês fechado</span>
+          <span><i style="background:#F3C4AE"></i>Parcial (realizado)</span>
+          <span><i style="background:#2D2D2D"></i>Projeção</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Protótipo de visualização · Nad'Arte — Inteligência de Retenção · dados fictícios · Etapa 0 do roadmap.<br>
+    Próximo: sua aprovação/ajustes → portar os componentes aprovados para o dashboard real (Onda 0).
+  </footer>
+
+</div>
+</body>
+</html>

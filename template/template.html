@@ -507,10 +507,18 @@ const CATORD=['Fitness','Água','Luta','Ambos (Água + Fitness)','Ambos (Água +
 const state={cat:'Total',mod:'Todas',unit:'REDE',from:1,to:MES.length,vezG:Object.assign({},VEZDEF),thr:0.9,cutoff:16};
 const UDPS=DATA.udps||{};
 function unitDps(u){return UDPS[u]||7;}
-function diasNoMes(mo){return [31,28,31,30,31,30][mo];}
-function domingos(mo,upto){let c=0;for(let d=1;d<=upto;d++){if(new Date(2026,mo,d).getDay()===0)c++;}return c;}
+// ---- calendário DINÂMICO (ano real; trata bissexto; sem array fixo de 6 meses) ----
+const _MABR={Jan:1,Fev:2,Mar:3,Abr:4,Mai:5,Jun:6,Jul:7,Ago:8,Set:9,Out:10,Nov:11,Dez:12};
+function ymOf(i){var p=String(MES[i]||'').split('.');return {y:2000+(parseInt(p[1],10)||0),m:(_MABR[p[0]]||1)};}
+function diasNoMes(i){var o=ymOf(i);return new Date(o.y,o.m,0).getDate();}                 // último dia real do mês
+function domingos(i,upto){var o=ymOf(i),c=0;for(var d=1;d<=upto;d++){if(new Date(o.y,o.m-1,d).getDay()===0)c++;}return c;}
+// cutoff = dia operacional-limite do mês PARCIAL (dia real de D-1, vindo de DATA.junMax). Fim do "16" fixo.
+function opCutoff(){var m=String(PDAY||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return (PARTIAL&&m)?parseInt(m[1],10):diasNoMes(PIDX>=0?PIDX:MES.length-1);}
+// IOD = Índice de Oportunidades Decorridas (quanto do mês parcial já ocorreu)
+function iodPartial(){return PARTIAL?Math.min(1,opCutoff()/Math.max(1,diasNoMes(PIDX))):1;}
 let DIAS={6:[],7:[]};
-function computeDias(){DIAS={6:[],7:[]};for(let m=0;m<MES.length;m++){const tot=(m<5)?diasNoMes(m):state.cutoff;DIAS[7].push(tot);DIAS[6].push(tot-domingos(m,tot));}}
+// prorrateia SÓ o mês parcial (PIDX). Todos os demais (inclusive o último mês FECHADO) contam o mês inteiro real.
+function computeDias(){DIAS={6:[],7:[]};for(var m=0;m<MES.length;m++){var tot=(PARTIAL&&m===PIDX)?opCutoff():diasNoMes(m);DIAS[7].push(tot);DIAS[6].push(tot-domingos(m,tot));}}
 function semanas(m,dps){return Math.max(0.3,(DIAS[dps]||DIAS[7])[m]/dps);}
 function expected(m,g,dps){return (state.vezG[g]||3)*semanas(m,dps);}
 function cumpr(ac,m,g,dps){return Math.min(1,ac[m]/expected(m,g,dps));}
@@ -576,13 +584,15 @@ const BRL2=v=>'R$\u00A0'+Number(v).toLocaleString('pt-BR',{minimumFractionDigits
 function ticketU(k){return (DATA.tickets&&DATA.tickets[k])||0;}
 const SaldoArrow={id:'saldoArrow',afterDatasetsDraw(c){const di=c.data.datasets.findIndex(d=>d.label==='Saldo líquido');if(di<0)return;const meta=c.getDatasetMeta(di),ctx=c.ctx;ctx.save();ctx.font='800 12px Inter';ctx.textAlign='center';meta.data.forEach((pt,i)=>{const v=c.data.datasets[di].data[i];if(v==null)return;const up=v>=0;ctx.fillStyle=up?C.green:C.red;ctx.fillText((up?'▲ +':'▼ ')+v,pt.x,pt.y-11);});ctx.restore();}};
 function evolChart(id,L){destroy(id);const tot=monthTotals(L),avg=monthAvgPerActive(L);
- const cut=state.cutoff||16;const projJun=avg[avg.length-1]*(30/cut);
- const avgReal=[avg[0],avg[1],avg[2],avg[3],avg[4],null];
- const avgProj=[null,null,null,null,avg[4],projJun];
- ch[id]=new Chart(document.getElementById(id),{data:{labels:MES,datasets:[
-  {type:'bar',label:'Acessos totais',data:tot,backgroundColor:tot.map((_,i)=>i===5?'#F3C4AE':C.orange),borderRadius:6,maxBarThickness:46,yAxisID:'y',order:3},
-  {type:'line',label:'Média por aluno ativo',data:avgReal,borderColor:C.graphite,backgroundColor:C.graphite,tension:.32,borderWidth:2.6,pointRadius:4,pointBackgroundColor:C.graphite,yAxisID:'y1',order:1},
-  {type:'line',label:'Ritmo projetado (jun.)',data:avgProj,borderColor:C.graphite,backgroundColor:'#fff',borderDash:[6,4],tension:.2,borderWidth:2.2,pointRadius:[0,0,0,0,0,6],pointStyle:'circle',pointBackgroundColor:'#fff',pointBorderColor:C.graphite,pointBorderWidth:2.4,yAxisID:'y1',order:2,spanGaps:true}]},
+ const N=MES.length,lastClosed=PARTIAL?PIDX-1:N-1;
+ const proj=(PARTIAL&&PIDX>=0)?avg[PIDX]*(diasNoMes(PIDX)/Math.max(1,opCutoff())):null;
+ const avgReal=avg.map((v,i)=>i<=lastClosed?v:null);
+ const avgProj=avg.map(()=>null);if(PARTIAL&&lastClosed>=0&&proj!=null){avgProj[lastClosed]=avg[lastClosed];avgProj[PIDX]=proj;}
+ const _ds=[
+  {type:'bar',label:'Acessos totais',data:tot,backgroundColor:tot.map((_,i)=>(PARTIAL&&i===PIDX)?'#F3C4AE':C.orange),borderRadius:6,maxBarThickness:46,yAxisID:'y',order:3},
+  {type:'line',label:'Média por aluno ativo',data:avgReal,borderColor:C.graphite,backgroundColor:C.graphite,tension:.32,borderWidth:2.6,pointRadius:4,pointBackgroundColor:C.graphite,yAxisID:'y1',order:1}];
+ if(PARTIAL&&proj!=null)_ds.push({type:'line',label:'Ritmo projetado ('+PMESNM+')',data:avgProj,borderColor:C.graphite,backgroundColor:'#fff',borderDash:[6,4],tension:.2,borderWidth:2.2,pointRadius:avgProj.map((v,i)=>i===PIDX?6:0),pointStyle:'circle',pointBackgroundColor:'#fff',pointBorderColor:C.graphite,pointBorderWidth:2.4,yAxisID:'y1',order:2,spanGaps:true});
+ ch[id]=new Chart(document.getElementById(id),{data:{labels:MES,datasets:_ds},
   options:bo({layout:{padding:{top:18}},scales:{y:{position:'left',grid:{color:C.line},title:{display:true,text:'acessos totais',font:{size:10}}},y1:{position:'right',grid:{display:false},title:{display:true,text:'média/aluno',font:{size:10}}},x:{grid:{display:false}}},plugins:{legend:{display:true,position:'bottom',labels:{usePointStyle:true,pointStyle:'rectRounded',padding:13,font:{size:11}}}}})});}
 function vennChart(id,soMeta,soEng,both){destroy(id);
  ch[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels:['Só Meta','Meta + Engajado','Só Engajado'],datasets:[{data:[soMeta,both,soEng],backgroundColor:[C.blue,C.purple,C.green],borderRadius:6,maxBarThickness:60,_f:v=>v}]},options:bo({layout:{padding:{top:18}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:C.line},beginAtZero:true}}}),plugins:[VL]});}
@@ -693,7 +703,7 @@ function renderInsights(L,A){const act=monthActives(L);const g=grp(L,'grupo');co
 
 function renderCharts(L,A){evolChart('cEvol',L);
  const avg=monthAvgPerActive(L);
- {const _pj=(PARTIAL&&state.to===MES.length);document.getElementById('capEvol').innerHTML='<b>Como ler:</b> as <b>barras</b> = volume (total de acessos)'+(_pj?' — '+PMESNM+' aparece menor só porque o mês está em curso, <b>não é queda</b>':'')+'. A <b>linha preta</b> = média de treinos por aluno ativo: é o termômetro de <b>engajamento e retenção</b> e independe do tamanho da base.'+(_pj?' O ponto de '+PMESNM+' é <b>ritmo projetado</b> (pontilhado): '+avg[avg.length-1].toFixed(1)+'×/aluno até o dia '+(state.cutoff||16)+' → projeção de <b>~'+(avg[avg.length-1]*30/(state.cutoff||16)).toFixed(1)+'×</b> no fechamento, em linha com os meses anteriores.':'')+' <b>Quando essa linha cai de forma consistente, é o sinal antecipado de evasão</b> — quem treina menos costuma ser quem sai.';}
+ {const _pj=(PARTIAL&&state.to===MES.length);const _cut=opCutoff(),_dm=diasNoMes(PIDX),_iod=Math.round(iodPartial()*100);document.getElementById('capEvol').innerHTML='<b>Como ler:</b> as <b>barras</b> = volume (total de acessos)'+(_pj?' — '+PMESNM+' aparece menor só porque o mês está em curso, <b>não é queda</b>':'')+'. A <b>linha preta</b> = média de treinos por aluno ativo: é o termômetro de <b>engajamento e retenção</b> e independe do tamanho da base.'+(_pj?' <b>'+PMESNM+' é parcial</b>: '+_cut+' de '+_dm+' dias já ocorreram (<b>IOD '+_iod+'%</b>). O ponto pontilhado é <b>projeção de fechamento</b> — não é fato: realizado '+avg[PIDX].toFixed(1)+'×/aluno → projeção <b>~'+(avg[PIDX]*_dm/Math.max(1,_cut)).toFixed(1)+'×</b>.':'')+' <b>Quando essa linha cai de forma consistente, é o sinal antecipado de evasão</b> — quem treina menos costuma ser quem sai.';}
  vennChart('cVenn',A.meta-A.both,A.eng-A.both,A.both);
  document.getElementById('capVenn').innerHTML='<b>O que significa:</b> são eixos diferentes. <b>Meta</b> = nível de frequência (≥90% da meta da categoria). <b>Engajado</b> = comportamento consistente. '+A.both+' estão em ambos; '+(A.eng-A.both)+' são consistentes mas abaixo da meta (ex.: hábito de 2x) — não são risco.';
  donut('cRisco',['Baixo','Médio','Alto'],[A.risk.Baixo,A.risk['Médio'],A.risk.Alto],[C.green,C.yellow,C.red]);
