@@ -181,16 +181,16 @@ jobs:
           echo "Linhas SQL: $(wc -l < agenda_week.sql)"; head -c 300 agenda_week.sql; echo
           npx --yes wrangler@3 d1 execute nadarte_agenda --remote --file=agenda_week.sql
 
-      - name: Atualizar version.txt no repo
+      - name: Atualizar version.txt + presenca.json no repo
         if: ${{ github.event.inputs.deploy != 'false' }}
         continue-on-error: true   # bump de versao e cosmetico: nao pode derrubar o run (deploy ja ocorreu)
         run: |
           echo "${{ steps.meta.outputs.new_ver }}" > version.txt
-          if ! git diff --quiet version.txt; then
+          if ! git diff --quiet version.txt presenca.json; then
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add version.txt
-            git commit -m "chore: bump versao para ${{ steps.meta.outputs.new_ver }} [skip ci]"
+            git add version.txt presenca.json
+            git commit -m "chore: bump versao ${{ steps.meta.outputs.new_ver }} + feed presenca [skip ci]"
             # o main pode ter avancado durante o run (push manual) -> rebase antes e re-tenta
             for i in 1 2 3; do
               git pull --rebase --autostash origin main && git push && break

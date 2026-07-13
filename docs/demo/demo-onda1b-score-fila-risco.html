@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO Onda 1b · Risco &amp; Evasão — Score + Fila</title>
+<style>
+  :root{
+    --bg:#F5F4F1;--card:#FFFFFF;--ink:#1A1A1A;--muted:#7C786F;--line:#ECEAE5;
+    --orange:#E8521A;--green:#5BAD6F;--red:#D64545;--yellow:#E0A93B;--blue:#3E6DAA;--purple:#7A5AA8;
+    --green-soft:#E2F1E7;--red-soft:#F8E3E3;--yellow-soft:#FBF1DA;--blue-soft:#E1EAF5;--orange-soft:#FBE4DA;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px 18px 60px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:42px;height:42px;border-radius:11px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px}
+  .brand h1{font-size:18px;margin:0;font-weight:800}
+  .brand .sub{font-size:12px;color:var(--muted);margin-top:1px}
+  .demo-badge{background:#111;color:#fff;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.04em;text-transform:uppercase}
+  .ref{font-size:12px;color:var(--muted);text-align:right}.ref b{color:var(--ink)}
+  .tabs{display:flex;gap:4px;margin:18px 0 6px;background:#EEEDE9;border-radius:10px;padding:4px;overflow-x:auto}
+  .tab{border:none;background:none;border-radius:7px;padding:8px 13px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .tab.active{background:#fff;color:var(--orange);box-shadow:var(--shadow)}
+  .disclaimer{background:var(--yellow-soft);border:1px solid #EAD9AE;border-radius:11px;padding:10px 14px;font-size:12.5px;color:#7a5c15;margin:12px 0 20px}
+  h2.sec{font-size:16px;font-weight:800;margin:8px 0 3px}
+  .sec-sub{font-size:12.5px;color:var(--muted);margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .pad{padding:16px 18px}
+  /* KPIs topo */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  @media(max-width:720px){.kpis{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:13px 15px}
+  .kpi .n{font-size:24px;font-weight:900;line-height:1}
+  .kpi .l{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:5px}
+  .kpi .s{font-size:12px;font-weight:700;margin-top:4px}
+  /* fila */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line)}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .prio{font-weight:800;font-size:11px;border-radius:6px;padding:2px 8px;color:#fff}
+  .P0{background:var(--red)}.P1{background:var(--orange)}.P2{background:var(--yellow)}.P3{background:var(--muted)}
+  .sc{display:inline-flex;align-items:center;gap:7px}
+  .scnum{font-weight:900;font-variant-numeric:tabular-nums;font-size:15px}
+  .scbar{width:46px;height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+  .scbar i{display:block;height:100%}
+  .mini{font-size:11px;color:var(--muted)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .p-red{background:var(--red-soft);color:#a2302f}.p-green{background:var(--green-soft);color:#2f6b45}
+  .p-yellow{background:var(--yellow-soft);color:#7a5c15}.p-blue{background:var(--blue-soft);color:#2b527e}
+  .status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f0efec;color:var(--muted)}
+  .status.aberta{background:var(--blue-soft);color:#2b527e}
+  .trow{cursor:pointer}.trow:hover{background:#FAF9F7}
+  .acaobtn{font-size:11px;font-weight:700;color:var(--orange);border:1px solid var(--orange);background:none;border-radius:7px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+  .caret{color:var(--muted);font-size:10px}
+  /* score expand */
+  .expand{background:#FBFAF8;border-top:2px solid var(--orange)}
+  .scorewrap{display:grid;grid-template-columns:190px 1fr;gap:0}
+  @media(max-width:640px){.scorewrap{grid-template-columns:1fr}}
+  .scoreleft{padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-right:1px solid var(--line)}
+  @media(max-width:640px){.scoreleft{border-right:none;border-bottom:1px solid var(--line)}}
+  .ring{position:relative;width:120px;height:120px}.ring svg{transform:rotate(-90deg)}
+  .ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .val .n{font-size:31px;font-weight:900;line-height:1}.ring .val .d{font-size:11px;color:var(--muted);font-weight:700}
+  .scoreright{padding:16px 20px}
+  .fator{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .fator .comp{font-weight:800;font-size:11px;border-radius:6px;padding:2px 7px;min-width:40px;text-align:center;flex:none;background:var(--red-soft);color:#a2302f}
+  .fator.zero .comp{background:#eee;color:var(--muted)}
+  .fator .barw{flex:1;height:5px;background:var(--line);border-radius:4px;overflow:hidden;max-width:120px}
+  .fator .barw i{display:block;height:100%;background:var(--red)}
+  .acao{margin-top:13px;background:var(--blue-soft);border-radius:10px;padding:11px 13px;font-size:13px}.acao b{color:#2b527e}
+  /* fórmula */
+  .fbox{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:720px){.fbox{grid-template-columns:1fr}}
+  .fitem{border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:12px}
+  .fitem b{font-size:12.5px}.fitem .w{float:right;font-weight:800;color:var(--orange)}
+  .fitem .bands{color:var(--muted);margin-top:5px;line-height:1.6}
+  .tune{background:var(--blue-soft);border:1px solid #C4D6EC;border-radius:11px;padding:12px 15px;font-size:12.5px;color:#274b73;margin-top:16px}
+  .tune b{color:#1c3a5c}
+  footer{margin-top:36px;font-size:11.5px;color:var(--muted);text-align:center;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo">N</div>
+      <div><h1>Risco &amp; Evasão — Score + Fila de Ação</h1>
+        <div class="sub">Onda 1b · protótipo de como fica dentro da aba real</div></div>
+    </div>
+    <div style="text-align:right">
+      <span class="demo-badge">Demo · dados fictícios</span>
+      <div class="ref" style="margin-top:8px">Corte: <b>12/07/2026</b> · dados até <b>11/07 (D-1)</b></div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab">Visão Geral</button><button class="tab">Comportamento</button>
+    <button class="tab">Modalidades</button><button class="tab active">Risco &amp; Evasão</button>
+    <button class="tab">Meta</button><button class="tab">Engajados</button>
+    <button class="tab">Perdas</button><button class="tab">Aniversariantes</button>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <b>Protótipo para aprovação.</b> A <b>fila</b> e o <b>score</b> abaixo usam a <b>fórmula real</b> sobre os campos que a Onda 1a já disponibilizou (recência, semana, vencimento). Nomes e números são fictícios. Nada aqui afeta o dashboard real ainda.
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi"><div class="n" style="color:var(--red)">37</div><div class="l">Ação imediata (P0)</div><div class="s" style="color:var(--red)">R$ 7.180/mês em risco</div></div>
+    <div class="kpi"><div class="n" style="color:var(--orange)">112</div><div class="l">Risco elevado</div><div class="s" style="color:var(--muted)">score ≥ 70</div></div>
+    <div class="kpi"><div class="n">89%</div><div class="l">Confiança média</div><div class="s" style="color:var(--green)">base com histórico</div></div>
+    <div class="kpi"><div class="n">64%</div><div class="l">Recuperação (30d)</div><div class="s" style="color:var(--green)">voltaram após contato</div></div>
+  </div>
+
+  <h2 class="sec">Fila priorizada de ação</h2>
+  <p class="sec-sub">Ordenada por <b>Prioridade</b> = score × valor do contrato × urgência (vencimento) × chance de recuperação. Clique numa linha para abrir o <b>score explicável</b>.</p>
+
+  <div class="card pad" style="overflow-x:auto">
+    <table style="min-width:860px">
+      <thead><tr>
+        <th>Prio</th><th>Aluno</th><th>Unid.</th><th>Score</th><th>Motivo principal</th>
+        <th>Últ. visita</th><th>Vence</th><th class="num">R$/mês</th><th>Ação · prazo</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <tr class="trow" onclick="tg('claudia')"><td><span class="prio P0">P0</span></td><td>Cláudia M. <span class="caret">▸</span></td><td>716N</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--red)">71</span><span class="scbar"><i style="width:71%;background:var(--red)"></i></span></span></td>
+          <td>Vence em 6 dias + ritmo caindo</td><td>05/07</td><td><span class="pill p-red">6 d</span></td><td class="num">R$ 249</td><td>Comercial · hoje</td><td><button class="acaobtn">→ Agenda</button></td></tr>
+
+        <tr class="trow" onclick="tg('marcos')"><td><span class="prio P0">P0</span></td><td><b>Marcos R.</b> <span class="caret">▾</span></td><td>604N</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--red)">76</span><span class="scbar"><i style="width:76%;background:var(--red)"></i></span></span></td>
+          <td>Queda 45% + 14d sem vir</td><td>28/06</td><td><span class="pill p-yellow">18 d</span></td><td class="num">R$ 189</td><td>Professor · 24h</td><td><button class="acaobtn">→ Agenda</button></td></tr>
+        <tr id="marcos" class="expand"><td colspan="10" style="padding:0">
+          <div class="scorewrap">
+            <div class="scoreleft">
+              <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#ECEAE5" stroke-width="11"/>
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#D64545" stroke-width="11" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="78.4"/>
+              </svg><div class="val"><div class="n" style="color:var(--red)">76</div><div class="d">/ 100</div></div></div>
+              <div style="margin-top:9px"><span class="pill p-red">Risco elevado</span></div>
+              <div class="mini" style="margin-top:8px">Confiança: <b style="color:var(--ink)">Alta</b><br>4 meses de histórico</div>
+            </div>
+            <div class="scoreright">
+              <div style="font-size:15px;font-weight:800">Marcos R. <span class="mini" style="font-weight:600">· mat. 8421 · Fitness 3×/sem · Prof. Bruno</span></div>
+              <div class="mini" style="margin-bottom:11px">Cliente há 4 meses · contrato ativo, vence 30/07</div>
+              <div class="fator"><span class="comp">+25</span><div style="flex:1">Aderência do mês <b>22%</b> (só 1 visita; esperado ~5 até hoje)</div><span class="barw"><i style="width:100%"></i></span></div>
+              <div class="fator"><span class="comp">+15</span><div style="flex:1">Velocidade de queda <b>−45%</b> (2 últimas semanas vs 6 anteriores)</div><span class="barw"><i style="width:100%"></i></span></div>
+              <div class="fator"><span class="comp">+12</span><div style="flex:1">Recência: <b>14 dias</b> sem visita</div><span class="barw"><i style="width:80%"></i></span></div>
+              <div class="fator"><span class="comp">+10</span><div style="flex:1">Coorte <b>3–6 meses</b> — janela de maior evasão</div><span class="barw"><i style="width:100%"></i></span></div>
+              <div class="fator"><span class="comp">+8</span><div style="flex:1">Contrato vence em <b>18 dias</b></div><span class="barw"><i style="width:53%"></i></span></div>
+              <div class="fator"><span class="comp">+6</span><div style="flex:1">Constância <b>45%</b> (semanas com presença)</div><span class="barw"><i style="width:60%"></i></span></div>
+              <div class="acao">🎯 <b>Ação:</b> contato acolhedor do <b>professor Bruno</b> em até <b>24h</b> (WhatsApp/presencial) — retomar rotina antes do vencimento. <span class="mini">Playbook: Queda de frequência.</span></div>
+            </div>
+          </div>
+        </td></tr>
+
+        <tr class="trow" onclick="tg('rafael')"><td><span class="prio P1">P1</span></td><td>Rafael T. <span class="caret">▸</span></td><td>905S</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--red)">82</span><span class="scbar"><i style="width:82%;background:var(--red)"></i></span></span></td>
+          <td>Sumiu há 2 meses (evasão)</td><td>—</td><td><span class="mini">140 d</span></td><td class="num">R$ 189</td><td>Resgate · 24h</td><td><button class="acaobtn">→ Agenda</button></td></tr>
+
+        <tr class="trow"><td><span class="prio P1">P1</span></td><td>Juliana F.</td><td>604N</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--yellow)">58</span><span class="scbar"><i style="width:58%;background:var(--yellow)"></i></span></span></td>
+          <td>Ritmo −38% nas últimas 2 semanas</td><td>08/07</td><td><span class="mini">90 d</span></td><td class="num">R$ 209</td><td>Professor · 48h</td><td><span class="status aberta">Ação aberta</span></td></tr>
+
+        <tr class="trow"><td><span class="prio P2">P2</span></td><td>Pedro H.</td><td>716N</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--yellow)">49</span><span class="scbar"><i style="width:49%;background:var(--yellow)"></i></span></span></td>
+          <td>Constância caindo (coorte 31–90d)</td><td>09/07</td><td><span class="mini">210 d</span></td><td class="num">R$ 179</td><td>Professor · 72h</td><td><button class="acaobtn">→ Agenda</button></td></tr>
+
+        <tr class="trow" style="opacity:.6"><td><span class="prio P3">—</span></td><td>Sofia L.</td><td>Lago Sul</td>
+          <td><span class="sc"><span class="scnum" style="color:var(--muted)">62</span><span class="scbar"><i style="width:62%;background:var(--muted)"></i></span></span></td>
+          <td>Férias informada até 20/07</td><td>28/06</td><td><span class="mini">120 d</span></td><td class="num">R$ 199</td><td><span class="mini">Não acionar</span></td><td><span class="status">Justificado</span></td></tr>
+      </tbody>
+    </table>
+    <p class="mini" style="margin:10px 2px 0">A última linha mostra a <b>atenuação</b>: férias registrada → não vira tarefa. R$/mês = ticket de referência da unidade (proxy).</p>
+  </div>
+
+  <h2 class="sec" style="margin-top:30px">Como o score é calculado (auditável)</h2>
+  <p class="sec-sub">Aditivo, 0–100, só com dados que já temos. Cada fator contribui pontos e aparece na explicação. Fatores futuros (financeiro, NPS, App Treino) entram com peso 0 até existir a integração.</p>
+
+  <div class="card pad">
+    <div class="fbox">
+      <div class="fitem"><b>Aderência do mês</b><span class="w">máx 25</span><div class="bands">≥90%: 0 · 70–89%: 5 · 50–69%: 12 · 30–49%: 18 · &lt;30%: 25</div></div>
+      <div class="fitem"><b>Recência</b><span class="w">máx 25</span><div class="bands">≤7d: 0 · 8–14d: 12 · 15–21d: 18 · 22–30d: 22 · &gt;30d: 25</div></div>
+      <div class="fitem"><b>Velocidade de queda</b><span class="w">máx 15</span><div class="bands">estável: 0 · 0–20%: 5 · 20–40%: 10 · ≥40%: 15</div></div>
+      <div class="fitem"><b>Vencimento</b><span class="w">máx 15</span><div class="bands">&gt;60d: 0 · 31–60d: 4 · 16–30d: 8 · 8–15d: 12 · ≤7d: 15</div></div>
+      <div class="fitem"><b>Constância</b><span class="w">máx 10</span><div class="bands">≥80%: 0 · 60–79%: 3 · 40–59%: 6 · &lt;40%: 10</div></div>
+      <div class="fitem"><b>Coorte / tempo de casa</b><span class="w">máx 10</span><div class="bands">&gt;12m: 2 · 7–12m: 4 · 3–6m: 10 · 1–3m: 6 · &lt;1m: 0</div></div>
+    </div>
+    <p class="mini" style="margin:13px 2px 0"><b>Confiança:</b> Alta (histórico individual robusto) · Média (histórico curto) · Baixa (aluno novo/coorte). <b>Atenuações</b> (não gera tarefa): contrato &lt;15d, já cancelado, férias/atestado, já contatado (cooldown), unidade sem catraca na categoria.</p>
+
+    <div class="tune">
+      <b>Parâmetros que dependem da sua validação</b> (proponho os defaults acima; ajustamos quando quiser, e calibramos com backtesting na Onda 3):<br>
+      1. <b>Pesos</b> dos 6 fatores (soma 100).  2. <b>Faixas</b> de corte (ex.: "risco elevado" ≥70).  3. <b>Cooldown</b> (dias sem recontatar o mesmo aluno).  4. <b>SLA</b> por tipo de alerta.
+    </div>
+  </div>
+
+  <footer>
+    Protótipo Onda 1b · Nad'Arte — Risco &amp; Evasão · dados fictícios, fórmula real.<br>
+    Próximo: sua aprovação/ajustes dos pesos e faixas → implementação na aba real (sem mexer no que já existe).
+  </footer>
+
+</div>
+<script>
+  function tg(id){var el=document.getElementById(id);if(!el)return;el.style.display=(el.style.display==='none')?'':'none';}
+  // começa com Marcos aberto; os demais têm expand só ilustrativo (Marcos é o único com detalhe)
+</script>
+</body>
+</html>

@@ -396,7 +396,7 @@ header.top{position:static!important}
 <div class="flagcards" id="riscoAvisos"></div>
 <div class="subtab" id="riscoFilter">
 <button class="stbtn active" data-rf="AM">Alto + Médio</button><button class="stbtn" data-rf="Alto">Só Alto</button><button class="stbtn" data-rf="Médio">Só Médio</button><button class="stbtn" data-rf="all">Todos</button></div>
-<div class="panel"><div style="overflow-x:auto"><table id="trisco"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (motivo do risco)</th><th>% Meta</th><th>Risco</th><th>Ação para este aluno</th></tr></thead><tbody id="triscob"></tbody></table></div><div class="pager" id="riscoPager"></div></div>
+<div class="panel"><div style="overflow-x:auto"><table id="trisco"><thead><tr><th>#</th><th>Matrícula</th><th>Aluno</th><th>Modalidade</th><th>Unidade</th><th>Situação (motivo do risco)</th><th>% Meta</th><th>Score</th><th>Risco</th><th>Ação para este aluno</th></tr></thead><tbody id="triscob"></tbody></table></div><div class="pager" id="riscoPager"></div></div>
 </div>
 </section>
 
@@ -547,9 +547,64 @@ function cluster(ac,frm,to,fs,novoCad){if(novoCad)return{cluster:'Novo',risco:'B
 function metaInfo(ac,frm,to,g,dps){const rng=ac.slice(frm-1,to);const ai=[];for(let i=0;i<rng.length;i++)if(rng[i]>0)ai.push(i);
   if(!ai.length)return{metaPct:0,atingiu:false};
   let s=0,k=0;for(let m=frm-1+ai[0];m<to;m++){s+=cumpr(ac,m,g,dps);k++;}const mp=k?s/k:0;return{metaPct:mp,atingiu:mp>=state.thr};}
+// ===== Onda 1b: SCORE DE CHURN explicável (0-100), aditivo e auditável =====
+// Só usa dados que existem hoje (aderência, recência via ult, velocidade/constância via wk,
+// vencimento via venc, coorte via dm). Fatores futuros (financeiro/NPS/App) entram depois com peso.
+function _refToday(){return DATA.baseUpdated||DATA.weekRef||'';}
+function _daysBetween(aIso,bIso){if(!aIso||!bIso)return null;var a=new Date(aIso),b=new Date(bIso);if(isNaN(a)||isNaN(b))return null;return Math.round((b-a)/86400000);}
+function scoreOf(s){
+  var today=_refToday(),reasons=[],pts=0;
+  var ativo=(s.active&&s.active.length)?(s.active[s.active.length-1]===1):true;
+  var novo=isNovoCad(s);
+  var li=MES.length-1, ad=cumpr(s.ac,li,s.grupo,s.dps);
+  var pAd=ad>=0.9?0:ad>=0.7?5:ad>=0.5?12:ad>=0.3?18:25;
+  if(pAd>0)reasons.push({p:pAd,t:'Aderência do mês '+Math.round(ad*100)+'%'});
+  pts+=pAd;
+  var rec=_daysBetween(s.ult,today);
+  var pRec=(rec==null)?0:rec<=7?0:rec<=14?12:rec<=21?18:rec<=30?22:25;
+  if(pRec>0)reasons.push({p:pRec,t:'Recência: '+rec+' dias sem visita'});
+  pts+=pRec;
+  var wk=s.wk||[],K=wk.length,vel=null,pVel=0;
+  if(K>=6){var recent=(wk[K-1]+wk[K-2])/2;var priorArr=wk.slice(Math.max(0,K-8),K-2);var prior=priorArr.length?priorArr.reduce(function(a,b){return a+b;},0)/priorArr.length:0;
+    if(prior>0){vel=(prior-recent)/prior;pVel=vel>=0.4?15:vel>=0.2?10:vel>0.05?5:0;}}
+  if(pVel>0)reasons.push({p:pVel,t:'Velocidade de queda '+Math.round(vel*100)+'% (2 últ. sem. vs anteriores)'});
+  pts+=pVel;
+  var dv=_daysBetween(today,s.venc),pVenc=0;
+  if(ativo&&dv!=null&&dv>=0){pVenc=dv<=7?15:dv<=15?12:dv<=30?8:dv<=60?4:0;}
+  if(pVenc>0)reasons.push({p:pVenc,t:'Contrato vence em '+dv+' dias'});
+  pts+=pVenc;
+  var pCon=0,con=null;
+  if(K>=4){var wwin=wk.slice(Math.max(0,K-8));var pres=wwin.filter(function(v){return v>0;}).length;con=wwin.length?pres/wwin.length:1;pCon=con>=0.8?0:con>=0.6?3:con>=0.4?6:10;}
+  if(pCon>0)reasons.push({p:pCon,t:'Constância '+Math.round(con*100)+'% das últimas semanas'});
+  pts+=pCon;
+  var ti=tenureInfo(s),meses=ti?ti.meses:null,pCo=0;
+  if(meses!=null){pCo=meses<1?0:meses<=3?6:meses<=6?10:meses<=12?4:2;}
+  if(pCo>0)reasons.push({p:pCo,t:'Tempo de casa: '+meses+' meses'+(meses>=3&&meses<=6?' (janela de evasão)':'')});
+  pts+=pCo;
+  var weeksData=wk.filter(function(v){return v>0;}).length;
+  var conf=(meses!=null&&meses>2&&weeksData>=4)?'Alta':(meses!=null&&meses>=1)?'Média':'Baixa';
+  if(novo)conf='Baixa';
+  var justif=(!ativo)?'Contrato inativo (perda realizada, não risco)':(novo?'Matriculado no mês — novo demais p/ classificar':null);
+  var score=Math.max(0,Math.min(100,Math.round(pts)));
+  reasons.sort(function(a,b){return b.p-a.p;});
+  var band=justif?'Justificado':score>=70?'Risco elevado':score>=50?'Queda relevante':score>=30?'Atenção inicial':'Dentro do padrão';
+  return {score:score,conf:conf,reasons:reasons,band:band,justif:justif,ativo:ativo,rec:rec,dv:dv,ad:ad};
+}
+function scoreCol(m){return m.band==='Risco elevado'?C.red:m.band==='Queda relevante'?C.orange:m.band==='Atenção inicial'?C.yellow:m.justif?C.muted:C.green;}
+function prioBand(m){
+  if(m.justif)return '—';
+  if(m.dv!=null&&m.dv>=0&&m.dv<=15&&m.score>=50)return 'P0';
+  if(m.score>=70&&(m.rec==null||m.rec<=45))return 'P0';
+  if(m.score>=70)return 'P1';
+  if(m.score>=50)return 'P1';
+  if(m.score>=30)return 'P2';
+  return 'P3';
+}
+var _PRANK={P0:0,P1:1,P2:2,P3:3,'—':4};
+function prioColor(p){return p==='P0'?C.red:p==='P1'?C.orange:p==='P2'?C.yellow:C.muted;}
 function met(s){const c=cluster(s.ac,state.from,state.to,s.fs,isNovoCad(s));const rng=s.ac.slice(state.from-1,state.to);const mi=metaInfo(s.ac,state.from,state.to,s.grupo,s.dps);
-  const eng=(c.cluster==='Fiel'||c.cluster==='Regular');
-  return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng,ativoAtual:((s.active&&s.active.length>=state.to)?(s.active[state.to-1]===1):true)});}
+  const eng=(c.cluster==='Fiel'||c.cluster==='Regular');const sc=scoreOf(s);
+  return Object.assign({},c,mi,{rng,tot:rng.reduce((a,b)=>a+b,0),eng,ativoAtual:((s.active&&s.active.length>=state.to)?(s.active[state.to-1]===1):true),score:sc.score,conf:sc.conf,reasons:sc.reasons,band:sc.band,justif:sc.justif,rec:sc.rec,dv:sc.dv,adMes:sc.ad});}
 function filtered(){return DATA.students.filter(s=>(state.unit==='REDE'||s.u===state.unit)&&(state.cat==='Total'||s.grupo===state.cat)&&(state.mod==='Todas'||s.mod===state.mod));}
 function withM(L){return L.map(s=>Object.assign({},s,{m:met(s)}));}
 function monthTotals(L){const o=[];for(let m=0;m<MES.length;m++)o.push(L.reduce((a,s)=>a+s.ac[m],0));return o;}
@@ -860,6 +915,7 @@ function alunoDetail(s){
      +(s.band?'<span class="adtag2">'+escD(s.band)+'</span>':'')
      +(ti?'<span class="adtag2">Aluno desde '+ti.desde+' · '+ti.label+' de casa</span>':'')+'</div>'
    +(s.prof?('<div class="adprof">'+avatarEl(s.prof,'','avsm')+'<div><div class="adlab" style="margin:0">'+escD(s.profRole||'Professor')+'</div><div style="font-weight:600">'+escD(s.prof)+'</div></div></div>'):'')
+   +(function(){var sc=scoreOf(s),col=scoreCol(sc),pb=prioBand(sc);var rl=sc.reasons.map(function(r){return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px"><span style="font-weight:800;font-size:11px;border-radius:6px;padding:1px 7px;min-width:32px;text-align:center;background:'+tint(col)+';color:'+col+'">+'+r.p+'</span><span>'+escD(r.t)+'</span></div>';}).join('')||'<div style="font-size:12px;color:var(--muted)">Sem fatores de risco relevantes no momento.</div>';return '<div class="adsec" style="border-left-color:'+col+'"><div class="adlab" style="color:'+col+'">Score de risco (explicável)</div><div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px"><span style="font-size:30px;font-weight:900;color:'+col+'">'+sc.score+'</span><span style="font-size:12px;color:var(--muted)">/100 · '+sc.band+'</span>'+(sc.justif?'':'<span style="font-size:10px;font-weight:800;color:#fff;background:'+prioColor(pb)+';border-radius:5px;padding:1px 7px">'+pb+'</span>')+'<span style="margin-left:auto;font-size:12px;color:var(--muted)">Confiança: <b style="color:var(--ink)">'+sc.conf+'</b></span></div>'+(sc.justif?'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">⚠️ '+escD(sc.justif)+'</div>':'')+rl+'</div>';})()
    +'<div class="adsec"><div class="adlab">Linha do tempo de acessos (Jan–'+MES[nm-1].split('.')[0]+')</div><div style="display:flex;gap:4px;align-items:flex-end">'+bars+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px"><span style="color:#3E6DAA">■</span> acessou · <span style="color:#E8A0A0">■</span> matriculado s/ acesso · <span style="color:#cfcfcf">■</span> não matriculado</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Matriculado em <b>'+(ti?ti.desde:'—')+'</b> · último acesso: <b>'+escD(lastAcc)+'</b></div></div>'
    +'<div class="adsec"><div class="adlab">Diagnóstico</div>'+escD(c.motivo||'')+'</div>'
    +'<div class="adsec" style="border-left-color:'+ab.cor+'"><div class="adlab" style="color:'+ab.cor+'">Abordagem recomendada · '+escD(ab.obj)+'</div>'
@@ -888,8 +944,8 @@ function renderRisco(L){if(state.from===state.to){document.getElementById('risco
  ];
  document.getElementById('riscoAvisos').innerHTML=rboxes.map(b=>{const r=_rs(b.pred);const cmpHtml=cmpRow(fval(cur,b.f),fval(mom,b.f),fval(qoq,b.f),false,true);return '<div class="flagbox" style="border-left:4px solid '+b.c+'"><div class="ico" style="background:'+tint(b.c)+';color:'+b.c+'"><svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24">'+b.ico+'</svg></div><div style="flex:1;min-width:0"><div class="v" style="color:'+b.c+'">'+r.c+'</div><div class="l">'+b.l+'</div>'+cmpHtml+'<div style="font-size:15px;font-weight:800;color:'+b.c+';margin-top:6px">'+BRL(r.v)+'<span style="font-size:11px;font-weight:600;color:var(--muted)"> em risco/mês</span></div><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px">'+b.d+'</div></div></div>';}).join('');
  const wm=withM(L);let rows=wm.filter(s=>rf==='AM'?s.m.risco!=='Baixo':rf==='all'?true:s.m.risco===rf);
- rows.sort((a,b)=>({Alto:0,'Médio':1,Baixo:2}[a.m.risco]-{Alto:0,'Médio':1,Baixo:2}[b.m.risco])||(b.m.inativo-a.m.inativo)||(a.m.metaPct-b.m.metaPct));cR=rows;drawR();}
-function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
+ rows.sort((a,b)=>(_PRANK[prioBand(a.m)]-_PRANK[prioBand(b.m)])||(b.m.score-a.m.score)||((a.m.dv==null?999:a.m.dv)-(b.m.dv==null?999:b.m.dv)));cR=rows;drawR();}
+function drawR(){paginate(cR,(s,i)=>'<tr class="clk"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="color:var(--muted)">'+s.mat+'</td><td style="font-weight:600">'+aname(s)+'</td><td>'+s.mod+'</td><td>'+ulabel(s.u)+'</td><td style="font-size:12px">'+s.m.motivo+'</td><td>'+pct0(s.m.metaPct)+'</td><td><span style="font-weight:900;font-size:15px;color:'+scoreCol(s.m)+'">'+s.m.score+'</span> <span style="font-size:10px;font-weight:800;color:#fff;background:'+prioColor(prioBand(s.m))+';border-radius:5px;padding:1px 6px">'+prioBand(s.m)+'</span></td><td>'+badge(s.m.risco)+'</td><td style="font-size:12px;color:var(--muted)">'+acaoRisco(s.m)+'</td></tr>','triscob','riscoPager',p=>{pgR=p;drawR();},pgR,30);}
 
 function winAgg(L,a,b){const lastM=MES[b-1];const risk={Alto:0,'Médio':0,Baixo:0},clu={};
  let fiel=0,eng=0,asc=0,meta=0,both=0,quase=0,sumiram=0,evas=0,mpS=0,nf=0;const base=L.length;

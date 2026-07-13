@@ -512,3 +512,21 @@ print(f"[lago] excluidos por nao passar pela catraca (Agua/Luta puros): {len(LAG
 with open(os.path.join(DATA_DIR,"freq_multi.json"),"w") as f:
     json.dump(out,f,ensure_ascii=False,separators=(", ",": "))
 print(f"[ok] freq_multi.json: {len(students)} students; baseMonth={MESES[base_pos]}; junMax={JUN_MAX}", file=sys.stderr)
+
+# ---- PONTE App Treino: feed slim de PRESENCA por aluno, SEM PII (matricula HASHEADA) ----
+# Publicado na raiz do repo (publico) -> o CRM App Treino consome via raw.githubusercontent
+# e cruza pelo mesmo hash. So expomos: ultima visita (recencia presencial) + acessos/semana (tendencia).
+import hashlib as _hl
+def _pmh(m):   # hash estavel da matricula normalizada (16 hex) — identico dos dois lados
+    return _hl.sha256(str(m).encode("utf-8")).hexdigest()[:16]
+_presenca = {}
+for _s in students:
+    _m = _s.get("mat")
+    if not _m:
+        continue
+    _presenca[_pmh(_m)] = {"ult": _s.get("ult",""), "wk": _s.get("wk",[])}
+_feed = {"gerado": datetime.date.today().isoformat(), "baseMonth": MESES[base_pos],
+         "weekRef": REF_MON.isoformat(), "weeksKeep": WEEKS_KEEP, "alunos": _presenca}
+with open("presenca.json","w") as _f:   # raiz do repo (nao gitignorado)
+    json.dump(_feed,_f,ensure_ascii=False,separators=(",",":"))
+print(f"[ponte] presenca.json: {len(_presenca)} alunos (matricula hasheada, sem PII)", file=sys.stderr)
