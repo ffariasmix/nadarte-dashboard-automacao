@@ -24,25 +24,20 @@ O dashboard é um **HTML estático** (snapshot), não uma tela conectada à API 
 
 ---
 
-## ✅ Concluído (no template/pipeline local, aguardando deploy)
+## ✅ Concluído e NO AR (v9.4 — jul/2026)
 
 | Item | O que faz |
 |---|---|
 | **Carência de 2 meses no churn** | "Perda" só conta após 2 meses de inatividade real (lapso de 1 mês perdoado). Reduz churn técnico. Mantém consistência base+novos−perdas. |
 | **Contrato ativo no risco** | "Receita em risco" e KPIs de Risco Alto/Médio contam **só contrato ativo que parou** (quem já cancelou vira perda realizada, não risco). |
+| **Métrica "Estamos evoluindo?"** | "% da base que bateu a meta (≥90%)", MoM em pontos percentuais — mostra nº de alunos (ex.: 687 de 4.469). |
+| **Card MoM com rótulo de mês** | "Jun.26: 687 · Mai.26: 864 alunos" — cada número identificado, sem ambiguidade. |
+| **Novo vs Retorno (aba Perdas)** | Split das entradas: 🆕 novo (1ª vez na rede, via ledger) × ↩ retorno (já existiu antes). Reconcilia com o total. |
+| **Mês corrente parcial (D-1)** | Mês em curso incluído, marcado "em curso / parcial (até DD/MM)". Fetch leve: `win` só de meses fechados (não incha a base) → sem timeout. |
+| **Datas em formato BR** | "Dados Ref." e afins em DD/MM/AAAA (ex.: 12/07/2026). |
 | **Run diário automático** | Cron 04:00 BRT, nos servidores do GitHub. Zero envolvimento, sem computador ligado. |
-| **Comparativos por granularidade** (já no ar) | Mês→MoM, Trim→QoQ, Semestre→SoS, Ano→YoY. |
-| **Score anual, passado realizado, base com crescimento, limpeza de UI** (já no ar) | — |
-
----
-
-## 🔨 Confirmado — próximo pacote (1 deploy)
-
-| # | Item | Detalhe | Onde |
-|---|---|---|---|
-| 1 | **Métrica "Estamos evoluindo?"** | Trocar "Cumprimento (média entre quem treinou)" por **"% da base que bateu a meta (≥90%)", MoM** — intuitivo ("de 100 ativos, X bateram em jun vs Y em mai"). | template |
-| 2 | **Novo vs Retorno** | Separar **aquisição** (1ª vez na rede) de **reconquista** (voltou após gap). Regra robusta: `dataMatricula` (API) **+** 1ª aparição (ledger) — se qualquer sinal diz "já existiu antes" → Retorno. | build + template |
-| 3 | **Mês corrente parcial (D-1)** | Incluir o mês em curso (ex.: julho) na janela, **claramente marcado "em curso"**, com dados até ontem. Ajustar o gate pra não abortar no mês parcial. | build (`WINDOW_END`) + gate + template (rótulo) |
+| **Comparativos por granularidade** | Mês→MoM, Trim→QoQ, Semestre→SoS, Ano→YoY. |
+| **Score anual, passado realizado, base com crescimento, limpeza de UI** | — |
 
 ---
 
