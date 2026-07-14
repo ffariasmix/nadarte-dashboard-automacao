@@ -506,6 +506,17 @@ def main():
             contr = sum(1 for c in full if cov(c))
             aoc   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO" or cov(c))
             print(f"[sit] {uk}: total={len(full)} dist={dict(dist)} | ATIVO={atv} ATIVO+TRANC={atr} contrato={contr} ATIVO|contrato={aoc}", file=sys.stderr)
+            # --- DIAGNOSTICO CHURN: ativo reconstruido por mes + fim-de-contrato caindo em cada mes da janela ---
+            wm = window_months(WINDOW_START, WINDOW_END)
+            act_m, fim_m = [], []
+            for (yy, mm) in wm:
+                a = sum(1 for c in full if active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), yy, mm, gv(c, "situacao")))
+                fm = sum(1 for c in full if (lambda f: bool(f) and f.year == yy and f.month == mm)(to_date(gv(c, "fimContrato"))))
+                act_m.append(a); fim_m.append(fm)
+            print(f"[sitM] {uk}: ativo/mes={act_m} (meses {[f'{y}-{m:02d}' for y,m in wm]})", file=sys.stderr)
+            print(f"[sitS] {uk}: fim-de-contrato caindo no mes={fim_m} (fonte do churn)", file=sys.stderr)
+            fyr = Counter((to_date(gv(c, "fimContrato")).year if to_date(gv(c, "fimContrato")) else "sem-fim") for c in full if str(gv(c, "situacao") or "").upper() != "ATIVO")
+            print(f"[sitF] {uk}: fim-ano dos NAO-ativos = {dict(sorted(fyr.items(), key=lambda kv: str(kv[0])))}", file=sys.stderr)
             return (uk, atv, atr, contr, aoc)
         res = []
         with ThreadPoolExecutor(max_workers=5) as ex:
