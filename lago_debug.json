@@ -1,0 +1,128 @@
+{
+ "meses": [
+  "Jan.26",
+  "Fev.26",
+  "Mar.26",
+  "Abr.26",
+  "Mai.26",
+  "Jun.26",
+  "Jul.26"
+ ],
+ "alunos_files_meses": [
+  "2026-01",
+  "2026-02",
+  "2026-03",
+  "2026-04",
+  "2026-05",
+  "2026-06",
+  "2026-07"
+ ],
+ "n_alunos_files": 7,
+ "LAGO_EXCLUDED": 659,
+ "LagoNorte_active_por_mes": [
+  735,
+  778,
+  840,
+  871,
+  903,
+  919,
+  845
+ ],
+ "LagoNorte_churn": [
+  {
+   "de": "Jan.26",
+   "para": "Fev.26",
+   "perdas": 0,
+   "base": 735,
+   "pct": 0.0
+  },
+  {
+   "de": "Fev.26",
+   "para": "Mar.26",
+   "perdas": 45,
+   "base": 823,
+   "pct": 5.5
+  },
+  {
+   "de": "Mar.26",
+   "para": "Abr.26",
+   "perdas": 54,
+   "base": 894,
+   "pct": 6.0
+  },
+  {
+   "de": "Abr.26",
+   "para": "Mai.26",
+   "perdas": 55,
+   "base": 926,
+   "pct": 5.9
+  },
+  {
+   "de": "Mai.26",
+   "para": "Jun.26",
+   "perdas": 40,
+   "base": 943,
+   "pct": 4.2
+  },
+  {
+   "de": "Jun.26",
+   "para": "Jul.26",
+   "perdas": 48,
+   "base": 967,
+   "pct": 5.0
+  }
+ ],
+ "LagoSul_active_por_mes": [
+  549,
+  574,
+  613,
+  650,
+  690,
+  725,
+  666
+ ],
+ "LagoSul_churn": [
+  {
+   "de": "Jan.26",
+   "para": "Fev.26",
+   "perdas": 0,
+   "base": 549,
+   "pct": 0.0
+  },
+  {
+   "de": "Fev.26",
+   "para": "Mar.26",
+   "perdas": 41,
+   "base": 615,
+   "pct": 6.7
+  },
+  {
+   "de": "Mar.26",
+   "para": "Abr.26",
+   "perdas": 53,
+   "base": 666,
+   "pct": 8.0
+  },
+  {
+   "de": "Abr.26",
+   "para": "Mai.26",
+   "perdas": 36,
+   "base": 686,
+   "pct": 5.2
+  },
+  {
+   "de": "Mai.26",
+   "para": "Jun.26",
+   "perdas": 35,
+   "base": 725,
+   "pct": 4.8
+  },
+  {
+   "de": "Jun.26",
+   "para": "Jul.26",
+   "perdas": 27,
+   "base": 752,
+   "pct": 3.6
+  }
+ ]
+}
