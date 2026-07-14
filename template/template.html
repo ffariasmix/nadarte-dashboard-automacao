@@ -214,13 +214,14 @@ tr.clk:hover td{background:var(--orange-soft)}
 .adef{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4;font-weight:500}
 .catboxes{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:6px 0 4px}
 .catbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;border-top:4px solid var(--line)}.lagonote{display:flex;gap:11px;align-items:flex-start;background:var(--yellow-soft);border:1px solid var(--line);border-left:4px solid var(--yellow);border-radius:12px;padding:12px 15px;margin:14px 0 2px;font-size:13.5px;line-height:1.5;color:var(--ink)}.lagonote svg{flex:none;width:20px;height:20px;stroke:var(--yellow);fill:none;stroke-width:2;margin-top:1px}
+.lagonote details{flex:1 1 auto}.lagonote summary{cursor:pointer;list-style:none;outline:none}.lagonote summary::-webkit-details-marker{display:none}.lagonote summary::after{content:" ▾";color:var(--muted);font-size:11px}.lagonote details[open] summary::after{content:" ▴"}.lagonote details>div{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
 .catbox .cbval{font-size:30px;font-weight:800;line-height:1}
 .catbox .cbname{font-weight:700;font-size:13px;margin-top:4px}
 .catbox .cbsub{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
 header.top{position:static!important}
 .filters{position:static!important}
-.tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
-.tab{flex:0 0 auto;white-space:nowrap}
+.tabs{flex-wrap:wrap;row-gap:4px}
+.tab{flex:0 1 auto;white-space:nowrap}
 @media(max-width:960px){.g2,.g3{grid-template-columns:1fr!important}.catboxes{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:0 14px}.top .wrap{height:auto;padding:10px 0;flex-wrap:wrap;gap:9px}.filters .wrap{gap:10px}.field{flex:1 1 44%}.cmp{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:430px){.field{flex:1 1 100%}.catboxes{grid-template-columns:1fr 1fr}}
@@ -1377,7 +1378,7 @@ function downloadCSV(){
  document.getElementById('anivHoje').onclick=()=>{anivToday=!anivToday;document.getElementById('anivHoje').classList.toggle('active',anivToday);if(anivToday)document.getElementById('anivMes').value=String(new Date().getMonth()+1);renderAniv(withM(filtered()));};
  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('tab-'+t.dataset.tab).classList.add('active');});
  var bCsv=document.getElementById('btnCsv');if(bCsv)bCsv.onclick=downloadCSV;
- var bCrit=document.getElementById('btnCrit');if(bCrit)bCrit.onclick=function(){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));var c=document.getElementById('tab-crit');if(c)c.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});};
+ var bCrit=document.getElementById('btnCrit');var _devMode=(location.search.indexOf('dev')>=0||location.hash==='#criterios'||location.hash==='#dev');if(bCrit&&!_devMode)bCrit.style.display='none';if(bCrit&&_devMode)bCrit.onclick=function(){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));var c=document.getElementById('tab-crit');if(c)c.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});};
  (function(){var ov=document.createElement('div');ov.id='alunoOverlay';var dr=document.createElement('div');dr.id='alunoDrawer';dr.innerHTML='<div class="adrhead"><b>Perfil &amp; abordagem do aluno</b><button id="alunoClose" aria-label="Fechar">\u2715</button></div><div id="alunoDrawerBody"></div>';document.body.appendChild(ov);document.body.appendChild(dr);ov.onclick=closeAluno;var bc=document.getElementById('alunoClose');if(bc)bc.onclick=closeAluno;document.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('.arow'):null;if(t&&t.dataset&&t.dataset.k){openAluno(t.dataset.k);}});})();
  render();
 })();
@@ -1398,5 +1399,5 @@ function downloadCSV(){
   if(btn){ btn.addEventListener('click',function(){ apply(root.getAttribute('data-theme')==='dark'?'light':'dark'); }); }
 })();
 </script>
-<script>(function(){try{var n=document.getElementById('lagoNote');if(!n||typeof DATA==='undefined')return;var ex=(DATA.lagoExcluded||0);var cats=(DATA.lagoFitCats||['Fitness','Ambos (Água + Fitness)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)']).join(', ');n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<div><b>Lago Norte — catraca só no ambiente fitness.</b> A piscina não tem catraca, então alunos <b>exclusivos de Água ou Luta</b> não registram acesso e apareceriam como \'sumidos\' por artefato de dado. Por isso '+(ex?('<b>'+ex+'</b> aluno(s) dessas categorias estão'):'esses alunos estão')+' <b>fora da análise de frequência e retenção</b> do Lago Norte (e do total da Rede). Só entram: '+cats+'. Será atualizado quando houver catraca na piscina.</div>';n.style.display='';}catch(e){}})();</script>
+<script>(function(){try{var n=document.getElementById('lagoNote');if(!n||typeof DATA==='undefined')return;var ex=(DATA.lagoExcluded||0);var cats=(DATA.lagoFitCats||['Fitness','Ambos (Água + Fitness)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)']).join(', ');n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<details class="alertDet"><summary><b>Lago Norte — catraca só no ambiente fitness.</b>'+(ex?(' <span class="muted">('+ex+' fora da análise · toque para entender)</span>'):' <span class="muted">(toque para entender)</span>')+'</summary><div>A piscina não tem catraca, então alunos <b>exclusivos de Água ou Luta</b> não registram acesso e apareceriam como \'sumidos\' por artefato de dado. Por isso '+(ex?('<b>'+ex+'</b> aluno(s) dessas categorias estão'):'esses alunos estão')+' <b>fora da análise de frequência e retenção</b> do Lago Norte (e do total da Rede). Só entram: '+cats+'. Será atualizado quando houver catraca na piscina.</div></details>';n.style.display='';}catch(e){}})();</script>
 </body></html>
