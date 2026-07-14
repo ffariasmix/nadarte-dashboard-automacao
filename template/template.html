@@ -444,8 +444,8 @@ header.top{position:static!important}
 <div class="panel" style="margin-top:16px"><h3 id="cPerdMoneyH">Perda financeira por unidade (R$)</h3><div class="cwrap"><canvas id="cPerdMoney"></canvas></div><p class="cap" id="cPerdMoneyCap"></p></div>
 <div class="panel" id="perdShareWrap" style="margin-top:16px"><h3>Participação nas perdas por unidade (% do período)</h3><div class="cwrap"><canvas id="cPerdShare"></canvas></div><p class="cap">Distribuição das perdas da rede por unidade de origem — onde a evasão mais se concentra. Soma 100% das perdas Jan–Jun.</p></div>
 <div class="panel" id="perdaPre" style="margin-top:16px"></div>
-<h2 class="title" style="margin-top:24px">Perfil de quem sai</h2>
-<p class="sub">Acumulado das perdas no período. Onde concentramos a evasão — para direcionar retenção.</p>
+<h2 class="title strong" style="margin-top:24px">Perfil de quem sai</h2>
+<p class="sub">Acumulado das perdas no período selecionado (em mês único, mostra todo o histórico). Onde concentramos a evasão — para direcionar retenção.</p>
 <div class="grid g2">
 <div class="panel"><h3>Perdas por categoria</h3><div class="cwrap"><canvas id="cPerdCat"></canvas></div></div>
 <div class="panel"><h3>Perdas por faixa etária</h3><div class="cwrap"><canvas id="cPerdBand"></canvas></div></div>
@@ -1196,11 +1196,11 @@ function renderPerdas(L){
  if(T.length===0){
    document.getElementById('perdasKpis').innerHTML='<div class="panel" style="grid-column:1/-1;border-left:4px solid var(--muted);padding:15px 17px"><div style="font-size:14px;color:var(--muted)"><b>Churn precisa de 2+ meses.</b> É o fluxo de quem estava ativo em um mês e saiu no seguinte — um único mês não tem virada. Selecione um intervalo no <b>Período</b> (ex.: Mai + Jun).</div></div>';
    const _c0=document.getElementById('perdasCmpCap');if(_c0)_c0.innerHTML='';
-   ['cMov','cPerdMoney','cPerdShare','cPerdCat','cPerdBand','cPerdSex','cPerdUnit','cBaseSex','cBaseBand'].forEach(id=>destroy(id));
-   ['perdaMoney','perdaPre'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+   ['cMov','cPerdMoney','cPerdShare'].forEach(id=>destroy(id));
+   const _pm=document.getElementById('perdaMoney');if(_pm)_pm.innerHTML='';
    const _sw=document.getElementById('perdShareWrap');if(_sw)_sw.style.display='none';
-   return;
  }
+ if(T.length){
  const novos=T.map(t=>t.novos),perdas=T.map(t=>t.perdas);
  const saldo=T.map(t=>isRede?(t.novos-t.perdas):(t.novos-t.perdas+(t.transfIn||0)-(t.transf||0)));
  const labels=T.map(t=>t.de.slice(0,3)+'→'+t.para.slice(0,3));
@@ -1250,9 +1250,9 @@ function renderPerdas(L){
   +'</div><p class="cap" style="margin:9px 2px 0"><b>Considera o saldo líquido</b> (entradas − perdas), não as perdas brutas. Cálculo: alunos × <b>ticket médio da unidade</b> (Faturamento ÷ nº de alunos) — determinado <b>somente pela unidade</b>, sem relação com modalidade ou categoria.</p>';
  destroy('cPerdMoney');
  let mLab,mDat;
- if(isRede){mLab=_units.map(u=>u.label);mDat=_units.map(u=>Math.round(lossU[u.key]));
+ if(isRede){mLab=_units.map(u=>/Lago/i.test(u.label)?u.label+' *':u.label);mDat=_units.map(u=>Math.round(lossU[u.key]));
    document.getElementById('cPerdMoneyH').textContent='Perda financeira por unidade (R$/mês recorrente)';
-   document.getElementById('cPerdMoneyCap').textContent='Alunos perdidos no período × ticket médio de cada unidade de origem. Mostra onde a evasão pesa mais no caixa.';}
+   document.getElementById('cPerdMoneyCap').innerHTML='Alunos perdidos no período × ticket médio de cada unidade de origem. Mostra onde a evasão pesa mais no caixa. <b>*</b> Lago Norte é <b>parcial</b> (sem catraca na piscina — só categorias fitness); a perda real pode ser maior.';}
  else{mLab=labels;mDat=perdas.map(p=>Math.round(p*ticketU(state.unit)));
    document.getElementById('cPerdMoneyH').textContent='Perda financeira por mês — '+uLabel()+' (R$)';
    document.getElementById('cPerdMoneyCap').textContent='Perdas de cada virada de mês × ticket médio de '+uLabel()+' ('+BRL2(ticketU(state.unit))+').';}
@@ -1264,8 +1264,11 @@ function renderPerdas(L){
    const scols=[C.red,C.orange,C.yellow,C.blue,C.purple,C.green];
    donut('cPerdShare',_units.map(u=>u.label),up,_units.map((_,i)=>scols[i%scols.length]));
  }else{shareWrap.style.display='none';destroy('cPerdShare');}
- // perfil acumulado
- const agg2=k=>{const o={};T.forEach(t=>{const d=t[k]||{};Object.keys(d).forEach(x=>o[x]=(o[x]||0)+d[x]);});return o;};
+ } // fim do bloco por-período (só renderiza com T; churn precisa de 2+ meses)
+ // perfil de quem sai — segue o período selecionado; em mês único, cai pro histórico completo
+ const _PT=(T.length?T:Tall);
+ const _perfHist=!T.length;
+ const agg2=k=>{const o={};_PT.forEach(t=>{const d=t[k]||{};Object.keys(d).forEach(x=>o[x]=(o[x]||0)+d[x]);});return o;};
  const bc=agg2('byCat'),bs=agg2('bySex'),bb=agg2('byBand');
  const catO=CATORD.filter(k=>bc[k]);
  barChart('cPerdCat',catO.map(k=>k==='Água'?'Natação/Água':k),catO.map(k=>bc[k]),catO.map(k=>GCOL[k]),false,false);
@@ -1276,11 +1279,12 @@ function renderPerdas(L){
  // por unidade (REDE) ou transferências (unidade)
  if(isRede){document.getElementById('cPerdUnitH').textContent='Perdas por unidade';
    const us=(DATA.unidades||[]).filter(u=>u.key!=='REDE');
-   const uv=us.map(u=>unitTrans(u.key).reduce((a,t)=>a+t.perdas,0));
-   barChart('cPerdUnit',us.map(u=>u.label),uv,us.map(_=>C.red),false,true);
-   document.getElementById('cPerdUnitCap').textContent='Totais no período selecionado, por unidade de origem.';}
+   const _utr=k=>(T.length?unitTrans(k):((DATA.churn[k]||{trans:[]}).trans||[]));
+   const uv=us.map(u=>_utr(u.key).reduce((a,t)=>a+t.perdas,0));
+   barChart('cPerdUnit',us.map(u=>/Lago/i.test(u.label)?u.label+' *':u.label),uv,us.map(_=>C.red),false,true);
+   document.getElementById('cPerdUnitCap').innerHTML=(_perfHist?'Totais de todo o histórico':'Totais no período selecionado')+', por unidade de origem. <b>*</b> Lago Norte é <b>parcial</b> — a piscina não tem catraca, então só as categorias fitness entram (perda real pode ser maior).';}
  else{document.getElementById('cPerdUnitH').textContent='Transferências (esta unidade)';
-   const tout=T.reduce((a,t)=>a+(t.transf||0),0),tin=T.reduce((a,t)=>a+(t.transfIn||0),0);
+   const tout=_PT.reduce((a,t)=>a+(t.transf||0),0),tin=_PT.reduce((a,t)=>a+(t.transfIn||0),0);
    barChart('cPerdUnit',['Saíram p/ outra','Vieram de outra'],[tout,tin],[C.yellow,C.green],false,true);
    document.getElementById('cPerdUnitCap').textContent='Movimentação interna entre unidades — não conta como perda da rede.';}
  // pré-perda
