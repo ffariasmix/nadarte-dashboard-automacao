@@ -76,6 +76,7 @@ h2.title{font-size:16px;font-weight:700;letter-spacing:-.01em;margin:6px 0 2px;d
 h2.title svg{stroke:var(--orange);width:19px;height:19px}
 .title.strong{text-transform:uppercase;font-size:15px;font-weight:800;letter-spacing:.05em;margin-top:34px;margin-bottom:14px;padding-bottom:9px;border-bottom:2px solid var(--orange)}
 .title.strong .subt{text-transform:none;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0}
+.grouplbl{text-transform:uppercase;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin:20px 0 9px}
 .sub{color:var(--muted);font-size:12.5px;margin-bottom:16px}
 
 /* KPI cards */
@@ -355,7 +356,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-comp">
-<h2 class="title">Clusterização de comportamento</h2>
+<h2 class="title strong">Clusterização de comportamento</h2>
 <p class="sub">Cada aluno é classificado pela <b>trajetória</b> de acessos, não pelo volume absoluto. Quem mantém a rotina (mesmo 2x/semana) é saudável; quem <b>muda o hábito para baixo</b> é risco.</p>
 <div class="multiwarn" id="warnComp"></div>
 <div class="needmulti">
@@ -383,7 +384,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-mod">
-<h2 class="title">Modalidades &amp; Engajamento</h2>
+<h2 class="title strong">Modalidades &amp; Engajamento</h2>
 <p class="sub">Agrupado em 4 blocos. Clique em um bloco para abrir as modalidades associadas.</p>
 <div class="grid g2">
 <div class="panel"><h3>Frequência média por categoria</h3><div class="cwrap"><canvas id="cMod"></canvas></div><div class="leg" id="modLeg"></div><p class="cap">% de cumprimento da meta por categoria. Cada categoria tem cor própria e é medida pela sua própria meta semanal.</p></div>
@@ -394,10 +395,11 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-risco">
-<h2 class="title">Risco &amp; Evasão</h2>
+<h2 class="title strong">Risco &amp; Evasão</h2>
 <p class="sub">Risco é definido por <b>mudança de comportamento</b> (queda/parada), não pelo nível absoluto. Clique numa linha para ver detalhes do aluno.</p>
 <div class="multiwarn" id="warnRisco"></div>
 <div class="needmulti">
+<div class="grouplbl">Análise em risco</div>
 <div class="flagcards" id="riscoAvisos"></div>
 <div id="prioDist" style="margin:2px 0 12px"></div>
 <div class="subtab" id="riscoFilter">
@@ -407,7 +409,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-meta">
-<h2 class="title">Meta Atingida</h2>
+<h2 class="title strong">Meta Atingida</h2>
 <p class="sub">Meta = cumprir <b>≥ 90%</b> da frequência mínima esperada <b>por categoria</b> (Fitness 3x · Água 1,5x · Luta 1,5x · combinações "Ambos" de 2 a 3x por semana) — não 90% dos dias do mês. Quem atinge é referência para reconhecer e manter.</p>
 <div class="flagcards" id="metaAvisos"></div>
 <p class="cap" id="metaCmpCap" style="margin:-8px 0 18px"></p>
@@ -417,7 +419,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-eng">
-<h2 class="title">Engajados (comportamento consistente)</h2>
+<h2 class="title strong">Engajados (comportamento consistente)</h2>
 <p class="sub">Engajado = aluno que <b>não alterou o comportamento</b> — mantém o hábito (Fiel ou Regular), independente do nível. Núcleo a preservar.</p>
 <div class="multiwarn" id="warnEng"></div>
 <div class="needmulti">
@@ -429,7 +431,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-perdas">
-<h2 class="title">Perdas (churn) <span style="font-size:13px;font-weight:600;color:var(--muted)">· quem deixou de ser ativo na rede</span></h2>
+<h2 class="title strong">Perdas (churn) <span style="font-size:13px;font-weight:600;color:var(--muted)">· quem deixou de ser ativo na rede</span></h2>
 <p class="sub">Perda = aluno que sai de <b>todas</b> as bases de ativos no mês seguinte. Trocar de unidade conta como <b>transferência</b>, não como perda. Responde aos filtros de <b>Unidade</b> e <b>Período</b> — a janela mostra as viradas de mês <b>dentro</b> do intervalo selecionado (precisa de 2+ meses; o mês corrente, quando incluído, é parcial).</p>
 <div class="panel" id="efetividadePanel" style="margin:14px 0"></div>
 <div class="panel" id="renovPanel" style="margin:14px 0"></div>
@@ -461,7 +463,7 @@ header.top{position:static!important}
 </section>
 
 <section class="section" id="tab-aniv">
-<h2 class="title">Aniversariantes do mês</h2>
+<h2 class="title strong">Aniversariantes do mês</h2>
 <p class="sub">Lista por <b>mês de nascimento</b> — para ações de relacionamento e retenção. Respeita o filtro de <b>Unidade</b>; o comportamento usa a janela de <b>Período</b> selecionada.</p>
 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
 <div class="field" style="min-width:170px"><label>Mês do aniversário</label><select id="anivMes" class="selmini"></select></div>
