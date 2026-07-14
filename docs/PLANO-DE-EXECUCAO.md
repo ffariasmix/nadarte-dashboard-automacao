@@ -16,11 +16,14 @@
 | Recência + semana + vencimento | Base pra **agir cedo** (dias sem vir, contrato vencendo) | ✅ no ar |
 | Score + fila priorizada | **Quem contatar primeiro, e por quê** | ✅ no ar |
 | Score único (painel = Agenda) | Mesmo número no painel e na Agenda, com **prioridade + SLA** | ✅ no ar |
-| Calibração por capacidade | Fila do **tamanho que a equipe liga** (~40/unidade) | 🔨 no #83 |
-| Histórico de score | Começa a **guardar dado pra medir o acerto do modelo** | 🔨 no #83 |
+| Calibração por capacidade | Fila do **tamanho que a equipe liga** (~40/unidade) | ✅ no ar (confirmado: P0=5%/unid, 195 na rede) |
+| Histórico de score | Começa a **guardar dado pra medir o acerto do modelo** | ✅ no ar (acumulando) |
 | Bimestre no seletor | Olhar o desempenho **por bimestre** | ✅ pronto p/ deploy |
 | Novo vs Retorno perpétuo (ledger persistente) | Aquisição × reconquista **precisa de verdade** (histórico entre runs) | ✅ pronto p/ deploy |
 | Backtest mensal | **Prova** se o sinal (parada/queda) antecipa o churn — precisão/recall/antecedência | ✅ pronto p/ deploy |
+| Cohorts por tempo de casa | **Onde o risco se concentra** por fase (novo × veterano) → direciona abordagem | ✅ pronto p/ deploy |
+| Tela de Efetividade (Camada 5) | **Recuperação + receita preservada** dos contatos — ciclo fechado | ✅ pronto (enche com o dado real) |
+| Read-back das execuções (Agenda→dashboard) | Traz o **resultado do contato** de volta pro modelo (efetividade + backtest) | ✅ pronto (valida no run com D1) |
 
 ---
 
@@ -28,9 +31,6 @@
 
 | # | Ação | Impacto no dashboard / operação | Independente? | Avanço |
 |---|---|---|---|---|
-| 1 | **Tela de Efetividade** | Ver se as ligações **recuperaram alunos** e **quanta receita salvou** | 🟢 Sim | ⏳ |
-| 2 | **Read-back do resultado** (Agenda → dashboard) | **Fecha o ciclo**: o resultado do contato volta e vira aprendizado | 🟡 Construo, valida no seu run | ⏳ |
-| 4 | **Cohorts por tempo de casa** | Risco e abordagem **por fase do aluno** (novo × veterano) | 🟢 Sim | ⏳ |
 | 6 | **Visão Executiva + ficha 360 do aluno** | **Uma tela de decisão** + histórico completo do aluno num lugar | 🟢 Sim | ⏳ |
 | 7 | **Propensão à renovação** | Separar **"faltou"** de **"não vai renovar"** | 🟡 v1 agora | ⏳ |
 | 8 | **Curva de sobrevivência** | **Quando** o risco de perda é maior (agir antes) | 🟡 Robustece com dados | ⏳ |

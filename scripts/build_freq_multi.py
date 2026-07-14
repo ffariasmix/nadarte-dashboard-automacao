@@ -646,7 +646,42 @@ backtest = {"gerado": datetime.date.today().isoformat(), "metodo": "mensal (para
             "churns": _TP+_FN, "alertas": _TP+_FP}
 print(f"[backtest] mensal: precisao={_prec:.0%} recall={_rec:.0%} antecedencia={_leadm:.1f}m (churns={_TP+_FN} TP={_TP} FP={_FP})", file=sys.stderr)
 
-out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backtest":backtest,
+# ==== Onda 2b: EFETIVIDADE — cruza execucoes da Agenda (resultados.json) com a frequencia ====
+# resultados.json = execucoes+iniciativas lidas do D1 (read-back no workflow, ANTES do build).
+# Recuperou = aluno voltou a acessar DEPOIS do contato (ult >= data do contato). Sem PII no output.
+efetividade = {"gerado": _TODAY.isoformat(), "temDados": False}
+try:
+    _res = json.load(open("resultados.json"))
+    _rows = _res.get("results", _res) if isinstance(_res, dict) else _res
+    if not isinstance(_rows, list): _rows = []
+except Exception:
+    _rows = []
+if _rows:
+    _byMat = {str(_s.get("mat","")): _s for _s in students}
+    _tot=_cont=_rec=0; _receita=0.0
+    _prio = defaultdict(lambda: [0,0])   # prioridade -> [alertas, recuperados]
+    for _r in _rows:
+        _mat = str(_r.get("mat") or _r.get("matricula") or "")
+        _tot += 1
+        if (_r.get("status") or "") == "realizado": _cont += 1
+        _stu = _byMat.get(_mat)
+        _recovered = False
+        if _stu and _stu.get("ult"):
+            _ud = parse_dt(_stu["ult"]); _ad = parse_dt(_r.get("registrado") or _r.get("criado") or "")
+            if _ud and _ad and _ud >= _ad: _recovered = True
+        _pr = _r.get("prio") or _r.get("prioridade") or "?"
+        _prio[_pr][0] += 1
+        if _recovered:
+            _rec += 1; _prio[_pr][1] += 1
+            if _stu: _receita += tickets_out.get(_stu.get("u"), 0)
+    efetividade = {"gerado": _TODAY.isoformat(), "temDados": True,
+        "alertas": _tot, "contatados": _cont, "taxaContato": round(_cont/_tot,3) if _tot else 0,
+        "recuperados": _rec, "taxaRecuperacao": round(_rec/_cont,3) if _cont else 0,
+        "receitaPreservada": round(_receita,2),
+        "porPrioridade": {k: {"alertas": v[0], "recuperados": v[1]} for k,v in _prio.items()}}
+print(f"[efetividade] alertas={efetividade.get('alertas',0)} contatados={efetividade.get('contatados',0)} recuperados={efetividade.get('recuperados',0)} R$preservada={efetividade.get('receitaPreservada',0)}", file=sys.stderr)
+
+out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backtest":backtest,"efetividade":efetividade,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
        "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,

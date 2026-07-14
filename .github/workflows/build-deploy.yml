@@ -83,6 +83,20 @@ jobs:
           PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
         run: python scripts/pacto_faturamento.py data
 
+      - name: Ler resultados da Agenda (execucoes do D1) para efetividade/backtest
+        if: ${{ github.event.inputs.deploy != 'false' }}
+        continue-on-error: true   # secundario: se falhar, o build segue com efetividade vazia
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf %s "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')"
+          export CLOUDFLARE_ACCOUNT_ID="$(printf %s "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')"
+          Q="SELECT i.matricula AS mat, i.semana_ref AS semana, i.prioridade AS prio, i.criado_em AS criado, e.status AS status, e.motivo AS motivo, e.desfecho AS desfecho, e.registrado_em AS registrado FROM iniciativas i LEFT JOIN execucoes e ON e.iniciativa_id=i.id"
+          npx --yes wrangler@3 d1 execute nadarte_agenda --remote --json --command "$Q" > _res_raw.json 2>/dev/null || echo '[]' > _res_raw.json
+          python3 -c "import json; d=json.load(open('_res_raw.json')); r=(d[0].get('results',[]) if isinstance(d,list) and d else (d.get('results',[]) if isinstance(d,dict) else [])); json.dump({'results':r}, open('resultados.json','w')); print('[read-back] execucoes lidas:', len(r))" || echo '{"results":[]}' > resultados.json
+          echo "resultados.json: $(wc -c < resultados.json) bytes"
+
       - name: Construir freq_multi.json (com checagem de consistencia)
         run: |
           set -o pipefail

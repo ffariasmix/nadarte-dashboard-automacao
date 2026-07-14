@@ -360,6 +360,7 @@ header.top{position:static!important}
 <div class="panel"><h3>Distribuição por comportamento</h3><div class="cwrap tall"><canvas id="cClu"></canvas></div><div class="chartleg" id="cCluLeg"></div></div>
 <div class="panel"><h3>Ciclo de vida do aluno</h3><div class="cwrap tall"><canvas id="cCiclo"></canvas></div><div class="chartleg" id="cCicloLeg"></div></div>
 </div>
+<div class="panel" id="cohortPanel" style="margin-top:14px"></div>
 <h2 class="title" style="margin-top:24px">Entrada &amp; Saída de alunos (fluxo da base)</h2>
 <p class="sub" id="flowSub"></p>
 <div class="flow">
@@ -426,6 +427,7 @@ header.top{position:static!important}
 <section class="section" id="tab-perdas">
 <h2 class="title">Perdas (churn) <span style="font-size:13px;font-weight:600;color:var(--muted)">· quem deixou de ser ativo na rede</span></h2>
 <p class="sub">Perda = aluno que sai de <b>todas</b> as bases de ativos no mês seguinte. Trocar de unidade conta como <b>transferência</b>, não como perda. Responde aos filtros de <b>Unidade</b> e <b>Período</b> — a janela mostra as viradas de mês <b>dentro</b> do intervalo selecionado (precisa de 2+ meses; o mês corrente, quando incluído, é parcial).</p>
+<div class="panel" id="efetividadePanel" style="margin:14px 0"></div>
 <div style="margin:14px 0;padding:14px 16px;border:1px solid var(--line,#e3e3e3);border-radius:12px;background:var(--card,#fff)"><h3 style="margin:0 0 4px;font-size:15px">Acompanhamento da Meta de Churn</h3><p class="sub" style="margin:0 0 10px">Faixas de churn <b>mensal</b>: <b style="color:#2E7D4F">Ouro ≤2,5%</b> · <b style="color:#5BAD6F">Prata ≤3,5%</b> · <b style="color:#E0A93B">Bronze ≤4,0%</b> · <b style="color:#E8821A">Básico ≤4,5%</b> · <b style="color:#D64545">acima = Fora da meta</b>. Cada célula = média mensal de churn no período (mês corrente parcial excluído). Meta: chegar ao <b>resultado médio anual</b> dentro da faixa, com acompanhamento mensal.</p><div id="metaChurnTbl"></div><p class="sub" id="metaChurnNote" style="margin-top:10px"></p><div id="metaChurnRank" style="margin-top:14px;border-top:1px solid var(--line,#eee);padding-top:12px"></div></div>
 <div id="perdasKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
 <p class="cap" id="perdasCmpCap" style="margin:-6px 0 14px"></p>
@@ -775,7 +777,9 @@ function renderCharts(L,A){evolChart('cEvol',L);
  document.getElementById('catLeg').innerHTML=order.map(k=>'<span><i style="background:'+GCOL[k]+'"></i>'+k+' — '+pct0(g[k].f)+' · '+g[k].n+' alunos</span>').join('');
  document.getElementById('capCat').innerHTML='<b>O que significa:</b> cumprimento médio da meta por bloco. Cada categoria tem cor própria. Blocos mais baixos concentram risco de evasão.';}
 
-function renderClusters(L,A){if(state.from===state.to){destroy('cClu');destroy('cCiclo');document.getElementById('clcards').innerHTML='';document.getElementById('cCluLeg').innerHTML='';document.getElementById('cCicloLeg').innerHTML='';return;}const order=['Fiel','Regular','Em ascensão','Novo','Retorno','Esporádico','Em declínio','Em evasão'];
+function renderClusters(L,A){
+ (function(){var COH=[['0–30 dias',0,30],['31–90 dias',31,90],['91–180 dias',91,180],['181–365 dias',181,365],['365+ dias',366,1e9]];var st=COH.map(function(c){return {lbl:c[0],lo:c[1],hi:c[2],n:0,risk:0};});var base=L.length||1;L.forEach(function(s){var ti=tenureInfo(s);if(!ti)return;var d=ti.dias;for(var i=0;i<st.length;i++){if(d>=st[i].lo&&d<=st[i].hi){st[i].n++;if(s.m&&(s.m.prio==='P0'||s.m.prio==='P1'))st[i].risk++;break;}}});var el=document.getElementById('cohortPanel');if(el){var h='<h3>Por tempo de casa (coorte)</h3><div style="font-size:12px;color:var(--muted);margin-bottom:10px">Onde o risco se concentra por <b>fase do aluno</b> — direciona a abordagem (novo × veterano).</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:7px 10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em">Fase</th><th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:11px">Alunos</th><th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:11px">% base</th><th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:11px">Em risco (P0+P1)</th><th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:11px">% risco</th></tr></thead><tbody>';st.forEach(function(c){var pr=c.n?Math.round(c.risk/c.n*100):0;var col=pr>=40?C.red:pr>=25?C.orange:C.muted;h+='<tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 10px;font-weight:600">'+c.lbl+'</td><td style="text-align:right;padding:7px 10px">'+c.n+'</td><td style="text-align:right;padding:7px 10px;color:var(--muted)">'+Math.round(c.n/base*100)+'%</td><td style="text-align:right;padding:7px 10px">'+c.risk+'</td><td style="text-align:right;padding:7px 10px;font-weight:800;color:'+col+'">'+pr+'%</td></tr>';});h+='</tbody></table></div>';el.innerHTML=h;}})();
+ if(state.from===state.to){destroy('cClu');destroy('cCiclo');document.getElementById('clcards').innerHTML='';document.getElementById('cCluLeg').innerHTML='';document.getElementById('cCicloLeg').innerHTML='';return;}const order=['Fiel','Regular','Em ascensão','Novo','Retorno','Esporádico','Em declínio','Em evasão'];
  const mom=PINFO.showPop?winAgg(L,PINFO.popFrom,PINFO.popTo):null;
  const qoq=PINFO.showYoY?winAgg(L,PINFO.yoyFrom,PINFO.yoyTo):null;
  const cmpC=k=>cmpRow(A.clu[k]||0,mom?(mom.clu[k]||0):null,qoq?(qoq.clu[k]||0):null,false,CLU[k].r!=='Baixo');
@@ -1161,6 +1165,11 @@ function renderAIInsights(){
  }).join('');
 }
 
+function renderEfetividade(){var el=document.getElementById('efetividadePanel');if(!el)return;var e=(typeof DATA!=='undefined'&&DATA.efetividade)||{};
+ if(!e.temDados){el.innerHTML='<h3 style="margin:0 0 4px">Efetividade das ações (Agenda Tática)</h3><div style="font-size:13px;color:var(--muted);padding:6px 0">Ainda <b>sem resultados de contato</b> para medir. Quando a equipe registrar as execuções na Agenda (contatado / resultado), esta seção mostra <b>contatos feitos</b>, <b>taxa de recuperação</b> e <b>receita preservada</b> — o ciclo fechado (alerta → contato → volta). O read-back das execuções alimenta isso automaticamente.</div>';return;}
+ var K=function(v,l,c,s){return '<div style="padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--card)"><div style="font-size:23px;font-weight:900;color:'+c+'">'+v+'</div><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:5px">'+l+'</div>'+(s?'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+s+'</div>':'')+'</div>';};
+ var tc=Math.round((e.taxaContato||0)*100),tr=Math.round((e.taxaRecuperacao||0)*100);
+ el.innerHTML='<h3 style="margin:0 0 4px">Efetividade das ações (Agenda Tática)</h3><div style="font-size:12px;color:var(--muted);margin-bottom:11px">O que a fila de contato gerou de resultado — ciclo fechado. Atualizado em '+(e.gerado||'')+'.</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+K(e.alertas||0,'Alertas gerados',C.graphite)+K(e.contatados||0,'Contatados',C.blue,tc+'% da fila')+K(e.recuperados||0,'Recuperados',C.green,tr+'% dos contatos voltaram')+K(BRL(e.receitaPreservada||0),'Receita preservada/mês',C.green,'de quem voltou após o contato')+'</div>';}
 function renderPerdas(L){
  const ch=(DATA.churn&&(DATA.churn[state.unit]||DATA.churn.REDE))||{trans:[],pre:{}};
  const Tall=ch.trans||[];
@@ -1284,7 +1293,7 @@ function render(){const L=withM(filtered());const A=agg(L);
  if(single){const m='<b>Selecione 2+ meses para esta análise.</b> Comportamento, ciclo de vida e risco são calculados pela <b>trajetória</b> do aluno (comparando meses). Com um único mês ('+MES[state.from-1]+') não há trajetória — todos cairiam em \"Novo\" ou \"Sem acesso\", o que não reflete a realidade. Use <b>Período → Meses fechados</b> ou um intervalo. Para um mês isolado, <b>Visão Geral</b> (frequência) e <b>Meta Atingida</b> seguem válidas.';['warnComp','warnRisco','warnEng'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=m;});}
  renderScore(L,A);renderKPIs(L,A);renderRiskMoney(L);renderCatBoxes(L,A);renderCmp(L,A);renderInsights(L,A);renderCharts(L,A);
  renderClusters(L,A);renderFlow(L);renderMud(L);renderMod(L);
- pgR=1;renderRisco(L);pgM=1;renderMeta(L);pgE=1;renderEng(L);renderPerdas(L);renderMetaChurn();renderAIInsights();renderAniv(L);renderCrit();}
+ pgR=1;renderRisco(L);pgM=1;renderMeta(L);pgE=1;renderEng(L);renderPerdas(L);renderEfetividade();renderMetaChurn();renderAIInsights();renderAniv(L);renderCrit();}
 
 function _br(v){return Number(v).toFixed(2).replace('.',',');}
 function downloadCSV(){
