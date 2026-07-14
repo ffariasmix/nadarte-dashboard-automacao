@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-probe_ticket.py — DESCOBRE onde está o VALOR real do contrato/plano na API Pacto,
-sem expor a chave nem PII. Hoje o "ticket" e' o medio da unidade (Faturamento / alunos).
+probe_ticket.py v3 — DESCOBRE onde esta o VALOR real da mensalidade na API Pacto.
+PII-safe: imprime so ESTRUTURA DE CHAVES + campos numericos candidatos a valor.
+Nao imprime nome/CPF/email/chave.
 
-v2: extrai os itens de forma robusta (como o build), imprime as CHAVES REAIS dos itens
-de /v1/contrato E de /v1/plano, e destaca campos numericos candidatos a valor.
+Estrategia: filtra clientes ATIVOS (como o build), tenta varios, e dumpa a arvore de
+chaves de /v1/contrato e /v1/plano; alem disso tenta endpoints de financeiro/mensalidade.
 
-Uso (a chave fica SO no ambiente, nunca e' impressa):
   export PACTO_KEY_716NORTE="...."
   python scripts/probe_ticket.py 716NORTE
 """
@@ -19,8 +19,8 @@ KEY = os.environ.get(f"PACTO_KEY_{unit}", "").strip()
 if not KEY:
     print(f"[erro] variavel PACTO_KEY_{unit} nao definida."); sys.exit(1)
 
-PII = ("nome", "name", "cpf", "email", "telefone", "fone", "rg", "endereco", "foto")
-VAL_HINT = ("valor", "mensal", "preco", "preço", "price", "amount", "parcela", "mensalidade", "ticket")
+PII = ("nome", "name", "cpf", "email", "telefone", "fone", "rg", "endereco", "foto", "cliente")
+VAL_HINT = ("valor", "mensal", "preco", "preço", "price", "amount", "parcela", "mensalidade", "ticket", "cobranca")
 
 def raw(path):
     req = urllib.request.Request(GATEWAY + path,
@@ -38,70 +38,93 @@ def as_json(b):
     except Exception: return None
 
 def lst(o):
-    """Extrai a LISTA de itens de varios formatos de envelope (igual ao build)."""
     if isinstance(o, list): return o
     if isinstance(o, dict):
-        for k in ("content", "data", "result", "results", "rows", "list", "items"):
+        for k in ("content", "data", "result", "results", "rows", "list", "items", "lista"):
             v = o.get(k)
             if isinstance(v, list): return v
             if isinstance(v, dict):
                 for k2 in ("lista", "content", "items", "rows"):
                     if isinstance(v.get(k2), list): return v[k2]
-                return [v]
     return []
 
-def all_num_val(d, path=""):
+def key_tree(d, depth=0, maxd=3):
+    """Arvore de chaves (PII-safe). Mostra tipo; numericos com hint de valor mostram o numero."""
+    out = []
+    pad = "  " * depth
+    if isinstance(d, dict):
+        for k, v in d.items():
+            kl = str(k).lower()
+            if isinstance(v, dict):
+                out.append(f"{pad}{k}: {{}}");
+                if depth < maxd: out += key_tree(v, depth+1, maxd)
+            elif isinstance(v, list):
+                out.append(f"{pad}{k}: [len={len(v)}]")
+                if v and isinstance(v[0], (dict, list)) and depth < maxd: out += key_tree(v[0], depth+1, maxd)
+            else:
+                show = v if (isinstance(v, (int, float)) and any(h in kl for h in VAL_HINT) and not any(p in kl for p in PII)) else ("<num>" if isinstance(v,(int,float)) else "<str>")
+                out.append(f"{pad}{k}: {show}")
+    return out
+
+def scan_val(d, path=""):
     hits = []
     if isinstance(d, dict):
         for k, v in d.items():
             kl = str(k).lower()
-            if isinstance(v, (dict, list)):
-                hits += all_num_val(v, f"{path}.{k}")
+            if isinstance(v, (dict, list)): hits += scan_val(v, f"{path}.{k}")
             elif isinstance(v, (int, float)) and any(h in kl for h in VAL_HINT) and not any(p in kl for p in PII):
                 hits.append((f"{path}.{k}".lstrip("."), v))
     elif isinstance(d, list) and d:
-        hits += all_num_val(d[0], f"{path}[0]")
+        hits += scan_val(d[0], f"{path}[0]")
     return hits
 
-def keys_of(d):
-    return sorted(str(k) for k in d.keys()) if isinstance(d, dict) else f"(nao-dict: {type(d).__name__})"
-
-print(f"=== PROBE TICKET v2 — unidade {unit} ===")
-st, body = raw("/clientes/simples?page=0&size=30")
-roster = as_json(body)
-sample = lst(roster)[:6]
-print(f"amostra: {len(sample)} clientes\n")
+print(f"=== PROBE TICKET v3 — unidade {unit} ===")
+st, body = raw("/clientes/simples?page=0&size=100")
+roster = lst(as_json(body))
+ativos = [c for c in roster if str(c.get("situacao","")).strip().upper() == "ATIVO"] or roster
+print(f"roster={len(roster)} · ativos={len(ativos)}\n")
 
 cand = {}
-# ---- /v1/contrato ----
-for i, c in enumerate(sample):
+dumped_ct = dumped_fin = False
+for c in ativos[:15]:
     M = c.get("matricula") or c.get("codigo") or c.get("codigoCliente")
     if not M: continue
     st2, b2 = raw(f"/v1/contrato/matricula/{M}")
-    j = as_json(b2)
-    its = lst(j)
-    if i == 0:
-        print(f"[/v1/contrato] status={st2} envelope_keys={keys_of(j)}")
-        print(f"[/v1/contrato] itens={len(its)} · chaves do 1o item={keys_of(its[0]) if its else '(vazio)'}\n")
+    j = as_json(b2); its = lst(j)
+    if its and not dumped_ct:
+        dumped_ct = True
+        print(f"[/v1/contrato] itens={len(its)} · ARVORE DE CHAVES do 1o item:")
+        for line in key_tree(its[0])[:40]: print("   " + line)
+        print()
     for it in its:
-        for nome, val in all_num_val(it):
-            cand.setdefault("contrato."+nome, []).append(val)
+        for nome, val in scan_val(it): cand.setdefault("contrato."+nome, []).append(val)
+    # financeiro por matricula (candidatos comuns)
+    for fp in (f"/v1/financeiro/matricula/{M}", f"/clientes/{M}/financeiro", f"/v1/contas-receber/matricula/{M}"):
+        stf, bf = raw(fp); jf = as_json(bf); itf = lst(jf)
+        if itf and not dumped_fin:
+            dumped_fin = True
+            print(f"[{fp}] itens={len(itf)} · ARVORE DE CHAVES do 1o item:")
+            for line in key_tree(itf[0])[:40]: print("   " + line)
+            print()
+        for it in itf:
+            for nome, val in scan_val(it): cand.setdefault("financeiro."+nome, []).append(val)
 
-# ---- /v1/plano ----
-stp, bp = raw("/v1/plano")
-planos = lst(as_json(bp))
-print(f"[/v1/plano] itens={len(planos)} · chaves do 1o plano={keys_of(planos[0]) if planos else '(vazio)'}")
-for p in planos[:30]:
-    for nome, val in all_num_val(p):
-        cand.setdefault("plano."+nome, []).append(val)
+# planos (catalogo)
+pln = lst(as_json(raw("/v1/plano")[1]))
+if pln:
+    print(f"[/v1/plano] itens={len(pln)} · ARVORE DE CHAVES do 1o plano:")
+    for line in key_tree(pln[0])[:40]: print("   " + line)
+    print()
+    for p in pln[:40]:
+        for nome, val in scan_val(p): cand.setdefault("plano."+nome, []).append(val)
 
-print("\n" + "="*50)
+print("="*50)
 if cand:
     print("CANDIDATOS A VALOR (campo -> exemplos):")
     for nome, vals in sorted(cand.items()):
         print(f"  {nome} = " + ", ".join(str(v) for v in vals[:6]))
-    print("\n-> me diz qual campo e' a mensalidade/ticket real que eu ligo no build.")
+    print("\n-> me diz qual campo e' a mensalidade real.")
 else:
-    print("Ainda sem campo numerico de valor. Me manda as 'chaves do 1o item' acima")
-    print("(contrato e plano) que eu vejo onde procurar / ajusto o endpoint.")
+    print("Sem valor nos endpoints testados. Me manda as ARVORES DE CHAVES acima")
+    print("(contrato/financeiro/plano) que eu identifico o campo ou o endpoint certo.")
 print("=== fim (nenhuma credencial/PII impressa) ===")
