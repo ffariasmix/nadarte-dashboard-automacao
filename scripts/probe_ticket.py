@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-probe_ticket.py — DESCOBRE o campo de VALOR do contrato na API Pacto, sem expor a chave
-nem PII. Hoje o "ticket" é o médio da unidade (Faturamento ÷ alunos). Este probe procura,
-no contrato de uma amostra de alunos, o campo que traz o VALOR REAL da mensalidade/contrato
-(ex.: valor, valorMensal, mensalidade, preco, valorContrato...).
+probe_ticket.py — DESCOBRE onde está o VALOR real do contrato/plano na API Pacto,
+sem expor a chave nem PII. Hoje o "ticket" e' o medio da unidade (Faturamento / alunos).
 
-Uso (a chave fica SÓ no ambiente, nunca é impressa):
+v2: extrai os itens de forma robusta (como o build), imprime as CHAVES REAIS dos itens
+de /v1/contrato E de /v1/plano, e destaca campos numericos candidatos a valor.
+
+Uso (a chave fica SO no ambiente, nunca e' impressa):
   export PACTO_KEY_716NORTE="...."
   python scripts/probe_ticket.py 716NORTE
-
-Saída (PII-safe): para uma amostra, imprime SÓ as chaves do contrato e os campos
-numéricos candidatos a "valor". Nenhum nome/CPF/matrícula é impresso.
 """
-import os, sys, json, time, urllib.request, urllib.error
+import os, sys, json, urllib.request, urllib.error
 
 GATEWAY = "https://apigw.pactosolucoes.com.br"
 unit = (sys.argv[1] if len(sys.argv) > 1 else "716NORTE").upper()
 KEY = os.environ.get(f"PACTO_KEY_{unit}", "").strip()
 if not KEY:
-    print(f"[erro] variavel PACTO_KEY_{unit} nao definida no ambiente."); sys.exit(1)
+    print(f"[erro] variavel PACTO_KEY_{unit} nao definida."); sys.exit(1)
 
-PII = ("nome", "name", "cpf", "email", "telefone", "fone", "rg", "endereco", "foto", "matricula")
-VAL_HINT = ("valor", "mensal", "preco", "preço", "price", "amount", "parcela", "mensalidade", "total", "ticket")
+PII = ("nome", "name", "cpf", "email", "telefone", "fone", "rg", "endereco", "foto")
+VAL_HINT = ("valor", "mensal", "preco", "preço", "price", "amount", "parcela", "mensalidade", "ticket")
 
 def raw(path):
     req = urllib.request.Request(GATEWAY + path,
@@ -39,51 +37,71 @@ def as_json(b):
     try: return json.loads(b)
     except Exception: return None
 
-def unwrap(j):
-    return j["content"] if isinstance(j, dict) and "content" in j else j
+def lst(o):
+    """Extrai a LISTA de itens de varios formatos de envelope (igual ao build)."""
+    if isinstance(o, list): return o
+    if isinstance(o, dict):
+        for k in ("content", "data", "result", "results", "rows", "list", "items"):
+            v = o.get(k)
+            if isinstance(v, list): return v
+            if isinstance(v, dict):
+                for k2 in ("lista", "content", "items", "rows"):
+                    if isinstance(v.get(k2), list): return v[k2]
+                return [v]
+    return []
 
-def scan(obj, path=""):
-    """Anda no JSON e coleta campos NUMERICOS cujo nome sugere valor. PII-safe."""
+def all_num_val(d, path=""):
     hits = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
+    if isinstance(d, dict):
+        for k, v in d.items():
             kl = str(k).lower()
             if isinstance(v, (dict, list)):
-                hits += scan(v, f"{path}.{k}")
-            elif any(h in kl for h in VAL_HINT) and isinstance(v, (int, float)) and not any(p in kl for p in PII):
+                hits += all_num_val(v, f"{path}.{k}")
+            elif isinstance(v, (int, float)) and any(h in kl for h in VAL_HINT) and not any(p in kl for p in PII):
                 hits.append((f"{path}.{k}".lstrip("."), v))
-    elif isinstance(obj, list) and obj:
-        hits += scan(obj[0], f"{path}[0]")
+    elif isinstance(d, list) and d:
+        hits += all_num_val(d[0], f"{path}[0]")
     return hits
 
-print(f"=== PROBE TICKET — unidade {unit} ===")
+def keys_of(d):
+    return sorted(str(k) for k in d.keys()) if isinstance(d, dict) else f"(nao-dict: {type(d).__name__})"
+
+print(f"=== PROBE TICKET v2 — unidade {unit} ===")
 st, body = raw("/clientes/simples?page=0&size=30")
-roster = unwrap(as_json(body) or {})
-sample = [c for c in (roster if isinstance(roster, list) else [])][:8]
+roster = as_json(body)
+sample = lst(roster)[:6]
 print(f"amostra: {len(sample)} clientes\n")
 
-campos = {}
-for c in sample:
-    M = c.get("matricula") or c.get("codigo")
+cand = {}
+# ---- /v1/contrato ----
+for i, c in enumerate(sample):
+    M = c.get("matricula") or c.get("codigo") or c.get("codigoCliente")
     if not M: continue
     st2, b2 = raw(f"/v1/contrato/matricula/{M}")
-    j = unwrap(as_json(b2) or {})
-    items = j if isinstance(j, list) else [j]
-    for it in items:
-        if not isinstance(it, dict): continue
-        # imprime as chaves do contrato (sem valores) so 1x
-        if not campos:
-            print("chaves do contrato:", sorted(it.keys())[:20], "\n")
-        for nome, val in scan(it):
-            campos.setdefault(nome, []).append(val)
+    j = as_json(b2)
+    its = lst(j)
+    if i == 0:
+        print(f"[/v1/contrato] status={st2} envelope_keys={keys_of(j)}")
+        print(f"[/v1/contrato] itens={len(its)} · chaves do 1o item={keys_of(its[0]) if its else '(vazio)'}\n")
+    for it in its:
+        for nome, val in all_num_val(it):
+            cand.setdefault("contrato."+nome, []).append(val)
 
-if campos:
-    print("CANDIDATOS A VALOR REAL DO CONTRATO (campo -> exemplos de valores):")
-    for nome, vals in sorted(campos.items()):
-        ex = ", ".join(str(v) for v in vals[:5])
-        print(f"  {nome} = {ex}")
-    print("\n-> me diz qual desses campos e' a mensalidade/ticket real que eu ligo no build.")
+# ---- /v1/plano ----
+stp, bp = raw("/v1/plano")
+planos = lst(as_json(bp))
+print(f"[/v1/plano] itens={len(planos)} · chaves do 1o plano={keys_of(planos[0]) if planos else '(vazio)'}")
+for p in planos[:30]:
+    for nome, val in all_num_val(p):
+        cand.setdefault("plano."+nome, []).append(val)
+
+print("\n" + "="*50)
+if cand:
+    print("CANDIDATOS A VALOR (campo -> exemplos):")
+    for nome, vals in sorted(cand.items()):
+        print(f"  {nome} = " + ", ".join(str(v) for v in vals[:6]))
+    print("\n-> me diz qual campo e' a mensalidade/ticket real que eu ligo no build.")
 else:
-    print("Nenhum campo numerico de valor encontrado no contrato desta amostra.")
-    print("Pode ser que o valor venha de /v1/plano ou de outro endpoint — me avisa que sondo esses.")
+    print("Ainda sem campo numerico de valor. Me manda as 'chaves do 1o item' acima")
+    print("(contrato e plano) que eu vejo onde procurar / ajusto o endpoint.")
 print("=== fim (nenhuma credencial/PII impressa) ===")
