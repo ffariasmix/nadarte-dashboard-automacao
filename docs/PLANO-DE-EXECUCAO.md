@@ -1,7 +1,7 @@
 # Plano de Execução — Inteligência de Retenção Nad'Arte
 
 > **Painel executivo (tabela viva).** Atualizado a cada entrega.
-> Versão no ar: **v9.8** · calibração publicando no **#83**.
+> Última leva: **overhaul de UX (U1–U8)** + **auditoria da aba Perdas (14 pontos)** — deploys #93–#97.
 
 **Independente?** = dá pra avançar **agora**, sem esperar o run atual (#83) nem terceiros:
 🟢 Sim · 🟡 Construo agora, confirmo num run · 🔴 Bloqueado (dado/integração/ação sua)
@@ -29,6 +29,8 @@
 | Curva de sobrevivência | Retenção por coorte de entrada — **estende sozinha** a cada mês | ✅ pronto p/ deploy |
 | Visão Executiva consolidada | **Uma tela de decisão do gestor** — KPIs da Rede + comparação entre unidades | ✅ pronto p/ deploy (fecha as 5 camadas de UX) |
 | Ticket real por aluno | Probe rodado (v3): a API **não expõe** valor/mensalidade (contrato só tem código+descrição). **Parkeado** — mantido o ticket médio da unidade (proxy). Religa em 1 linha se surgir o endpoint. | ⏸️ bloqueado pela API |
+| **Overhaul de UX (U1–U8)** | Nav responsiva, alertas recolhíveis, títulos fortes padronizados (Big Numbers/Visão gráfica/Resumo Executivo/abas), grupo "Análise em risco", Critérios só admin/dev | ✅ no ar (#93–#95) |
+| **Auditoria da aba Perdas (14 pontos)** | 8200% corrigido, escopo/dedup dos alertas, sobrevivência sem Janeiro, "Perfil de quem sai" sempre populado, Lago Norte parcial no ranking/financeiro, checkpoints +1/+3/+6 explicados | ✅ no ar (#96–#97) |
 
 ---
 
