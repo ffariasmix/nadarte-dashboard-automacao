@@ -655,6 +655,8 @@ sobrevivencia = {}
 for _ym, _mem in _coh_mem.items():
     _p = YM2POS.get(_ym)
     if _p is None: continue
+    if _p == 0: continue    # JANELA: o 1o mes (Jan) e' CENSURADO A ESQUERDA (mistura veteranos que
+                            # so aparecem agora) -> nao e' safra de entrada pura; fora da curva.
     _n0 = len(_mem)
     if _n0 < 10: continue   # ignora coortes minusculas (ruido)
     _curva = []
@@ -679,21 +681,31 @@ if _rows:
     _byMat = {str(_s.get("mat","")): _s for _s in students}
     _tot=_cont=_rec=0; _receita=0.0
     _prio = defaultdict(lambda: [0,0])   # prioridade -> [alertas, recuperados]
+    _cut = _TODAY - datetime.timedelta(days=42)   # efetividade das ultimas ~6 semanas (NAO acumulado)
+    _seen = set()                                  # distinto por (matricula, semana) -> nao conta o mesmo alerta 2x
     for _r in _rows:
+        _cd = parse_dt(_r.get("criado") or _r.get("registrado") or "")
+        if _cd and _cd < _cut: continue            # fora do periodo recente
         _mat = str(_r.get("mat") or _r.get("matricula") or "")
+        _dk = (_mat, str(_r.get("semana") or ""))
+        if _dk in _seen: continue                  # alerta distinto por aluno+semana
+        _seen.add(_dk)
         _tot += 1
-        if (_r.get("status") or "") == "realizado": _cont += 1
+        _contacted = (_r.get("status") or "") == "realizado"
+        if _contacted: _cont += 1
         _stu = _byMat.get(_mat)
-        _recovered = False
-        if _stu and _stu.get("ult"):
-            _ud = parse_dt(_stu["ult"]); _ad = parse_dt(_r.get("registrado") or _r.get("criado") or "")
-            if _ud and _ad and _ud >= _ad: _recovered = True
         _pr = _r.get("prio") or _r.get("prioridade") or "?"
         _prio[_pr][0] += 1
+        # Recuperado = SO' entre os CONTATADOS, e so' se voltou a acessar DEPOIS do contato.
+        # (antes contava recuperacao em todo alerta e dividia por contatados -> dava >100%, ex.: 8200%)
+        _recovered = False
+        if _contacted and _stu and _stu.get("ult"):
+            _ud = parse_dt(_stu["ult"]); _ad = parse_dt(_r.get("registrado") or "")
+            if _ud and _ad and _ud > _ad: _recovered = True
         if _recovered:
             _rec += 1; _prio[_pr][1] += 1
             if _stu: _receita += tickets_out.get(_stu.get("u"), 0)
-    efetividade = {"gerado": _TODAY.isoformat(), "temDados": True,
+    efetividade = {"gerado": _TODAY.isoformat(), "temDados": True, "janelaDias": 42, "poucosDados": (_cont < 5),
         "alertas": _tot, "contatados": _cont, "taxaContato": round(_cont/_tot,3) if _tot else 0,
         "recuperados": _rec, "taxaRecuperacao": round(_rec/_cont,3) if _cont else 0,
         "receitaPreservada": round(_receita,2),
