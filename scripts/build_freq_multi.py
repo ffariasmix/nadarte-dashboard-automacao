@@ -311,23 +311,27 @@ for (pos,unit), keys in active.items():
     for k in keys:
         if k not in first_seen_ym or slabel < first_seen_ym[k]:
             first_seen_ym[k] = slabel
-# ledger persistente fora de data/ (LEDGER_PATH) para perpetuar entre execucoes; mantem a 1a aparicao mais antiga
-LEDGER_PATH = os.environ.get("LEDGER_PATH", os.path.join(DATA_DIR,"ledger.json"))
+# ledger persistente NA RAIZ do repo (commitado pelo workflow) para perpetuar a 1a aparicao entre
+# runs -> Novo vs Retorno de verdade. Chaves HASHEADAS (sem PII), seguro em repo publico.
+import hashlib as _hl0
+def _kh(k): return _hl0.sha256(str(k).encode("utf-8")).hexdigest()[:16]   # hash estavel da chave
+LEDGER_PATH = os.environ.get("LEDGER_PATH", "ledger.json")   # raiz (nao gitignorado)
 ledger = {}
 try: ledger = json.load(open(LEDGER_PATH))
 except Exception: ledger = {}
 for k, slabel in first_seen_ym.items():
-    if k not in ledger or slabel < ledger[k]:
-        ledger[k] = slabel
+    hk = _kh(k)
+    if hk not in ledger or slabel < ledger[hk]:
+        ledger[hk] = slabel
 try:
     with open(LEDGER_PATH,"w") as f: json.dump(ledger,f,ensure_ascii=False,separators=(",",":"))
 except Exception as e:
     print(f"[WARN] nao salvou ledger: {e}", file=sys.stderr)
 def fs_index(key):
-    ym = ledger.get(key)
+    ym = ledger.get(_kh(key))
     if not ym: return base_pos
     return YM2POS.get(ym, -1)  # -1 = 1a aparicao ANTES da janela (base arquivada): nunca 'novo'
-print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao registrada / perpetuo)", file=sys.stderr)
+print(f"[info] ledger: {len(ledger)} pessoas (1a aparicao / perpetuo, hasheado)", file=sys.stderr)
 
 # ==== Onda 2: SCORE DE CHURN no build (FONTE ÚNICA p/ dashboard + Agenda Tática) ====
 # Espelha exatamente o scoreOf(s) do template. Constantes calibráveis abaixo (mudar num lugar só).
@@ -522,8 +526,8 @@ def flows_for(scope):
         ymb=ym_of(b); A=set(); B=set()
         for u in units: A|=active[(a,u)]; B|=active[(b,u)]
         saiu=A-B; entrou=B-A; retido=A&B
-        novo=sum(1 for k in entrou if ledger.get(k,ymb)>=ymb)   # 1a aparicao no proprio mes b
-        voltou=sum(1 for k in entrou if ledger.get(k,ymb)<ymb)  # ja existia antes (retornante)
+        novo=sum(1 for k in entrou if ledger.get(_kh(k),ymb)>=ymb)   # 1a aparicao no proprio mes b
+        voltou=sum(1 for k in entrou if ledger.get(_kh(k),ymb)<ymb)  # ja existia antes (retornante)
         rows.append({"de":MESES[a],"para":MESES[b],"base":len(A),
                      "retido":len(retido),"saiu":len(saiu),"novo":novo,"voltou":voltou,
                      "churnPct":round(100*len(saiu)/len(A),1) if A else 0,
@@ -604,7 +608,45 @@ _today = datetime.date.today()
 BASE_PARTIAL = (tuple(ORDERED[base_pos]) == (_today.year, _today.month))
 print(f"[info] basePartial={BASE_PARTIAL} (mes-base {ORDERED[base_pos]} vs hoje {(_today.year,_today.month)})", file=sys.stderr)
 
-out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,
+# ==== Onda 3: BACKTEST MENSAL — o sinal mensal (parada/queda) antecipa o churn? ====
+# Churn(m): ativo em m e AUSENTE da base em m+1 E m+2 (saída real, com carência).
+# Flag(m): parou (acessos=0) OU caiu >=50% vs média dos 2 meses anteriores.
+def _acc_of(unit, m, k): return acc.get((unit, m), {}).get(k, 0)
+def _flag_at(unit, m, k):
+    a = _acc_of(unit, m, k)
+    if a == 0: return True
+    b3 = [_acc_of(unit, mm, k) for mm in range(max(0, m-2), m)]
+    med = (sum(b3)/len(b3)) if b3 else 0
+    return med > 0 and a < 0.5*med
+_TP=_FN=_FP=_TN=0; _leads=[]
+for _unit in UNIT_KEYS:
+    for _m in range(NMONTHS-2):
+        _base = active.get((_m, _unit), set())
+        _nx1 = active.get((_m+1, _unit), set()); _nx2 = active.get((_m+2, _unit), set())
+        for _k in _base:
+            _churn = (_k not in _nx1) and (_k not in _nx2)
+            _fl = _flag_at(_unit, _m, _k)
+            if   _churn and _fl:       _TP+=1
+            elif _churn and not _fl:   _FN+=1
+            elif (not _churn) and _fl: _FP+=1
+            else:                      _TN+=1
+            if _churn and _fl:
+                _lead=1
+                for _b in range(1,6):
+                    if _m-_b>=0 and _flag_at(_unit,_m-_b,_k): _lead+=1
+                    else: break
+                _leads.append(_lead)
+_prec = _TP/(_TP+_FP) if (_TP+_FP) else 0
+_rec  = _TP/(_TP+_FN) if (_TP+_FN) else 0
+_leadm = (sum(_leads)/len(_leads)) if _leads else 0
+backtest = {"gerado": datetime.date.today().isoformat(), "metodo": "mensal (parada ou queda >=50%)",
+            "TP":_TP, "FN":_FN, "FP":_FP, "TN":_TN,
+            "precisao": round(_prec,3), "recall": round(_rec,3),
+            "antecedenciaMesesMedia": round(_leadm,2),
+            "churns": _TP+_FN, "alertas": _TP+_FP}
+print(f"[backtest] mensal: precisao={_prec:.0%} recall={_rec:.0%} antecedencia={_leadm:.1f}m (churns={_TP+_FN} TP={_TP} FP={_FP})", file=sys.stderr)
+
+out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backtest":backtest,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
        "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,
