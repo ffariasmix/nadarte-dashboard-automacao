@@ -26,6 +26,8 @@
 | Read-back das execuções (Agenda→dashboard) | Traz o **resultado do contato** de volta pro modelo (efetividade + backtest) | ✅ pronto (valida no run com D1) |
 | Ficha 360 do aluno (sinais-chave) | Recência + vencimento + coorte no drawer — **histórico do aluno num lugar** | ✅ pronto p/ deploy |
 | Propensão à renovação (v1) | Separa **"faltou"** de **"não vai renovar"** (contratos vencendo × desengajados) | ✅ pronto p/ deploy |
+| Curva de sobrevivência | Retenção por coorte de entrada — **estende sozinha** a cada mês | ✅ pronto p/ deploy |
+| Probe do ticket real (script) | Descobre o campo de **valor do contrato** na API (você roda c/ as chaves) | ✅ script pronto (rodar p/ ligar) |
 
 ---
 

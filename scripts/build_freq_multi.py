@@ -646,6 +646,25 @@ backtest = {"gerado": datetime.date.today().isoformat(), "metodo": "mensal (para
             "churns": _TP+_FN, "alertas": _TP+_FP}
 print(f"[backtest] mensal: precisao={_prec:.0%} recall={_rec:.0%} antecedencia={_leadm:.1f}m (churns={_TP+_FN} TP={_TP} FP={_FP})", file=sys.stderr)
 
+# ==== Onda 4: CURVA DE SOBREVIVENCIA — retencao por coorte de ENTRADA (1a aparicao) ====
+# De quem entrou no mes M, quantos % seguem ATIVOS em M, M+1, M+2...? Cresce sozinha com os meses.
+_coh_mem = defaultdict(set)
+for _k, _ym in first_seen_ym.items():
+    _coh_mem[_ym].add(_k)
+sobrevivencia = {}
+for _ym, _mem in _coh_mem.items():
+    _p = YM2POS.get(_ym)
+    if _p is None: continue
+    _n0 = len(_mem)
+    if _n0 < 10: continue   # ignora coortes minusculas (ruido)
+    _curva = []
+    for _d in range(0, NMONTHS - _p):
+        _act = set()
+        for _u in UNIT_KEYS: _act |= active.get((_p+_d, _u), set())
+        _curva.append(round(len(_mem & _act)/_n0, 3))
+    sobrevivencia[MESES[_p]] = {"n": _n0, "curva": _curva}
+print(f"[sobrevivencia] {len(sobrevivencia)} coortes de entrada (retencao ao longo dos meses)", file=sys.stderr)
+
 # ==== Onda 2b: EFETIVIDADE — cruza execucoes da Agenda (resultados.json) com a frequencia ====
 # resultados.json = execucoes+iniciativas lidas do D1 (read-back no workflow, ANTES do build).
 # Recuperou = aluno voltou a acessar DEPOIS do contato (ult >= data do contato). Sem PII no output.
@@ -681,7 +700,7 @@ if _rows:
         "porPrioridade": {k: {"alertas": v[0], "recuperados": v[1]} for k,v in _prio.items()}}
 print(f"[efetividade] alertas={efetividade.get('alertas',0)} contatados={efetividade.get('contatados',0)} recuperados={efetividade.get('recuperados',0)} R$preservada={efetividade.get('receitaPreservada',0)}", file=sys.stderr)
 
-out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backtest":backtest,"efetividade":efetividade,
+out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backtest":backtest,"efetividade":efetividade,"sobrevivencia":sobrevivencia,
        "churn":churn,"tickets":tickets_out,"ticketNatal":TICKET_NATAL,"ticketMes":ticket_mes,
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
        "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,
