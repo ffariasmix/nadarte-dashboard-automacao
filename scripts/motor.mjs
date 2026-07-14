@@ -7,7 +7,8 @@
 export const PTS = { em_risco:90, sumiu:80, caiu_ritmo:55, crm_app_parado:52, crm_risco:42, crm_venc_tec:30, crm_morno:21, crm_semapp:18 };
 export const TITULO = {
   em_risco:'Em risco de parar', sumiu:'Sumiu no mês', caiu_ritmo:'Caiu de ritmo',
-  reengajar:'Reengajar (app/treino)', aniversario:'Aniversariante da semana' };
+  reengajar:'Reengajar (app/treino)', aniversario:'Aniversariante da semana',
+  ocupacao_ocioso:'Horário ocioso', ocupacao_pico:'Horário de pico' };
 const META_MES = { agua:6, lutas:6, fitness:12, ambos:12, ambos_af:12, ambos_al:9, ambos_fl:12, ambos_afl:12, outros:6 };
 
 // acessos mensais -> tipo de churn (mesma lógica do dashboard/sync)
@@ -27,8 +28,8 @@ export function faixa(s){ return s>=85?'Crítico':s>=70?'Alto':s>=45?'Moderado':
 
 // motor: candidatos por cliente já normalizados -> blocos por unidade
 // freq: [{unidade,matricula,nome,cat,foto,tipo}]  · crm: [{unidade,matricula,nome,faixa,usaApp,...}]
-// aniv: [{unidade,matricula,nome}] · cfg:{cap,alertaMin,reservaMin}
-export function motor({freq=[], crm=[], aniv=[], cfg={}}){
+// aniv: [{unidade,matricula,nome}] · ocup: [{unidade,dia,hora,media,media_unidade,status}] · cfg:{cap,alertaMin,reservaMin}
+export function motor({freq=[], crm=[], aniv=[], ocup=[], cfg={}}){
   const cap=cfg.cap??120, alertaMin=cfg.alertaMin??70, reservaMin=cfg.reservaMin??70, alertaTop=cfg.alertaTop??15;
   const K=c=>`${c.unidade}|${c.matricula}`;
   const cli=new Map();
@@ -50,7 +51,7 @@ export function motor({freq=[], crm=[], aniv=[], cfg={}}){
     return {unidade:o.unidade,matricula:o.matricula,nome:o.nome,cat:o.cat,foto:o.foto,tipo:tp,titulo:TITULO[tp],
       score:s,faixa:faixa(s),fontePrincipal:o.fontes.has('frequencia')?'frequencia':'crm',motivos:o.motivos.join(' · ')}; });
 
-  const out={alerta:[],ativa:[],reserva:[],relacionamento:[],descartadas:0};
+  const out={alerta:[],ativa:[],reserva:[],relacionamento:[],operacional:[],descartadas:0};
   const porU={}; for(const it of itens){(porU[it.unidade]||(porU[it.unidade]=[])).push(it);}
   for(const u of Object.keys(porU)){
     const arr=porU[u].sort((a,b)=>b.score-a.score||a.nome.localeCompare(b.nome));
@@ -62,6 +63,12 @@ export function motor({freq=[], crm=[], aniv=[], cfg={}}){
   // aniversário (fora do teto). Já é churn -> vira contexto; senão bloco relacionamento.
   for(const a of aniv){ const k=`${a.unidade}|${a.matricula}`;
     if(!churnKeys.has(k)) out.relacionamento.push({unidade:a.unidade,matricula:a.matricula,nome:a.nome,tipo:'aniversario',titulo:TITULO.aniversario,bloco:'relacionamento',faixa:'Relacionamento',motivos:'aniversário na semana'}); }
+  // bloco OPERACIONAL (Ocupação) — não-nominal, por horário. Não passa por dedup/score/teto.
+  for(const c of ocup){ if(!c || !c.unidade) continue;
+    const pico = c.status==='pico'; const tp = pico?'ocupacao_pico':'ocupacao_ocioso';
+    out.operacional.push({unidade:c.unidade,tipo:tp,titulo:TITULO[tp],bloco:'operacional',
+      hora:c.hora,media:c.media,mediaUnidade:c.media_unidade,
+      motivos:`${c.hora}h · ~${c.media} entradas/dia vs média ${c.media_unidade}/h (seg–sex)`}); }
   return out;
 }
 

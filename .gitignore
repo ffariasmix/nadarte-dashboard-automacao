@@ -5,6 +5,8 @@ node_modules/
 sa_key.json
 resultados.json
 _res_raw.json
+agenda_ocupacao.json
+agenda_week.sql
 
 # Python (bytecode/cache)
 __pycache__/
