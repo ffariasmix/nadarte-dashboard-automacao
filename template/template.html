@@ -1250,9 +1250,9 @@ function renderPerdas(L){
   +'</div><p class="cap" style="margin:9px 2px 0"><b>Considera o saldo líquido</b> (entradas − perdas), não as perdas brutas. Cálculo: alunos × <b>ticket médio da unidade</b> (Faturamento ÷ nº de alunos) — determinado <b>somente pela unidade</b>, sem relação com modalidade ou categoria.</p>';
  destroy('cPerdMoney');
  let mLab,mDat;
- if(isRede){mLab=_units.map(u=>/Lago/i.test(u.label)?u.label+' *':u.label);mDat=_units.map(u=>Math.round(lossU[u.key]));
+ if(isRede){mLab=_units.map(u=>u.label);mDat=_units.map(u=>Math.round(lossU[u.key]));
    document.getElementById('cPerdMoneyH').textContent='Perda financeira por unidade (R$/mês recorrente)';
-   document.getElementById('cPerdMoneyCap').innerHTML='Alunos perdidos no período × ticket médio de cada unidade de origem. Mostra onde a evasão pesa mais no caixa. <b>*</b> Lago Norte é <b>parcial</b> (sem catraca na piscina — só categorias fitness); a perda real pode ser maior.';}
+   document.getElementById('cPerdMoneyCap').textContent='Alunos perdidos no período × ticket médio de cada unidade de origem. Mostra onde a evasão pesa mais no caixa. Churn por contrato — Lago Norte já completo (todas as categorias).';}
  else{mLab=labels;mDat=perdas.map(p=>Math.round(p*ticketU(state.unit)));
    document.getElementById('cPerdMoneyH').textContent='Perda financeira por mês — '+uLabel()+' (R$)';
    document.getElementById('cPerdMoneyCap').textContent='Perdas de cada virada de mês × ticket médio de '+uLabel()+' ('+BRL2(ticketU(state.unit))+').';}
@@ -1281,8 +1281,8 @@ function renderPerdas(L){
    const us=(DATA.unidades||[]).filter(u=>u.key!=='REDE');
    const _utr=k=>(T.length?unitTrans(k):((DATA.churn[k]||{trans:[]}).trans||[]));
    const uv=us.map(u=>_utr(u.key).reduce((a,t)=>a+t.perdas,0));
-   barChart('cPerdUnit',us.map(u=>/Lago/i.test(u.label)?u.label+' *':u.label),uv,us.map(_=>C.red),false,true);
-   document.getElementById('cPerdUnitCap').innerHTML=(_perfHist?'Totais de todo o histórico':'Totais no período selecionado')+', por unidade de origem. <b>*</b> Lago Norte é <b>parcial</b> — a piscina não tem catraca, então só as categorias fitness entram (perda real pode ser maior).';}
+   barChart('cPerdUnit',us.map(u=>u.label),uv,us.map(_=>C.red),false,true);
+   document.getElementById('cPerdUnitCap').textContent=(_perfHist?'Totais de todo o histórico':'Totais no período selecionado')+', por unidade de origem. Churn medido por contrato — inclui todas as categorias (Lago Norte completo).';}
  else{document.getElementById('cPerdUnitH').textContent='Transferências (esta unidade)';
    const tout=_PT.reduce((a,t)=>a+(t.transf||0),0),tin=_PT.reduce((a,t)=>a+(t.transfIn||0),0);
    barChart('cPerdUnit',['Saíram p/ outra','Vieram de outra'],[tout,tin],[C.yellow,C.green],false,true);
@@ -1407,5 +1407,5 @@ function downloadCSV(){
   if(btn){ btn.addEventListener('click',function(){ apply(root.getAttribute('data-theme')==='dark'?'light':'dark'); }); }
 })();
 </script>
-<script>(function(){try{var n=document.getElementById('lagoNote');if(!n||typeof DATA==='undefined')return;var ex=(DATA.lagoExcluded||0);var cats=(DATA.lagoFitCats||['Fitness','Ambos (Água + Fitness)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)']).join(', ');n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<details class="alertDet"><summary><b>Lago Norte — catraca só no ambiente fitness.</b>'+(ex?(' <span class="muted">('+ex+' fora da análise · toque para entender)</span>'):' <span class="muted">(toque para entender)</span>')+'</summary><div>A piscina não tem catraca, então alunos <b>exclusivos de Água ou Luta</b> não registram acesso e apareceriam como \'sumidos\' por artefato de dado. Por isso '+(ex?('<b>'+ex+'</b> aluno(s) dessas categorias estão'):'esses alunos estão')+' <b>fora da análise de frequência e retenção</b> do Lago Norte (e do total da Rede). Só entram: '+cats+'. Será atualizado quando houver catraca na piscina.</div></details>';n.style.display='';}catch(e){}})();</script>
+<script>(function(){try{var n=document.getElementById('lagoNote');if(!n||typeof DATA==='undefined')return;var ex=(DATA.lagoExcluded||0);var cats=(DATA.lagoFitCats||['Fitness','Ambos (Água + Fitness)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)']).join(', ');n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<details class="alertDet"><summary><b>Lago Norte — catraca só no ambiente fitness.</b>'+(ex?(' <span class="muted">('+ex+' fora só da frequência · toque para entender)</span>'):' <span class="muted">(toque para entender)</span>')+'</summary><div>A piscina não tem catraca, então alunos <b>exclusivos de Água ou Luta</b> não registram acesso e apareceriam como \'sumidos\' por artefato de dado. Por isso '+(ex?('<b>'+ex+'</b> aluno(s) dessas categorias ficam'):'esses alunos ficam')+' <b>fora só dos números de frequência</b> (aderência, "sumiu", score, risco). Eles <b>seguem contando na base e no churn/retenção</b> do Lago Norte e da Rede — medidos por <b>contrato</b>, não por catraca. Na frequência só entram: '+cats+'. Fica completo quando houver catraca na piscina.</div></details>';n.style.display='';}catch(e){}})();</script>
 </body></html>

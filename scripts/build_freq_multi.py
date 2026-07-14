@@ -238,9 +238,11 @@ for mk, path in alunos_files.items():
             mod = r[c_mod] if (c_mod is not None and c_mod<len(r)) else ""
             grupo = classify_grupo(mod)
             # LAGO NORTE: catraca so no acesso fitness. Aluno sem Fitness (Agua/Luta puros) nao
-            # passa pela catraca -> apareceria "sumido" por artefato. Excluir da analise.
+            # passa pela catraca. CEGOS DE CATRACA: entram no churn/base/retencao (medidos por
+            # CONTRATO, sem depender de acesso), mas ficam FORA dos sinais de FREQUENCIA
+            # (senao virariam falso "sumido"). So marca aqui; segue e entra em active/attrs.
             if unit == LAGO_UNIT and grupo not in LAGO_FIT_CATS:
-                LAGO_EXCLUDED.add((unit, key)); continue
+                LAGO_EXCLUDED.add((unit, key))   # cego de catraca (fora so da frequencia)
             active[(pos,unit)].add(key)
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
@@ -412,6 +414,7 @@ students=[]
 for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' durante a iteracao
     if pos!=base_pos: continue
     for key in keys:
+        if (unit,key) in LAGO_EXCLUDED: continue   # cego de catraca: fora da FREQUENCIA (sem acesso p/ medir)
         a = attrs[base_pos].get((unit,key),{})
         ac = [acc.get((unit,mm),{}).get(key,0) for mm in range(NMONTHS)]
         act= [1 if key in active.get((mm,unit),()) else 0 for mm in range(NMONTHS)]  # .get: nao cria chave em defaultdict
@@ -490,8 +493,11 @@ for unit in UNIT_KEYS:
         trans.append({"de":MESES[a],"para":MESES[b],"perdas":len(perdas),"novos":len(novos),
                       "transf":0,"transfIn":0,"retidos":len(retidos),"base":len(A),
                       "byCat":cC,"bySex":cS,"byBand":cB})
-        for mat in perdas: ev.append(acc[(unit,a)].get(mat,0))
-        for mat in retidos: ret.append(acc[(unit,a)].get(mat,0))
+        # pre-perda usa ACESSO da catraca -> cego de catraca fica de fora (nao tem sinal de acesso)
+        for mat in perdas:
+            if (unit,mat) not in LAGO_EXCLUDED: ev.append(acc[(unit,a)].get(mat,0))
+        for mat in retidos:
+            if (unit,mat) not in LAGO_EXCLUDED: ret.append(acc[(unit,a)].get(mat,0))
     cm,cz=pre(ev); rm,rz=pre(ret)
     churn[unit]={"trans":trans,"pre":{"churnMean":cm,"churnZeroPct":cz,"retMean":rm,"retZeroPct":rz}}
     unit_data[unit]=(trans,ev,ret)
@@ -624,6 +630,7 @@ for _unit in UNIT_KEYS:
         _base = active.get((_m, _unit), set())
         _nx1 = active.get((_m+1, _unit), set()); _nx2 = active.get((_m+2, _unit), set())
         for _k in _base:
+            if (_unit,_k) in LAGO_EXCLUDED: continue   # cego de catraca: backtest mede o preditor por ACESSO
             _churn = (_k not in _nx1) and (_k not in _nx2)
             _fl = _flag_at(_unit, _m, _k)
             if   _churn and _fl:       _TP+=1
