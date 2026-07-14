@@ -54,6 +54,7 @@ function descricaoHumana(it) {
   if (it.tipo === 'em_risco') return `O ritmo de frequência caiu bastante nas últimas semanas.${ctx} Faça um contato de cuidado para entender se ele precisa de apoio para retomar a rotina.`;
   if (it.tipo === 'sumiu') return `Vinha treinando e parou no último mês.${ctx} Um contato acolhedor agora ajuda a evitar que ele se afaste.`;
   if (it.tipo === 'caiu_ritmo') return `A presença diminuiu em relação ao ritmo dele.${ctx} Vale um incentivo leve para recolocar na rotina.`;
+  if (it.tipo === 'reengajar') return `Continua vindo à academia, mas largou o treino no app.${ctx} Recoloque no programa: mostrar um treino novo e o valor do acompanhamento antes que a frequência também caia.`;
   if (it.tipo === 'aniversario') return `Aniversariante da semana — um contato positivo de relacionamento, sem venda.`;
   return `Contato de cuidado.${ctx}`;
 }

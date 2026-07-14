@@ -27,6 +27,7 @@
 | Ficha 360 do aluno (sinais-chave) | Recência + vencimento + coorte no drawer — **histórico do aluno num lugar** | ✅ pronto p/ deploy |
 | Propensão à renovação (v1) | Separa **"faltou"** de **"não vai renovar"** (contratos vencendo × desengajados) | ✅ pronto p/ deploy |
 | Curva de sobrevivência | Retenção por coorte de entrada — **estende sozinha** a cada mês | ✅ pronto p/ deploy |
+| Visão Executiva consolidada | **Uma tela de decisão do gestor** — KPIs da Rede + comparação entre unidades | ✅ pronto p/ deploy (fecha as 5 camadas de UX) |
 | Probe do ticket real (script) | Descobre o campo de **valor do contrato** na API (você roda c/ as chaves) | ✅ script pronto (rodar p/ ligar) |
 
 ---

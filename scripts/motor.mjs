@@ -4,7 +4,7 @@
 // score explicável · teto/unidade · Alerta(Crítico) · Reserva(alto acima do teto).
 // ============================================================
 
-export const PTS = { em_risco:90, sumiu:80, caiu_ritmo:55, crm_risco:42, crm_venc_tec:30, crm_morno:21, crm_semapp:18 };
+export const PTS = { em_risco:90, sumiu:80, caiu_ritmo:55, crm_app_parado:52, crm_risco:42, crm_venc_tec:30, crm_morno:21, crm_semapp:18 };
 export const TITULO = {
   em_risco:'Em risco de parar', sumiu:'Sumiu no mês', caiu_ritmo:'Caiu de ritmo',
   reengajar:'Reengajar (app/treino)', aniversario:'Aniversariante da semana' };
@@ -40,6 +40,7 @@ export function motor({freq=[], crm=[], aniv=[], cfg={}}){
     if(s.faixa==='risco'){o.pts.push(PTS.crm_risco);o.motivos.push('CRM: faixa risco');u=true;}
     else if(s.faixa==='morno'){o.pts.push(PTS.crm_morno);o.motivos.push('CRM: faixa morno');u=true;}
     if(s.treinoVencido||s.avaliacaoVencida){o.pts.push(PTS.crm_venc_tec);o.motivos.push('treino/avaliação vencidos');u=true;}
+    if(s.appParado){o.pts.push(PTS.crm_app_parado);o.motivos.push('vem à academia mas parou o treino no app');u=true;}
     if(s.usaApp===false){o.pts.push(PTS.crm_semapp);o.motivos.push('não usa o app');u=true;}
     if(u)o.fontes.add('crm'); }
 
