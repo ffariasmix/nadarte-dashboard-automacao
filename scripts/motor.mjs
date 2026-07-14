@@ -29,7 +29,7 @@ export function faixa(s){ return s>=85?'Crítico':s>=70?'Alto':s>=45?'Moderado':
 // freq: [{unidade,matricula,nome,cat,foto,tipo}]  · crm: [{unidade,matricula,nome,faixa,usaApp,...}]
 // aniv: [{unidade,matricula,nome}] · cfg:{cap,alertaMin,reservaMin}
 export function motor({freq=[], crm=[], aniv=[], cfg={}}){
-  const cap=cfg.cap??120, alertaMin=cfg.alertaMin??85, reservaMin=cfg.reservaMin??70;
+  const cap=cfg.cap??120, alertaMin=cfg.alertaMin??70, reservaMin=cfg.reservaMin??70, alertaTop=cfg.alertaTop??15;
   const K=c=>`${c.unidade}|${c.matricula}`;
   const cli=new Map();
   const get=c=>{const k=K(c); if(!cli.has(k)) cli.set(k,{unidade:c.unidade,matricula:c.matricula,nome:c.nome,cat:c.cat,foto:c.foto||'',pts:[],tipos:[],motivos:[],fontes:new Set()}); return cli.get(k);};
@@ -54,7 +54,8 @@ export function motor({freq=[], crm=[], aniv=[], cfg={}}){
   const porU={}; for(const it of itens){(porU[it.unidade]||(porU[it.unidade]=[])).push(it);}
   for(const u of Object.keys(porU)){
     const arr=porU[u].sort((a,b)=>b.score-a.score||a.nome.localeCompare(b.nome));
-    arr.forEach((it,i)=>{ if(i<cap){ it.bloco=it.score>=alertaMin?'alerta':'ativa'; out[it.bloco].push(it); }
+    let aN=0;
+    arr.forEach((it,i)=>{ if(i<cap){ if(it.score>=alertaMin && aN<alertaTop){ it.bloco='alerta'; aN++; out.alerta.push(it); } else { it.bloco='ativa'; out.ativa.push(it); } }
       else if(it.score>=reservaMin){ it.bloco='reserva'; out.reserva.push(it); }
       else out.descartadas++; });
   }
