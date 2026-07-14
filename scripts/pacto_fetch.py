@@ -517,6 +517,16 @@ def main():
             print(f"[sitS] {uk}: fim-de-contrato caindo no mes={fim_m} (fonte do churn)", file=sys.stderr)
             fyr = Counter((to_date(gv(c, "fimContrato")).year if to_date(gv(c, "fimContrato")) else "sem-fim") for c in full if str(gv(c, "situacao") or "").upper() != "ATIVO")
             print(f"[sitF] {uk}: fim-ano dos NAO-ativos = {dict(sorted(fyr.items(), key=lambda kv: str(kv[0])))}", file=sys.stderr)
+            # [sitC] CHURN REAL reconstruido (a MESMA conta do build): perdas = ativos(mes a) - ativos(mes b), por matricula
+            def _keyc(c): return gv(c, "matricula") or gv(c, "codigoCliente", "codigo")
+            sets = []
+            for (yy, mm) in wm:
+                s = set(_keyc(c) for c in full if _keyc(c) is not None and active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), yy, mm, gv(c, "situacao")))
+                sets.append(s)
+            perdas_m = [len(sets[i] - sets[i+1]) for i in range(len(sets)-1)]
+            base_m   = [len(sets[i]) for i in range(len(sets)-1)]
+            churn_pct = [round(100*perdas_m[i]/base_m[i], 1) if base_m[i] else 0 for i in range(len(perdas_m))]
+            print(f"[sitC] {uk}: perdas/mes={perdas_m} base/mes={base_m} churn%={churn_pct}", file=sys.stderr)
             return (uk, atv, atr, contr, aoc)
         res = []
         with ThreadPoolExecutor(max_workers=5) as ex:
