@@ -24,6 +24,8 @@
 | Cohorts por tempo de casa | **Onde o risco se concentra** por fase (novo × veterano) → direciona abordagem | ✅ pronto p/ deploy |
 | Tela de Efetividade (Camada 5) | **Recuperação + receita preservada** dos contatos — ciclo fechado | ✅ pronto (enche com o dado real) |
 | Read-back das execuções (Agenda→dashboard) | Traz o **resultado do contato** de volta pro modelo (efetividade + backtest) | ✅ pronto (valida no run com D1) |
+| Ficha 360 do aluno (sinais-chave) | Recência + vencimento + coorte no drawer — **histórico do aluno num lugar** | ✅ pronto p/ deploy |
+| Propensão à renovação (v1) | Separa **"faltou"** de **"não vai renovar"** (contratos vencendo × desengajados) | ✅ pronto p/ deploy |
 
 ---
 
