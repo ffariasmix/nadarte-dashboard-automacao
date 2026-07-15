@@ -440,7 +440,7 @@ header.top{position:static!important}
 <div id="perdasKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
 <p class="cap" id="perdasCmpCap" style="margin:-6px 0 14px"></p>
 <div id="perdaMoney" style="margin-bottom:18px"></div>
-<div class="panel"><h3>Movimentação da base por mês</h3><div class="cwrap"><canvas id="cMov"></canvas></div><p class="cap">Entradas (novos na rede) × Saídas (perdas) a cada virada de mês. A linha é o <b>saldo líquido</b> (entradas − perdas): <span style="color:var(--green)">▲ verde</span> quando positivo, <span style="color:var(--red)">▼ vermelho</span> quando negativo.</p></div>
+<div class="panel"><h3>Movimentação da base por mês</h3><div class="cwrap"><canvas id="cMov"></canvas></div><p class="cap">Entradas (novos na rede) × Saídas (perdas) a cada virada de mês. A linha é o <b>saldo líquido</b> (entradas − perdas): <span style="color:var(--green)">▲ verde</span> quando positivo, <span style="color:var(--red)">▼ vermelho</span> quando negativo. A última virada, quando <b>mais clara</b>, é o <b>mês em curso (parcial)</b> — entradas e saídas ainda vão crescer até o mês fechar, então o saldo dela é provisório.</p></div>
 <div class="panel" style="margin-top:16px"><h3 id="cPerdMoneyH">Perda financeira por unidade (R$)</h3><div class="cwrap"><canvas id="cPerdMoney"></canvas></div><p class="cap" id="cPerdMoneyCap"></p></div>
 <div class="panel" id="perdShareWrap" style="margin-top:16px"><h3>Participação nas perdas por unidade (% do período)</h3><div class="cwrap"><canvas id="cPerdShare"></canvas></div><p class="cap">Distribuição das perdas da rede por unidade de origem — onde a evasão mais se concentra. Soma 100% das perdas Jan–Jun.</p></div>
 <div class="panel" id="perdaPre" style="margin-top:16px"></div>
@@ -1234,11 +1234,14 @@ function renderPerdas(L){
   +card((saldoTot>=0?'+':'')+saldoTot,'Saldo líquido',saldoTot>=0?C.green:C.red,'',cmpP(wSaldo,false,false));
  const _cc=document.getElementById('perdasCmpCap');
  if(_cc)_cc.innerHTML=(hasFlow?'<b>Novo × Retorno:</b> <span style="color:'+C.green+'">🆕 novo</span> = 1ª vez na rede (nunca teve cadastro) · <span style="color:'+C.blue+'">↩ retorno</span> = já teve cadastro/acesso antes e voltou. A soma = total de entradas. Base: histórico perpétuo (ledger).<br>':'')+((momT||qoqT)?('<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 3 meses antes · <span style="color:'+C.green+'">▲/▼ verde = melhora</span> · <span style="color:'+C.red+'">vermelho = piora</span>. <b>YoY suprimido</b> (sem 2025). Aparece "—" quando não há janela anterior suficiente.'+(state.to===MES.length?' A janela inclui <b>junho (parcial)</b> — perdas e entradas ficam subestimadas; para leitura limpa selecione sub-janelas fechadas (ex.: Abr+Mai) ou <b>Período → Meses fechados</b>.':'')):'');
- // movimentação
+ // movimentação — barra do mês em curso (parcial) fica mais clara
+ var _pmov=(DATA.basePartial?MES[MES.length-1]:null);
+ var _gcol=T.map(function(t){return t.para===_pmov?tint(C.green):C.green;});
+ var _rcol=T.map(function(t){return t.para===_pmov?tint(C.red):C.red;});
  destroy('cMov');
  ch['cMov']=new Chart(document.getElementById('cMov'),{data:{labels,datasets:[
-   {type:'bar',label:'Entradas',data:novos,backgroundColor:C.green,borderRadius:5,maxBarThickness:34,order:3,_f:v=>v},
-   {type:'bar',label:'Perdas',data:perdas,backgroundColor:C.red,borderRadius:5,maxBarThickness:34,order:2,_f:v=>v},
+   {type:'bar',label:'Entradas',data:novos,backgroundColor:_gcol,borderRadius:5,maxBarThickness:34,order:3,_f:v=>v},
+   {type:'bar',label:'Perdas',data:perdas,backgroundColor:_rcol,borderRadius:5,maxBarThickness:34,order:2,_f:v=>v},
    {type:'line',label:'Saldo líquido',data:saldo,borderColor:C.graphite,backgroundColor:C.graphite,borderWidth:2.4,tension:.3,pointRadius:5,pointBackgroundColor:C.graphite,pointBorderColor:C.graphite,order:1,_skip:true}]},
   options:bo({layout:{padding:{top:22}},plugins:{legend:{display:true,position:'bottom',labels:{usePointStyle:true,pointStyle:'rectRounded',padding:12,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{grid:{color:C.line},beginAtZero:true}}}),plugins:[VL,SaldoArrow]});
  // bloco financeiro do saldo líquido

@@ -349,10 +349,19 @@ def coleta_unidade(unit_key, unit_label, key):
     if FOTOS:
         print(f"[fotos] {unit_key}: {len(prof_by_id)} professores mapeados", file=sys.stderr)
     full = roster_full(key)
+    # Novos do MES CORRENTE parcial: quem tem inicio de contrato no mes-base. Entram no win pra as
+    # ENTRADAS de julho aparecerem — SEM reincluir a base ativa inteira (evita o timeout #72, que
+    # inflava o win pra todos os ATIVOS). So os ~novos do mes, nao os milhares de ativos.
+    def _novo_mes_corrente(c):
+        if not BASE_IS_CURRENT: return False
+        d = to_date(gv(c, "inicioContrato"))
+        return bool(d and (d.year, d.month) == WINDOW_END)
     win = [c for c in full
            if any(active_in_month(to_date(gv(c, "inicioContrato")), to_date(gv(c, "fimContrato")), y, m, gv(c, "situacao"))
-                  for (y, m) in recent)]
-    print(f"[base] {unit_key}: {len(win)} alunos (ativos nos ultimos {INCLUDE_MONTHS}m) de {len(full)} no historico", file=sys.stderr)
+                  for (y, m) in recent)
+           or _novo_mes_corrente(c)]
+    _novos_mc = sum(1 for c in full if _novo_mes_corrente(c))
+    print(f"[base] {unit_key}: {len(win)} alunos (ativos nos ultimos {INCLUDE_MONTHS}m + {_novos_mc} novos do mes corrente) de {len(full)} no historico", file=sys.stderr)
     t0 = time.time()
     recs = []
     pending = list(win)
