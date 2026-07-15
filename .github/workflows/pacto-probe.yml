@@ -24,11 +24,13 @@ jobs:
       - name: SITPROBE — distribuicao de situacao + criterio de ativo (rapido, so cadastro)
         env:
           PACTO_SITPROBE: '1'
+          PACTO_ENABLE_NATAL: '1'   # inclui a Natal (RN) APENAS neste probe (nao afeta o build/deploy)
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
           PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
           PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
+          PACTO_KEY_NATAL:     ${{ secrets.PACTO_KEY_NATAL }}
         run: |
           python scripts/pacto_fetch.py data 2> pacto_probe_result.txt || true
           echo "--- arquivos gerados (nomes/contagem, sem conteudo) ---" >> pacto_probe_result.txt

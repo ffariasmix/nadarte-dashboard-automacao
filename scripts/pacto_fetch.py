@@ -103,6 +103,12 @@ UNITS = [
     ("LagoNorte", "Lago Norte", "PACTO_KEY_LAGONORTE"),
     ("LagoSul",   "Lago Sul",   "PACTO_KEY_LAGOSUL"),
 ]
+# Natal (RN): unidade NOVA, catraca confiavel desde 01/07/2026. DESLIGADA por padrao
+# (nao entra no build/deploy nem na Rede) ate a Variable/flag PACTO_ENABLE_NATAL=1.
+# Quando ligada, so aparece de jul/26 em diante (trava UNIT_START -> sem historico falso Jan-Jun).
+UNIT_START = {"Natal": (2026, 7)}   # (ano, mes) minimo em que a unidade aparece
+if os.environ.get("PACTO_ENABLE_NATAL") == "1":
+    UNITS.append(("Natal", "Natal (RN)", "PACTO_KEY_NATAL"))
 
 # ------------------------- HTTP -------------------------
 def http_get(key, path, timeout=30, tries=5):
@@ -565,7 +571,11 @@ def main():
     catraca_by_unit = {}                            # ulabel -> {ym: [row]}
     for uk, ulabel, recs in results:
         cat = {}
+        _ustart = UNIT_START.get(uk)   # unidade nova: nao retroage antes do inicio (ex.: Natal jul/26)
         for ym in wmonths:
+            if _ustart and ym < _ustart:
+                alunos_by_month[ym][ulabel] = []   # antes do inicio da unidade -> vazio (sem historico falso)
+                continue
             # mes-base (WINDOW_END = mais recente) conta SO flag ATIVO; meses passados usam contrato (churn)
             _strict = (ym == WINDOW_END)
             alunos_by_month[ym][ulabel] = [

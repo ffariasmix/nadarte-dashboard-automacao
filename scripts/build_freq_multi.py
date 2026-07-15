@@ -28,6 +28,14 @@ UNIDADES = [{"key":"REDE","label":"Rede (todas)"},
 TICKETS = {"716Norte":275.00,"905Sul":268.00,"604Norte":273.80,"LagoNorte":299.60,"LagoSul":266.60}
 TICKET_NATAL = 245.20
 UNIT_KEYS = ["716Norte","905Sul","604Norte","LagoNorte","LagoSul"]
+# Natal (RN): unidade NOVA (catraca desde 01/07/2026). DESLIGADA ate a Variable PACTO_ENABLE_NATAL=1
+# (fica fora da Rede/seletor/churn ate ligar). So aparece de jul/26 em diante (trava no pacto_fetch).
+if os.environ.get("PACTO_ENABLE_NATAL") == "1":
+    SHEET_TO_UNIT["Natal (RN)"] = "Natal"
+    UDPS["Natal"] = 6                        # seg-sab (domingo fechado)
+    UNIDADES.append({"key":"Natal","label":"Natal (RN)"})
+    TICKETS["Natal"] = 276.60                # PLACEHOLDER (media da rede) — CONFIRMAR ticket real antes do go-live
+    UNIT_KEYS.append("Natal")
 ABBR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
 
 # --- Classificador de modalidade (texto do plano -> 7 baldes) ---
