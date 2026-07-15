@@ -563,13 +563,6 @@ for unit in ["REDE"]+UNIT_KEYS:
 print(("[WARN] consistencia churn:\n  "+"\n  ".join(warns)) if warns else "[ok] consistencia churn fecha", file=sys.stderr)
 
 # ---- Fundacao v2: fluxos retido/saiu/novo/voltou (usa ledger/ym_of definidos acima) ----
-RENOV_GAP = int(os.environ.get("PACTO_RENOV_GAP", "2"))   # lapso (meses) ate o qual "voltar" e' RENOVACAO; acima e' RETORNO
-def _gap_antes(k, b, units):
-    # meses INATIVO imediatamente antes de b (0 = estava ativo em b-1). -1 nunca visto antes.
-    for m in range(b-1, -1, -1):
-        if any(k in active.get((m,u), ()) for u in units):
-            return b - m - 1
-    return -1
 def flows_for(scope):
     units = UNIT_KEYS if scope=="REDE" else [scope]
     rows=[]
@@ -577,19 +570,14 @@ def flows_for(scope):
         ymb=ym_of(b); A=set(); B=set()
         for u in units: A|=active[(a,u)]; B|=active[(b,u)]
         saiu=A-B; entrou=B-A; retido=A&B
-        # Entrada em 3 vias: NOVA MATRICULA (1a vez na rede, ledger) | RENOVACAO (ja era aluno, lapso curto)
-        # | RETORNO (ja era aluno, lapso longo). nova+renov+retor = entrou.
-        nova=renov=retor=0
-        for k in entrou:
-            if ledger.get(_kh(k), ymb) >= ymb:
-                nova += 1
-            else:
-                g = _gap_antes(k, b, units)
-                if 0 <= g <= RENOV_GAP: renov += 1
-                else: retor += 1
+        # Entrada em 2 vias (interino): NOVA MATRICULA (1a vez na rede, pelo ledger) | RECORRENTE
+        # (ja teve cadastro antes -> renovacao OU retorno juntos). Separar renovacao de retorno
+        # exige o HISTORICO de contratos (lapso real) — com o contrato vigente unico nao da.
+        nova=sum(1 for k in entrou if ledger.get(_kh(k), ymb) >= ymb)
+        recor=len(entrou)-nova
         rows.append({"de":MESES[a],"para":MESES[b],"base":len(A),
                      "retido":len(retido),"saiu":len(saiu),
-                     "novo":nova,"renovou":renov,"voltou":retor,   # 'voltou' = retorno (lapso longo); mantem nome p/ compat
+                     "novo":nova,"recorrente":recor,"voltou":recor,   # voltou=recorrente (compat)
                      "churnPct":round(100*len(saiu)/len(A),1) if A else 0,
                      "retPct":round(100*len(retido)/len(A),1) if A else 0})
     return rows
@@ -778,7 +766,7 @@ out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backte
        "baseMonth":MESES[base_pos],"junMax":JUN_MAX,"flow":flow,"basePartial":BASE_PARTIAL,
        "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,
        "lagoUnit":LAGO_UNIT,"lagoExcluded":len(LAGO_EXCLUDED),
-       "lagoFitCats":sorted(LAGO_FIT_CATS),"renovGap":RENOV_GAP,
+       "lagoFitCats":sorted(LAGO_FIT_CATS),
        "natalUnit":("Natal" if os.environ.get("PACTO_ENABLE_NATAL")=="1" else ""),
        "natalFreq":NATAL_FREQ,"natalChurnStart":"Mar.26","natalCatraca":"01/07/2026",
        "baseUpdated":meta.get("baseUpdated",""),

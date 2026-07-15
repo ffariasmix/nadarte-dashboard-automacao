@@ -1213,8 +1213,9 @@ function renderPerdas(L){
  const lossU={},gainU={};_units.forEach(u=>{const tr=unitTrans(u.key);const tk=ticketU(u.key);lossU[u.key]=tr.reduce((a,t)=>a+t.perdas,0)*tk;gainU[u.key]=tr.reduce((a,t)=>a+t.novos,0)*tk;});
  // ---- Novo vs Retorno (via ledger perpetuo: NOVO=1a vez na rede; RETORNO=ja teve cadastro antes) ----
  const _flowRows=u=>((DATA.flow&&DATA.flow[u])||[]).slice(state.from-1,state.to-1);
- let novoT=0,renovT=0,retT=0;const hasFlow=!!(DATA.flow);
- if(hasFlow){if(isRede){_units.forEach(u=>{_flowRows(u.key).forEach(f=>{novoT+=f.novo||0;renovT+=f.renovou||0;retT+=f.voltou||0;});});}else{_flowRows(state.unit).forEach(f=>{novoT+=f.novo||0;renovT+=f.renovou||0;retT+=f.voltou||0;});}}
+ let novoT=0,recorT=0;const hasFlow=!!(DATA.flow);
+ const _recf=f=>(f.recorrente!=null?f.recorrente:(f.voltou||0));
+ if(hasFlow){if(isRede){_units.forEach(u=>{_flowRows(u.key).forEach(f=>{novoT+=f.novo||0;recorT+=_recf(f);});});}else{_flowRows(state.unit).forEach(f=>{novoT+=f.novo||0;recorT+=_recf(f);});}}
  let perdasRS,entradasRS,saldoRS;
  if(isRede){perdasRS=Object.values(lossU).reduce((a,b)=>a+b,0);entradasRS=Object.values(gainU).reduce((a,b)=>a+b,0);saldoRS=entradasRS-perdasRS;}
  else{const tk=ticketU(state.unit);perdasRS=perdasTot*tk;entradasRS=novosTot*tk;saldoRS=saldoTot*tk;}
@@ -1230,7 +1231,7 @@ function renderPerdas(L){
    card(perdasTot,'Perdas no período',C.red,'− '+BRL(perdasRS),cmpP(wPerdas,false,true))
   +card(pct0(churnAvg),'Churn médio/mês',churnAvg>=0.06?C.red:churnAvg>=0.04?C.yellow:C.green,'',cmpP(wChurn,true,true))
   +(hasFlow
-    ?'<div class="panel" style="padding:14px 16px"><div style="font-size:25px;font-weight:800;line-height:1;color:'+C.green+'">'+novosTot+'</div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-top:6px">Entradas (novos)</div><div style="font-size:14px;font-weight:800;color:'+C.green+';margin-top:5px">+ '+BRL(entradasRS)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><span class="adtag2" style="background:'+C.green+';color:#fff" title="Nova matrícula: 1a vez na rede (nunca teve cadastro antes)">🆕 '+novoT+' nova'+(novoT===1?'':'s')+'</span><span class="adtag2" style="background:'+C.orange+';color:#fff" title="Renovação: já era aluno, contrato renovado após lapso curto (≤'+(DATA.renovGap||2)+'m)">🔄 '+renovT+' renov.</span><span class="adtag2" style="background:'+C.blue+';color:#fff" title="Retorno: já era aluno, voltou após lapso longo (evadiu e voltou)">↩ '+retT+' retorno</span></div>'+cmpP(wNovos,false,false)+'</div>'
+    ?'<div class="panel" style="padding:14px 16px"><div style="font-size:25px;font-weight:800;line-height:1;color:'+C.green+'">'+novosTot+'</div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-top:6px">Entradas (novos)</div><div style="font-size:14px;font-weight:800;color:'+C.green+';margin-top:5px">+ '+BRL(entradasRS)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><span class="adtag2" style="background:'+C.green+';color:#fff" title="Nova matrícula: 1a vez na rede (nunca teve cadastro antes)">🆕 '+novoT+' nova'+(novoT===1?'':'s')+' matrícula'+(novoT===1?'':'s')+'</span><span class="adtag2" style="background:'+C.blue+';color:#fff" title="Recorrente: já teve cadastro antes (renovação OU retorno juntos — a separação exige o histórico de contratos, em construção)">↩ '+recorT+' recorrente'+(recorT===1?'':'s')+'</span></div>'+cmpP(wNovos,false,false)+'</div>'
     :card(novosTot,'Entradas (novos)',C.green,'+ '+BRL(entradasRS),cmpP(wNovos,false,false)))
   +card((saldoTot>=0?'+':'')+saldoTot,'Saldo líquido',saldoTot>=0?C.green:C.red,'',cmpP(wSaldo,false,false));
  const _cc=document.getElementById('perdasCmpCap');
