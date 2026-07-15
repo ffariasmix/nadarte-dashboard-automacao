@@ -518,6 +518,22 @@ def main():
             if not key:
                 print(f"[sit skip] {uk}: sem secret", file=sys.stderr); return None
             full = roster_full(key)
+            # [contrato-dump] Fase 1a: a API expoe DATAS por contrato e MULTIPLOS contratos por aluno?
+            # PII-safe: imprime so contagem de contratos, nomes das chaves do item e as datas achadas (AAAA-MM).
+            if os.environ.get("PACTO_CONTRATO_DUMP") == "1":
+                _atv = [c for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO"][:5]
+                _dk = ("inicio", "fim", "data", "venc", "vig", "dt")   # pistas de campo de data
+                for c in _atv:
+                    M = gv(c, "matricula") or gv(c, "codigoCliente", "codigo")
+                    st3, o3 = gj(key, f"/v1/contrato/matricula/{M}")
+                    its = lst(o3)
+                    print(f"[contrato] {uk}: cliente ATIVO tem {len(its)} contrato(s)", file=sys.stderr)
+                    for it in its[:4]:
+                        if not isinstance(it, dict): continue
+                        ks = sorted(it.keys())
+                        datas = {k: (to_date(it[k]).strftime("%Y-%m") if to_date(it[k]) else None)
+                                 for k in ks if any(p in k.lower() for p in _dk)}
+                        print(f"   keys={ks} | datas={datas}", file=sys.stderr)
             dist = Counter(str(gv(c, "situacao") or "?").upper() for c in full)
             atv   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO")
             atr   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() in ("ATIVO", "TRANCADO"))
