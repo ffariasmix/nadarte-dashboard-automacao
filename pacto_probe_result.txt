@@ -1,4 +1,14 @@
 [roster] 10562/None clientes coletados
+[contrato] Natal: cliente ATIVO tem 1 contrato(s)
+   keys=['codigo', 'descricao'] | datas={}
+[contrato] Natal: cliente ATIVO tem 1 contrato(s)
+   keys=['codigo', 'descricao'] | datas={}
+[contrato] Natal: cliente ATIVO tem 1 contrato(s)
+   keys=['codigo', 'descricao'] | datas={}
+[contrato] Natal: cliente ATIVO tem 1 contrato(s)
+   keys=['codigo', 'descricao'] | datas={}
+[contrato] Natal: cliente ATIVO tem 1 contrato(s)
+   keys=['codigo', 'descricao'] | datas={}
 [sit] Natal: total=10562 dist={'INATIVO': 8172, 'ATIVO': 555, 'VISITANTE': 1797, 'TRANCADO': 38} | ATIVO=555 ATIVO+TRANC=593 contrato=606 ATIVO|contrato=606
 [sitM] Natal: ativo/mes=[374, 465, 526, 534, 565, 597, 606] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
 [sitS] Natal: fim-de-contrato caindo no mes=[1, 8, 32, 35, 31, 27, 45] (fonte do churn)
