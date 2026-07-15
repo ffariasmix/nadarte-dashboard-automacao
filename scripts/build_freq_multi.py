@@ -57,7 +57,13 @@ CAT_OUT="Outros"
 # que incluem Fitness; alunos exclusivos de Agua/Luta ficam de fora da analise de frequencia.
 LAGO_UNIT = "LagoNorte"
 LAGO_FIT_CATS = {CAT_FIT, CAT_AF, CAT_FL, CAT_AFL}
-LAGO_EXCLUDED = set()   # (unit,key) excluidos por nao passar pela catraca
+LAGO_EXCLUDED = set()   # (unit,key) Lago Norte sem catraca (Agua/Luta) — usado no aviso/contagem do Lago
+FREQ_BLIND = set()      # (unit,key) CEGOS DE CATRACA no geral: entram no CHURN, saem da FREQUENCIA
+# Natal (RN): unidade com histórico de contrato (churn ok), mas catraca so a partir de 01/07/2026.
+# Ate a catraca ter massa, a unidade INTEIRA fica cega de catraca (churn sim, frequencia nao).
+# Liga a frequencia com PACTO_NATAL_FREQ=1 (previsto ~ago/26, quando julho fechar).
+NATAL_UNIT = "Natal"
+NATAL_FREQ = os.environ.get("PACTO_NATAL_FREQ", "0") == "1"
 
 def deaccent(s):
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
@@ -262,7 +268,9 @@ for mk, path in alunos_files.items():
             # CONTRATO, sem depender de acesso), mas ficam FORA dos sinais de FREQUENCIA
             # (senao virariam falso "sumido"). So marca aqui; segue e entra em active/attrs.
             if unit == LAGO_UNIT and grupo not in LAGO_FIT_CATS:
-                LAGO_EXCLUDED.add((unit, key))   # cego de catraca (fora so da frequencia)
+                LAGO_EXCLUDED.add((unit, key)); FREQ_BLIND.add((unit, key))   # Lago sem catraca (Agua/Luta)
+            elif unit == NATAL_UNIT and not NATAL_FREQ:
+                FREQ_BLIND.add((unit, key))   # Natal: catraca nova (jul/26) sem massa -> churn sim, frequencia nao
             active[(pos,unit)].add(key)
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
@@ -437,7 +445,7 @@ students=[]
 for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' durante a iteracao
     if pos!=base_pos: continue
     for key in keys:
-        if (unit,key) in LAGO_EXCLUDED: continue   # cego de catraca: fora da FREQUENCIA (sem acesso p/ medir)
+        if (unit,key) in FREQ_BLIND: continue   # cego de catraca: fora da FREQUENCIA (sem acesso p/ medir)
         a = attrs[base_pos].get((unit,key),{})
         ac = [acc.get((unit,mm),{}).get(key,0) for mm in range(NMONTHS)]
         act= [1 if key in active.get((mm,unit),()) else 0 for mm in range(NMONTHS)]  # .get: nao cria chave em defaultdict
@@ -525,9 +533,9 @@ for unit in UNIT_KEYS:
                       "byCat":cC,"bySex":cS,"byBand":cB})
         # pre-perda usa ACESSO da catraca -> cego de catraca fica de fora (nao tem sinal de acesso)
         for mat in perdas:
-            if (unit,mat) not in LAGO_EXCLUDED: ev.append(acc[(unit,a)].get(mat,0))
+            if (unit,mat) not in FREQ_BLIND: ev.append(acc[(unit,a)].get(mat,0))
         for mat in retidos:
-            if (unit,mat) not in LAGO_EXCLUDED: ret.append(acc[(unit,a)].get(mat,0))
+            if (unit,mat) not in FREQ_BLIND: ret.append(acc[(unit,a)].get(mat,0))
     cm,cz=pre(ev); rm,rz=pre(ret)
     churn[unit]={"trans":trans,"pre":{"churnMean":cm,"churnZeroPct":cz,"retMean":rm,"retZeroPct":rz}}
     unit_data[unit]=(trans,ev,ret)
@@ -676,7 +684,7 @@ for _unit in UNIT_KEYS:
         _base = active.get((_m, _unit), set())
         _nx1 = active.get((_m+1, _unit), set()); _nx2 = active.get((_m+2, _unit), set())
         for _k in _base:
-            if (_unit,_k) in LAGO_EXCLUDED: continue   # cego de catraca: backtest mede o preditor por ACESSO
+            if (_unit,_k) in FREQ_BLIND: continue   # cego de catraca: backtest mede o preditor por ACESSO
             _churn = (_k not in _nx1) and (_k not in _nx2)
             _fl = _flag_at(_unit, _m, _k)
             if   _churn and _fl:       _TP+=1
@@ -771,6 +779,8 @@ out = {"students":students,"meses":MESES,"unidades":UNIDADES,"udps":UDPS,"backte
        "weekRef":REF_MON.isoformat(),"weeksKeep":WEEKS_KEEP,
        "lagoUnit":LAGO_UNIT,"lagoExcluded":len(LAGO_EXCLUDED),
        "lagoFitCats":sorted(LAGO_FIT_CATS),"renovGap":RENOV_GAP,
+       "natalUnit":("Natal" if os.environ.get("PACTO_ENABLE_NATAL")=="1" else ""),
+       "natalFreq":NATAL_FREQ,"natalChurnStart":"Mar.26","natalCatraca":"01/07/2026",
        "baseUpdated":meta.get("baseUpdated",""),
        "baseUpdatedBy":meta.get("baseUpdatedBy","") or meta.get("baseUpdatedByName","")}
 print(f"[lago] excluidos por nao passar pela catraca (Agua/Luta puros): {len(LAGO_EXCLUDED)}", file=sys.stderr)

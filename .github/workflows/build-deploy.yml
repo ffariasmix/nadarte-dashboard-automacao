@@ -27,6 +27,10 @@ concurrency:
 
 env:
   CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'nadarte-frequencia' }}
+  # Natal (RN): liga a unidade quando a Variable PACTO_ENABLE_NATAL=1 (churn desde mar/26).
+  # PACTO_NATAL_FREQ=1 liga a FREQUENCIA dela (previsto ~ago/26, quando a catraca tiver massa).
+  PACTO_ENABLE_NATAL: ${{ vars.PACTO_ENABLE_NATAL || '' }}
+  PACTO_NATAL_FREQ:   ${{ vars.PACTO_NATAL_FREQ || '' }}
 
 jobs:
   build-deploy:
@@ -65,6 +69,7 @@ jobs:
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
           PACTO_KEY_LAGONORTE: ${{ secrets.PACTO_KEY_LAGONORTE }}
           PACTO_KEY_LAGOSUL:   ${{ secrets.PACTO_KEY_LAGOSUL }}
+          PACTO_KEY_NATAL:     ${{ secrets.PACTO_KEY_NATAL }}
           # Fotos (PII): ligado so quando a Variable PACTO_FOTOS=1 existir no repo.
           # Pre-requisito: dashboard atras de Cloudflare Access. Adiciona ~1 chamada/aluno.
           PACTO_FOTOS: ${{ vars.PACTO_FOTOS || '' }}

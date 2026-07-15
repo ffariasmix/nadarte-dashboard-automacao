@@ -317,6 +317,7 @@ header.top{position:static!important}
 </div></div></div>
 <main class="wrap">
 <div id="lagoNote" class="lagonote" style="display:none"></div>
+<div id="natalNote" class="lagonote" style="display:none"></div>
 
 <section class="section active" id="tab-geral">
 <div id="execPanel" style="margin-bottom:20px"></div>
@@ -1411,4 +1412,5 @@ function downloadCSV(){
 })();
 </script>
 <script>(function(){try{var n=document.getElementById('lagoNote');if(!n||typeof DATA==='undefined')return;var ex=(DATA.lagoExcluded||0);var cats=(DATA.lagoFitCats||['Fitness','Ambos (Água + Fitness)','Ambos (Fitness + Luta)','Ambos (Água + Fitness + Luta)']).join(', ');n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<details class="alertDet"><summary><b>Lago Norte — catraca só no ambiente fitness.</b>'+(ex?(' <span class="muted">('+ex+' fora só da frequência · toque para entender)</span>'):' <span class="muted">(toque para entender)</span>')+'</summary><div>A piscina não tem catraca, então alunos <b>exclusivos de Água ou Luta</b> não registram acesso e apareceriam como \'sumidos\' por artefato de dado. Por isso '+(ex?('<b>'+ex+'</b> aluno(s) dessas categorias ficam'):'esses alunos ficam')+' <b>fora só dos números de frequência</b> (aderência, "sumiu", score, risco). Eles <b>seguem contando na base e no churn/retenção</b> do Lago Norte e da Rede — medidos por <b>contrato</b>, não por catraca. Na frequência só entram: '+cats+'. Fica completo quando houver catraca na piscina.</div></details>';n.style.display='';}catch(e){}})();</script>
+<script>(function(){try{var n=document.getElementById('natalNote');if(!n||typeof DATA==='undefined'||!DATA.natalUnit)return;var freqOn=!!DATA.natalFreq;n.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2 2 20h20L12 2z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>'+'<details class="alertDet"><summary><b>Natal (RN) — unidade nova na rede.</b> <span class="muted">(toque para entender)</span></summary><div>A Natal entrou na rede agora. <b>Retenção/churn</b> valem <b>desde '+(DATA.natalChurnStart||'Mar.26')+'</b> (medidos por contrato; jan–fev foram rampa de migração do cadastro e ficam fora). '+(freqOn?'A <b>frequência</b> (aderência, "sumiu", score, risco) já está ligada.':'A <b>frequência</b> (aderência, "sumiu", score, risco) ainda <b>não entra</b>: a catraca começou em <b>'+(DATA.natalCatraca||'01/07/2026')+'</b> e precisa acumular massa (previsto ~ago/26). Até lá a Natal conta só no <b>churn/retenção</b>, não na frequência.')+'</div></details>';n.style.display='';}catch(e){}})();</script>
 </body></html>

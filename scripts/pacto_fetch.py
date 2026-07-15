@@ -106,7 +106,7 @@ UNITS = [
 # Natal (RN): unidade NOVA, catraca confiavel desde 01/07/2026. DESLIGADA por padrao
 # (nao entra no build/deploy nem na Rede) ate a Variable/flag PACTO_ENABLE_NATAL=1.
 # Quando ligada, so aparece de jul/26 em diante (trava UNIT_START -> sem historico falso Jan-Jun).
-UNIT_START = {"Natal": (2026, 7)}   # (ano, mes) minimo em que a unidade aparece
+UNIT_START = {"Natal": (2026, 3)}   # (ano, mes) minimo em que a unidade aparece (mar/26: jan-fev = rampa de migracao)
 if os.environ.get("PACTO_ENABLE_NATAL") == "1":
     UNITS.append(("Natal", "Natal (RN)", "PACTO_KEY_NATAL"))
 
