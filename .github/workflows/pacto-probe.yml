@@ -1,7 +1,12 @@
 name: PACTO API — Probe de schema (716 Norte)
 
 on:
-  workflow_dispatch: {}   # canario manual apenas (sem gatilho por push)
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Limitar a 1 unidade (ex.: Natal). Vazio = todas as unidades.'
+        required: false
+        default: 'Natal'
 
 permissions:
   contents: write
@@ -25,6 +30,7 @@ jobs:
         env:
           PACTO_SITPROBE: '1'
           PACTO_ENABLE_NATAL: '1'   # inclui a Natal (RN) APENAS neste probe (nao afeta o build/deploy)
+          PACTO_ONLY: ${{ github.event.inputs.only }}   # limita a 1 unidade (default Natal) -> probe rapido
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
@@ -45,9 +51,14 @@ jobs:
           PY
 
       - name: Commitar resultado (PII-safe)
+        continue-on-error: true   # push race (main avancou durante o probe) NAO pode avermelhar o run
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pacto_probe_result.txt
-          git commit -m "canario 716N coletor [skip ci]" || echo "sem mudanca"
-          git push
+          git commit -m "probe: resultado [skip ci]" || { echo "sem mudanca"; exit 0; }
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && { echo "push ok"; exit 0; }
+            echo "push rejeitado (main avancou), tentativa $i; re-tentando..."; sleep 3
+          done
+          echo "nao conseguiu push apos 5 tentativas (resultado ficou so no run)"

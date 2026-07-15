@@ -391,7 +391,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO","INICIO CONTRATO"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -401,7 +401,7 @@ def write_alunos_wb(path, unit_label_to_rows):
         ws.append(AL_HEADER)
         for r in rows:
             ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"], r.get("fim",""),
-                       r.get("foto",""), r.get("prof",""), r.get("profRole","")])
+                       r.get("foto",""), r.get("prof",""), r.get("profRole",""), r.get("ini","")])
     wb.save(path)
 
 def write_catraca_wb(path, sheets):
@@ -543,9 +543,11 @@ def main():
             churn_pct = [round(100*perdas_m[i]/base_m[i], 1) if base_m[i] else 0 for i in range(len(perdas_m))]
             print(f"[sitC] {uk}: perdas/mes={perdas_m} base/mes={base_m} churn%={churn_pct}", file=sys.stderr)
             return (uk, atv, atr, contr, aoc)
+        _only = os.environ.get("PACTO_ONLY", "").strip()   # limita o probe a 1 unidade (ex.: Natal) -> rapido
+        _probe_units = [t for t in UNITS if not _only or t[0] == _only]
         res = []
         with ThreadPoolExecutor(max_workers=5) as ex:
-            for r in ex.map(analyze, UNITS):
+            for r in ex.map(analyze, _probe_units):
                 if r: res.append(r)
         labels = ["ATIVO", "ATIVO+TRANC", "contrato(cobre Jun)", "ATIVO|contrato"]
         for i, name in enumerate(labels):

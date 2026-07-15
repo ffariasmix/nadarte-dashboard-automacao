@@ -220,6 +220,17 @@ for mk, path in alunos_files.items():
                 NAME2CPF.setdefault((unit,nome), cpf)
 print(f"[info] ponte nome->CPF: {len(NAME2CPF)} nomes mapeados", file=sys.stderr)
 
+def plano_of(ini_iso, fim_iso):
+    """Prazo do plano pelo intervalo inicio->fim do contrato -> (rotulo, meses padrao).
+    Sem uma das datas, retorna ('?',0). Arredonda pro plano padrao mais proximo."""
+    di=parse_dt(ini_iso); df=parse_dt(fim_iso)
+    if not di or not df: return ("?", 0)
+    m=(df.year-di.year)*12 + (df.month-di.month)   # diff de meses (limite exato: Jul->Ago = 1)
+    if m<=0: return ("?", 0)
+    cand=[(1,"Mensal"),(2,"Bimestral"),(3,"Trimestral"),(6,"Semestral"),(12,"Anual")]
+    meses,rot=min(((mm,rr) for mm,rr in cand), key=lambda c:abs(c[0]-m))
+    return (rot, meses)
+
 # ---- parse alunos: active[(pos,unit)] = set(mat); attrs[pos][(unit,mat)] ----
 active = defaultdict(set); attrs = defaultdict(dict)
 for mk, path in alunos_files.items():
@@ -236,6 +247,7 @@ for mk, path in alunos_files.items():
         c_dm=find_col(colmap,"DATA MATRICULA","DATA DE MATRICULA","DT MATRICULA","DATA MATR")
         c_foto=find_col(colmap,"FOTO"); c_prof=find_col(colmap,"PROF NOME","PROFESSOR"); c_prole=find_col(colmap,"PROF TIPO","PROF FOTO")
         c_venc=find_col(colmap,"VENCIMENTO","FIM CONTRATO","DATA FIM","VENC","FIM")
+        c_ini=find_col(colmap,"INICIO CONTRATO","INICIO DO CONTRATO")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -255,13 +267,16 @@ for mk, path in alunos_files.items():
             nasc = r[c_nasc] if (c_nasc is not None and c_nasc<len(r)) else None
             bm,bd,by = parse_birth(nasc)
             _cell=lambda ci: (str(r[ci]).strip() if (ci is not None and ci<len(r) and r[ci] is not None) else "")
+            _venc_iso = (parse_dt(r[c_venc]).isoformat() if (c_venc is not None and c_venc<len(r) and parse_dt(r[c_venc])) else "")
+            _ini_iso  = (parse_dt(r[c_ini]).isoformat()  if (c_ini  is not None and c_ini<len(r)  and parse_dt(r[c_ini]))  else "")
+            _plano_rot, _plano_m = plano_of(_ini_iso, _venc_iso)   # mensal/bi/tri/sem/anual pelo prazo real
             attrs[pos][(unit,key)] = {
                 "nome": nome_v, "mat": mat,
                 "grupo": grupo, "mod": str(mod or "").strip(),
                 "sexo": sexo_of(r[c_sexo]) if (c_sexo is not None and c_sexo<len(r)) else "N/D",
                 "band": band_of(BAND_REF,by,bm,bd), "bm":bm,"bd":bd,"by":by,
                 "dm": (parse_dt(r[c_dm]).isoformat() if (c_dm is not None and c_dm<len(r) and parse_dt(r[c_dm])) else ""),
-                "venc": (parse_dt(r[c_venc]).isoformat() if (c_venc is not None and c_venc<len(r) and parse_dt(r[c_venc])) else ""),
+                "venc": _venc_iso, "ini": _ini_iso, "plano": _plano_rot, "termoMeses": _plano_m,
                 "foto": _cell(c_foto), "prof": _cell(c_prof), "profRole": _cell(c_prole),
             }
 
@@ -434,7 +449,7 @@ for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' du
             "grupo":a.get("grupo","Outros"),"mod":a.get("mod","")[:40],
             "sexo":a.get("sexo","N/D"),"band":a.get("band","N/D"),"dps":UDPS[unit],
             "bm":a.get("bm"),"bd":a.get("bd"),"by":a.get("by"),"ac":ac,"active":act,"fs":fs_index(key),"fa":(first_acc[key].isoformat() if key in first_acc else ""),"dm":a.get("dm",""),
-            "venc":a.get("venc",""),"ult":(last_acc[key].isoformat() if key in last_acc else ""),"wk":week_acc.get(key,[0]*WEEKS_KEEP),
+            "venc":a.get("venc",""),"ini":a.get("ini",""),"plano":a.get("plano",""),"termoMeses":a.get("termoMeses",0),"ult":(last_acc[key].isoformat() if key in last_acc else ""),"wk":week_acc.get(key,[0]*WEEKS_KEEP),
             "score":_sc["score"],"scoreBand":_sc["band"],"scorePrio":_sc["prio"],"scoreConf":_sc["conf"],"scoreReasons":_sc["reasons"],"scoreJustif":(_sc["justif"] or ""),
             "foto":a.get("foto",""),"prof":a.get("prof",""),"profRole":a.get("profRole",""),
         })
