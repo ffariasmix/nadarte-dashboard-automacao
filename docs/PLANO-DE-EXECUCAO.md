@@ -1,7 +1,7 @@
 # Plano de Execução — Inteligência de Retenção Nad'Arte
 
 > **Painel executivo (tabela viva).** Atualizado a cada entrega.
-> Última leva: **Lago Norte com churn completo** (era 0% por bug) + **fix "Perfil de quem sai"** (byCat/sexo/faixa vazios por lookup de carência) — deploys #99–#103.
+> Última leva: **mês parcial** (fim do falso saldo) + **régua ×12 honesta** (comprometido em contrato) + **entradas em 2 vias** (Nova × Recorrente, KPI e gráfico) + **Natal (RN)** pronta/desligada — deploys #104–#109. Renovação↔retorno **parkeado** (API não expõe histórico de contratos).
 
 **Independente?** = dá pra avançar **agora**, sem esperar o run atual (#83) nem terceiros:
 🟢 Sim · 🟡 Construo agora, confirmo num run · 🔴 Bloqueado (dado/integração/ação sua)
@@ -36,17 +36,26 @@
 
 ---
 
+## ✅ Concluído nesta leva (deploys #104–#109)
+
+| Ação | Entrega | Status |
+|---|---|---|
+| **Movimentação — mês parcial** | Entradas reais do mês em curso (filtro cirúrgico por início de contrato) + barra parcial clareada. Matou o falso saldo (Jun→Jul −230 → −9) | ✅ no ar |
+| **Prazo de contrato + fim do ×12** | Deriva plano (mensal/bi/tri/sem/anual) por `ini`/`fim`; receita em risco vira **"comprometido em contrato"** (ticket × prazo), líder = /mês | ✅ no ar |
+| **Entradas em 2 vias** | 🆕 Nova matrícula × ↩ Recorrente (KPI **e** gráfico empilhado). Honesto | ✅ no ar |
+| **Natal (RN) — Opção A** | Código pronto e **desligado por flag**. Churn desde mar/26, frequência gated (cego de catraca) até `PACTO_NATAL_FREQ`. Liga em ago/26 | 🟡 pronto (você liga em ago) |
+
+---
+
 ## 🔜 A fazer (ordenado por prioridade)
 
 | # | Ação | Entrega | Independente? | Depende de |
 |---|---|---|---|---|
-| 1 | **Movimentação — mês parcial** | Trazer entradas reais do mês em curso (filtro cirúrgico por data de matrícula, só os novos) + **clarear** a barra parcial. Mata o falso saldo negativo (ex.: Jun→Jul −230) | 🟢 Sim | nada |
-| 2 | **Prazo de contrato + fim do ×12** | Derivar mensal/bi/tri/sem/anual (fim−início) → **P&L de retenção honesto** (receita recorrente líquida; anualizar só onde o contrato compromete); segmentar por plano | 🟢 Sim | `ini`/`fim` já vêm da API (hoje o `ini` é descartado) |
-| 3 | **Natal (RN) — 6ª unidade** | Código pronto e **desligado por flag** (`PACTO_ENABLE_NATAL`); trava de início jul/26 | 🟡 | rodar o **probe** → go-live ago (freq) / set (churn) + confirmar ticket real |
 | 4 | **App Treino → diagnóstico de churn** | (a) perfil de uso do app de quem sai → (b) diagnóstico → (c) **alimenta o risco**, só após **validar no backtest** | 🔴 | massa: churn × uso do app acumulados |
 | 5 | **Análise de causa** | **Por que** saem (por unidade/modalidade) | 🔴 | ~1 mês de execuções acumuladas |
 | 6 | **Recalibração automática** | Modelo se reajusta com os desfechos | 🔴 | histórico de score+resultado (já acumulando) |
 | 7 | **Next Best Action + A/B** | Recomendar e testar abordagem por perfil | 🔴 | histórico do #4/#5 |
+| — | **Renovação × Retorno** (dentro de "recorrente") | Separar renovação (retenção) de retorno (reconquista) | ⏸️ | **parkeado — API não expõe histórico de contratos** (probe #54: 1 contrato, só codigo+descricao). Só via ledger de presença acumulado (set/out) |
 | — | **Ticket real/aluno · Financeiro · CRM/WhatsApp/NPS** | Integrações que dão mais sinal ao score | 🔴 | API não expõe / não existe |
 | — | **Fotos aluno/professor · Hipóteses de IA** | — | ⏸️ | parkeado (decisão sua) |
 
@@ -54,6 +63,6 @@
 
 ## 🟢 Sequência de execução
 
-**#1 → #2** (corrigem número no ar, sem dependência) → **probe da Natal (#3)** em paralelo → **#4/#5** quando houver massa de dados.
+Próximo com valor: **#5 Análise de causa** e **#6 Recalibração** — destravam com ~1 mês de execuções acumuladas.
 
 **Como leio esta tabela pra você:** a cada entrega, movo a linha pra "Concluído", atualizo a última leva e reordeno o "a fazer". Você sempre vê **o próximo passo e o quanto já andamos**.
