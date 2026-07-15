@@ -31,7 +31,7 @@ jobs:
           PACTO_SITPROBE: '1'
           PACTO_ENABLE_NATAL: '1'   # inclui a Natal (RN) APENAS neste probe (nao afeta o build/deploy)
           PACTO_ONLY: ${{ github.event.inputs.only }}   # limita a 1 unidade (default Natal) -> probe rapido
-          PACTO_CONTRATO_DUMP: '1'  # Fase 1a: dump PII-safe da estrutura de contrato (datas por contrato?)
+          # PACTO_CONTRATO_DUMP: '1'  # descoberta feita (contrato = codigo+descricao, sem datas). Religar so se precisar.
           PACTO_KEY_716NORTE:  ${{ secrets.PACTO_KEY_716NORTE }}
           PACTO_KEY_905SUL:    ${{ secrets.PACTO_KEY_905SUL }}
           PACTO_KEY_604NORTE:  ${{ secrets.PACTO_KEY_604NORTE }}
