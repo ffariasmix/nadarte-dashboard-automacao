@@ -467,10 +467,17 @@ for _u, _lst in _by_unit.items():
 print(f"[calib] prioridade por capacidade: P0={P0_FRAC:.0%}/unid (piso score {P0_FLOOR}), P1={P1_FRAC:.0%}, P2={P2_FRAC:.0%}", file=sys.stderr)
 
 # ---- churn set-based (secao 8) ----
+# attrs "achatado" por (unit,key): grupo/sexo/faixa nao mudam mes a mes. Resolve o caso em que a
+# PERDA (por carencia) vem de um mes ANTERIOR ao 'pos' consultado -> antes o profile achava vazio
+# (byCat/bySex/byBand saiam vazios em TODA transicao -> "Perfil de quem sai" vazio em todo filtro).
+attrs_flat = {}
+for _p in range(NMONTHS):
+    for _uk, _a in attrs.get(_p, {}).items():
+        attrs_flat[_uk] = _a   # ultima posicao vence (dados mais recentes do aluno)
 def profile(mats, pos, unit):
     cat=Counter(); sex=Counter(); bnd=Counter()
     for mat in mats:
-        a=attrs[pos].get((unit,mat))
+        a=attrs_flat.get((unit,mat))
         if not a: continue
         cat[a["grupo"]]+=1; sex[a["sexo"]]+=1; bnd[a["band"]]+=1
     return dict(cat),dict(sex),dict(bnd)
