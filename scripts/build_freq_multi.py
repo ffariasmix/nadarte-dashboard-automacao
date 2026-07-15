@@ -524,28 +524,6 @@ for unit in ["REDE"]+UNIT_KEYS:
             warns.append(f"{unit} {tr[i]['de']}->{tr[i]['para']}: {exp}!={tr[i+1]['base']}")
 print(("[WARN] consistencia churn:\n  "+"\n  ".join(warns)) if warns else "[ok] consistencia churn fecha", file=sys.stderr)
 
-# ---- DEBUG LAGO NORTE (temporario): grava o que o BUILD realmente ve, p/ achar o churn 0 ----
-try:
-    def _actm(u): return [len(active.get((p,u),())) for p in range(NMONTHS)]
-    def _churnm(u):
-        tr = churn.get(u,{}).get("trans",[])
-        return [{"de":t["de"],"para":t["para"],"perdas":t["perdas"],"base":t["base"],
-                 "pct": round(100*t["perdas"]/t["base"],1) if t["base"] else 0} for t in tr]
-    _lago_dbg = {
-        "meses": MESES,
-        "alunos_files_meses": sorted(f"{y}-{m:02d}" for (y,m) in alunos_files.keys()),
-        "n_alunos_files": len(alunos_files),
-        "LAGO_EXCLUDED": len(LAGO_EXCLUDED),
-        "LagoNorte_active_por_mes": _actm("LagoNorte"),
-        "LagoNorte_churn": _churnm("LagoNorte"),
-        "LagoSul_active_por_mes": _actm("LagoSul"),
-        "LagoSul_churn": _churnm("LagoSul"),
-    }
-    with open("lago_debug.json","w") as _f: json.dump(_lago_dbg,_f,ensure_ascii=False,indent=1)
-    print(f"[dbg-lago] n_alunos_files={len(alunos_files)} LAGO_EXCLUDED={len(LAGO_EXCLUDED)} active/mes(LagoNorte)={_actm('LagoNorte')}", file=sys.stderr)
-except Exception as _e:
-    print(f"[dbg-lago] erro: {_e}", file=sys.stderr)
-
 # ---- Fundacao v2: fluxos retido/saiu/novo/voltou (usa ledger/ym_of definidos acima) ----
 def flows_for(scope):
     units = UNIT_KEYS if scope=="REDE" else [scope]

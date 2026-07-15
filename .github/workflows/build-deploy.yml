@@ -201,10 +201,10 @@ jobs:
         continue-on-error: true   # bump de versao e cosmetico: nao pode derrubar o run (deploy ja ocorreu)
         run: |
           echo "${{ steps.meta.outputs.new_ver }}" > version.txt
-          if ! git diff --quiet version.txt presenca.json score_history.json ledger.json lago_debug.json; then
+          if ! git diff --quiet version.txt presenca.json score_history.json ledger.json; then
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add version.txt presenca.json score_history.json ledger.json lago_debug.json
+            git add version.txt presenca.json score_history.json ledger.json
             git commit -m "chore: bump versao ${{ steps.meta.outputs.new_ver }} + feeds presenca/score_history/ledger [skip ci]"
             # o main pode ter avancado durante o run (push manual) -> rebase antes e re-tenta
             for i in 1 2 3; do
