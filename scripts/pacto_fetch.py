@@ -308,6 +308,8 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
             "dm": to_date(gv(dp, "dataMatricula")) or ini,
             "ini": ini, "fim": fim, "sit": sit,
             "foto": foto, "prof": prof, "profRole": prof_role,
+            "email": (gv(dp, "email", "emailPrincipal", "eMail", "email1") or "").strip(),
+            "tel": (gv(dp, "celular", "telefoneCelular", "celular1", "telefone", "fone", "telefone1") or ""),
         }
         dates = []
         acc_ok = True
@@ -391,7 +393,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO","INICIO CONTRATO"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO","INICIO CONTRATO","EMAIL","TELEFONE"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -401,7 +403,8 @@ def write_alunos_wb(path, unit_label_to_rows):
         ws.append(AL_HEADER)
         for r in rows:
             ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"], r.get("fim",""),
-                       r.get("foto",""), r.get("prof",""), r.get("profRole",""), r.get("ini","")])
+                       r.get("foto",""), r.get("prof",""), r.get("profRole",""), r.get("ini",""),
+                       r.get("email",""), r.get("tel","")])
     wb.save(path)
 
 def write_catraca_wb(path, sheets):

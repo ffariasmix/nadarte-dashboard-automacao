@@ -254,6 +254,7 @@ for mk, path in alunos_files.items():
         c_foto=find_col(colmap,"FOTO"); c_prof=find_col(colmap,"PROF NOME","PROFESSOR"); c_prole=find_col(colmap,"PROF TIPO","PROF FOTO")
         c_venc=find_col(colmap,"VENCIMENTO","FIM CONTRATO","DATA FIM","VENC","FIM")
         c_ini=find_col(colmap,"INICIO CONTRATO","INICIO DO CONTRATO")
+        c_email=find_col(colmap,"EMAIL","E-MAIL"); c_tel=find_col(colmap,"TELEFONE","CELULAR","FONE")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -286,6 +287,7 @@ for mk, path in alunos_files.items():
                 "dm": (parse_dt(r[c_dm]).isoformat() if (c_dm is not None and c_dm<len(r) and parse_dt(r[c_dm])) else ""),
                 "venc": _venc_iso, "ini": _ini_iso, "plano": _plano_rot, "termoMeses": _plano_m,
                 "foto": _cell(c_foto), "prof": _cell(c_prof), "profRole": _cell(c_prole),
+                "email": _cell(c_email), "tel": _cell(c_tel),
             }
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----
@@ -460,6 +462,7 @@ for (pos,unit),keys in list(active.items()):   # snapshot: nao mutar 'active' du
             "venc":a.get("venc",""),"ini":a.get("ini",""),"plano":a.get("plano",""),"termoMeses":a.get("termoMeses",0),"ult":(last_acc[key].isoformat() if key in last_acc else ""),"wk":week_acc.get(key,[0]*WEEKS_KEEP),
             "score":_sc["score"],"scoreBand":_sc["band"],"scorePrio":_sc["prio"],"scoreConf":_sc["conf"],"scoreReasons":_sc["reasons"],"scoreJustif":(_sc["justif"] or ""),
             "foto":a.get("foto",""),"prof":a.get("prof",""),"profRole":a.get("profRole",""),
+            "email":a.get("email",""),"tel":a.get("tel",""),"novoCad":_is_novo,
         })
 students.sort(key=lambda s:(s["u"],int(s["mat"]) if str(s["mat"]).isdigit() else 0))
 

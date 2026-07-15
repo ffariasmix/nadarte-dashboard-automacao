@@ -201,6 +201,24 @@ jobs:
           echo "Linhas SQL: $(wc -l < agenda_week.sql)"; head -c 300 agenda_week.sql; echo
           npx --yes wrangler@3 d1 execute nadarte_agenda --remote --file=agenda_week.sql
 
+      - name: Gerar Listagem de Alunos Ativos (.xlsx)
+        if: ${{ always() }}
+        continue-on-error: true   # a lista e aditiva: nunca pode derrubar o dashboard
+        run: |
+          test -f data/freq_multi.json || { echo 'freq_multi.json ausente; pulando lista.'; exit 0; }
+          python scripts/export_lista_xlsx.py data
+
+      - name: Enviar Listagem de Alunos Ativos para o Google Drive
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          GOOGLE_SA_KEY: ${{ secrets.GOOGLE_SA_KEY }}
+          GDRIVE_FOLDER_ID: ${{ vars.GDRIVE_LISTA_FOLDER_ID || '1-NTZIXe_XULn8FbMyw20qaQ4SZNCTxXR' }}
+        run: |
+          f=$(ls -1 data/'Listagem Alunos Ativos'*.xlsx 2>/dev/null | head -1)
+          test -n "$f" || { echo 'xlsx da lista ausente; pulando upload.'; exit 0; }
+          python scripts/drive_upload.py "$f"
+
       - name: Atualizar version.txt + presenca.json no repo
         if: ${{ github.event.inputs.deploy != 'false' }}
         continue-on-error: true   # bump de versao e cosmetico: nao pode derrubar o run (deploy ja ocorreu)
