@@ -1,37 +1,13 @@
-[roster] 7798/None clientes coletados
-[sit] LagoSul: total=7798 dist={'VISITANTE': 2211, 'INATIVO': 4891, 'ATIVO': 684, 'TRANCADO': 12} | ATIVO=684 ATIVO+TRANC=696 contrato=718 ATIVO|contrato=718
-[sitM] LagoSul: ativo/mes=[549, 574, 613, 650, 690, 725, 718] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
-[sitS] LagoSul: fim-de-contrato caindo no mes=[41, 53, 36, 35, 27, 25, 64] (fonte do churn)
-[sitF] LagoSul: fim-ano dos NAO-ativos = {2008: 6, 2009: 122, 2010: 173, 2011: 186, 2012: 175, 2013: 200, 2014: 239, 2015: 323, 2016: 336, 2017: 409, 2018: 296, 2019: 297, 2020: 286, 2021: 238, 2022: 419, 2023: 276, 2024: 303, 2025: 368, 2026: 244, 2027: 7, 'sem-fim': 2211}
-[sitC] LagoSul: perdas/mes=[41, 53, 36, 35, 27, 25] base/mes=[549, 574, 613, 650, 690, 725] churn%=[7.5, 9.2, 5.9, 5.4, 3.9, 3.4]
-[roster] 14326/None clientes coletados
-[sit] LagoNorte: total=14326 dist={'VISITANTE': 7409, 'INATIVO': 6007, 'ATIVO': 888, 'TRANCADO': 22} | ATIVO=888 ATIVO+TRANC=910 contrato=928 ATIVO|contrato=928
-[sitM] LagoNorte: ativo/mes=[735, 778, 840, 871, 903, 919, 928] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
-[sitS] LagoNorte: fim-de-contrato caindo no mes=[45, 54, 55, 40, 48, 34, 55] (fonte do churn)
-[sitF] LagoNorte: fim-ano dos NAO-ativos = {2008: 12, 2009: 176, 2010: 366, 2011: 212, 2012: 294, 2013: 385, 2014: 366, 2015: 339, 2016: 315, 2017: 367, 2018: 421, 2019: 343, 2020: 310, 2021: 272, 2022: 402, 2023: 410, 2024: 343, 2025: 380, 2026: 300, 2027: 16, 'sem-fim': 7409}
-[sitC] LagoNorte: perdas/mes=[45, 54, 55, 40, 48, 34] base/mes=[735, 778, 840, 871, 903, 919] churn%=[6.1, 6.9, 6.5, 4.6, 5.3, 3.7]
-[roster] 20480/None clientes coletados
-[sit] 604Norte: total=20480 dist={'VISITANTE': 8587, 'INATIVO': 10777, 'ATIVO': 1066, 'TRANCADO': 50} | ATIVO=1066 ATIVO+TRANC=1116 contrato=1141 ATIVO|contrato=1141
-[sitM] 604Norte: ativo/mes=[868, 901, 987, 1045, 1082, 1091, 1141] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
-[sitS] 604Norte: fim-de-contrato caindo no mes=[80, 65, 56, 49, 63, 53, 72] (fonte do churn)
-[sitF] 604Norte: fim-ano dos NAO-ativos = {2008: 17, 2009: 473, 2010: 391, 2011: 337, 2012: 453, 2013: 591, 2014: 679, 2015: 773, 2016: 711, 2017: 669, 2018: 784, 2019: 785, 2020: 647, 2021: 436, 2022: 616, 2023: 708, 2024: 672, 2025: 645, 2026: 416, 2027: 25, 'sem-fim': 8586}
-[sitC] 604Norte: perdas/mes=[80, 65, 56, 49, 63, 53] base/mes=[868, 901, 987, 1045, 1082, 1091] churn%=[9.2, 7.2, 5.7, 4.7, 5.8, 4.9]
-[roster] 17214/None clientes coletados
-[sit] 905Sul: total=17214 dist={'INATIVO': 9968, 'VISITANTE': 6288, 'ATIVO': 878, 'TRANCADO': 80} | ATIVO=878 ATIVO+TRANC=958 contrato=986 ATIVO|contrato=986
-[sitM] 905Sul: ativo/mes=[756, 827, 915, 943, 998, 1009, 986] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
-[sitS] 905Sul: fim-de-contrato caindo no mes=[50, 59, 62, 48, 46, 45, 68] (fonte do churn)
-[sitF] 905Sul: fim-ano dos NAO-ativos = {2008: 178, 2009: 509, 2010: 477, 2011: 403, 2012: 633, 2013: 543, 2014: 457, 2015: 550, 2016: 627, 2017: 582, 2018: 704, 2019: 736, 2020: 709, 2021: 388, 2022: 627, 2023: 513, 2024: 488, 2025: 506, 2026: 360, 2027: 58, 'sem-fim': 6288}
-[sitC] 905Sul: perdas/mes=[50, 59, 62, 48, 46, 45] base/mes=[756, 827, 915, 943, 998, 1009] churn%=[6.6, 7.1, 6.8, 5.1, 4.6, 4.5]
-[roster] 19315/None clientes coletados
-[sit] 716Norte: total=19315 dist={'VISITANTE': 5646, 'INATIVO': 12716, 'ATIVO': 933, 'TRANCADO': 20} | ATIVO=933 ATIVO+TRANC=953 contrato=984 ATIVO|contrato=984
-[sitM] 716Norte: ativo/mes=[816, 833, 901, 925, 972, 1004, 984] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
-[sitS] 716Norte: fim-de-contrato caindo no mes=[75, 50, 50, 34, 46, 51, 103] (fonte do churn)
-[sitF] 716Norte: fim-ano dos NAO-ativos = {2002: 937, 2003: 871, 2004: 516, 2005: 669, 2006: 639, 2007: 476, 2008: 370, 2009: 439, 2010: 557, 2011: 478, 2012: 504, 2013: 435, 2014: 403, 2015: 444, 2016: 411, 2017: 389, 2018: 403, 2019: 444, 2020: 338, 2021: 316, 2022: 533, 2023: 568, 2024: 562, 2025: 677, 2026: 346, 2027: 11, 'sem-fim': 5646}
-[sitC] 716Norte: perdas/mes=[75, 50, 50, 34, 46, 51] base/mes=[816, 833, 901, 925, 972, 1004] churn%=[9.2, 6.0, 5.5, 3.7, 4.7, 5.1]
-[REDE ATIVO] = 4449  (alvo Drive Jun/26 = 3956)
-[REDE ATIVO+TRANC] = 4633  (alvo Drive Jun/26 = 3956)
-[REDE contrato(cobre Jun)] = 4757  (alvo Drive Jun/26 = 3956)
-[REDE ATIVO|contrato] = 4757  (alvo Drive Jun/26 = 3956)
+[roster] 10562/None clientes coletados
+[sit] Natal: total=10562 dist={'INATIVO': 8172, 'ATIVO': 553, 'VISITANTE': 1798, 'TRANCADO': 39} | ATIVO=553 ATIVO+TRANC=592 contrato=605 ATIVO|contrato=605
+[sitM] Natal: ativo/mes=[374, 465, 526, 534, 565, 597, 605] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
+[sitS] Natal: fim-de-contrato caindo no mes=[1, 8, 32, 35, 31, 27, 45] (fonte do churn)
+[sitF] Natal: fim-ano dos NAO-ativos = {2000: 1, 2002: 29, 2003: 135, 2004: 350, 2005: 408, 2006: 370, 2007: 350, 2008: 377, 2009: 333, 2010: 345, 2011: 329, 2012: 370, 2013: 335, 2014: 315, 2015: 383, 2016: 350, 2017: 315, 2018: 297, 2019: 344, 2020: 385, 2021: 422, 2022: 424, 2023: 359, 2024: 319, 2025: 380, 2026: 167, 2027: 19, 'sem-fim': 1798}
+[sitC] Natal: perdas/mes=[1, 8, 32, 35, 31, 27] base/mes=[374, 465, 526, 534, 565, 597] churn%=[0.3, 1.7, 6.1, 6.6, 5.5, 4.5]
+[REDE ATIVO] = 553  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO+TRANC] = 592  (alvo Drive Jun/26 = 3956)
+[REDE contrato(cobre Jun)] = 605  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO|contrato] = 605  (alvo Drive Jun/26 = 3956)
 --- arquivos gerados (nomes/contagem, sem conteudo) ---
 sem manifest: [Errno 2] No such file or directory: 'data/manifest.json'
 bins: 0
