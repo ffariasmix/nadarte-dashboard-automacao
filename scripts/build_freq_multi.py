@@ -513,6 +513,27 @@ def pre(lst):
     n=len(lst); mean=round(sum(lst)/n,1) if n else 0
     zero=round(100*sum(1 for x in lst if x==0)/n) if n else 0
     return mean,zero
+# ---- Tempo de permanencia (tenure): dm -> mes de referencia (em meses) ----
+def _tenure_m(dm_iso, ref):
+    d=parse_dt(dm_iso)
+    if not d: return None
+    return max(0,(ref.year-d.year)*12+(ref.month-d.month))
+TENURE_BANDS=["0–3m","3–6m","6–12m","1–2 anos","2+ anos"]
+def _tband(m):
+    if m<3: return TENURE_BANDS[0]
+    if m<6: return TENURE_BANDS[1]
+    if m<12: return TENURE_BANDS[2]
+    if m<24: return TENURE_BANDS[3]
+    return TENURE_BANDS[4]
+def tenure_profile(mats, unit, ref):
+    c=Counter(); vals=[]
+    for mat in mats:
+        a=attrs_flat.get((unit,mat))
+        if not a: continue
+        tm=_tenure_m(a.get("dm",""), ref)
+        if tm is None: continue
+        vals.append(tm); c[_tband(tm)]+=1
+    return dict(c), (round(sum(vals)/len(vals),1) if vals else 0)
 
 trans_pairs=[(i,i+1) for i in range(NMONTHS-1)]
 # CARENCIA: "perda" so conta apos N meses de inatividade real (1 mes de lapso e perdoado).
@@ -531,9 +552,11 @@ for unit in UNIT_KEYS:
         A=act_g(a,unit); B=act_g(b,unit)   # base com carencia (nao mais o snapshot cru)
         perdas=A-B; novos=B-A; retidos=A&B
         cC,cS,cB=profile(perdas,a,unit)
+        _bref=datetime.date(ORDERED[b][0],ORDERED[b][1],1)   # mes em que saiu -> tenure = dm ate aqui
+        cT,tMean=tenure_profile(perdas,unit,_bref)
         trans.append({"de":MESES[a],"para":MESES[b],"perdas":len(perdas),"novos":len(novos),
                       "transf":0,"transfIn":0,"retidos":len(retidos),"base":len(A),
-                      "byCat":cC,"bySex":cS,"byBand":cB})
+                      "byCat":cC,"bySex":cS,"byBand":cB,"byTenure":cT,"tenureMean":tMean})
         # pre-perda usa ACESSO da catraca -> cego de catraca fica de fora (nao tem sinal de acesso)
         for mat in perdas:
             if (unit,mat) not in FREQ_BLIND: ev.append(acc[(unit,a)].get(mat,0))
@@ -544,13 +567,15 @@ for unit in UNIT_KEYS:
     unit_data[unit]=(trans,ev,ret)
 rede=[]; rede_ev=[]; rede_ret=[]
 for i,(a,b) in enumerate(trans_pairs):
-    perdas=novos=retidos=base=0; cC={};cS={};cB={}
+    perdas=novos=retidos=base=0; cC={};cS={};cB={};cT={};_twsum=0.0
     for unit in UNIT_KEYS:
         t=unit_data[unit][0][i]
         perdas+=t["perdas"]; novos+=t["novos"]; retidos+=t["retidos"]; base+=t["base"]
-        merge(cC,t["byCat"]); merge(cS,t["bySex"]); merge(cB,t["byBand"])
+        merge(cC,t["byCat"]); merge(cS,t["bySex"]); merge(cB,t["byBand"]); merge(cT,t.get("byTenure",{}))
+        _twsum += (t.get("tenureMean",0) or 0)*t["perdas"]
     rede.append({"de":MESES[a],"para":MESES[b],"perdas":perdas,"novos":novos,"transf":0,"transfIn":0,
-                 "retidos":retidos,"base":base,"byCat":cC,"bySex":cS,"byBand":cB})
+                 "retidos":retidos,"base":base,"byCat":cC,"bySex":cS,"byBand":cB,
+                 "byTenure":cT,"tenureMean":round(_twsum/perdas,1) if perdas else 0})
 for unit in UNIT_KEYS: rede_ev+=unit_data[unit][1]; rede_ret+=unit_data[unit][2]
 cm,cz=pre(rede_ev); rm,rz=pre(rede_ret)
 churn["REDE"]={"trans":rede,"pre":{"churnMean":cm,"churnZeroPct":cz,"retMean":rm,"retZeroPct":rz}}

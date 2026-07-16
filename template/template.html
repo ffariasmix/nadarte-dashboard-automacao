@@ -455,6 +455,10 @@ header.top{position:static!important}
 <div class="panel"><h3>Perdas por sexo</h3><div class="cwrap"><canvas id="cPerdSex"></canvas></div></div>
 <div class="panel"><h3 id="cPerdUnitH">Perdas por unidade</h3><div class="cwrap"><canvas id="cPerdUnit"></canvas></div><p class="cap" id="cPerdUnitCap"></p></div>
 </div>
+<div class="grid g2" style="margin-top:16px">
+<div class="panel"><h3>Tempo de permanência de quem saiu</h3><div class="cwrap"><canvas id="cPerdTenure"></canvas></div><p class="cap" id="cPerdTenureCap"></p></div>
+<div class="panel" id="tenureBaseCard" style="display:flex;flex-direction:column;justify-content:center"></div>
+</div>
 <h2 class="title" style="margin-top:24px">Composição da base — idade &amp; sexo</h2>
 <p class="sub">Perfil demográfico dos alunos no filtro atual (Unidade/Categoria) — personaliza a ação e ajuda a ler os clusters.</p>
 <div class="grid g2">
@@ -1292,6 +1296,16 @@ function renderPerdas(L){
    const tout=_PT.reduce((a,t)=>a+(t.transf||0),0),tin=_PT.reduce((a,t)=>a+(t.transfIn||0),0);
    barChart('cPerdUnit',['Saíram p/ outra','Vieram de outra'],[tout,tin],[C.yellow,C.green],false,true);
    document.getElementById('cPerdUnitCap').textContent='Movimentação interna entre unidades — não conta como perda da rede.';}
+ // tempo de permanência de quem saiu + tempo médio de casa (base)
+ var _fmtMeses=function(m){m=Math.round(m);if(m<12)return m+(m===1?' mês':' meses');var _a=Math.floor(m/12),_r=m%12;return _a+'a'+(_r?(' '+_r+'m'):'');};
+ var _tbnd=['0–3m','3–6m','6–12m','1–2 anos','2+ anos'];var _tcol=[C.red,C.orange,C.yellow,C.blue,C.green];
+ var bt=agg2('byTenure');var _to=_tbnd.filter(function(k){return bt[k];});if(!_to.length)_to=_tbnd;
+ barChart('cPerdTenure',_to,_to.map(function(k){return bt[k]||0;}),_to.map(function(k){return _tcol[_tbnd.indexOf(k)]||C.muted;}),false,false);
+ var _tm=0,_tw=0;_PT.forEach(function(t){var _p=t.perdas||0;_tm+=(t.tenureMean||0)*_p;_tw+=_p;});
+ document.getElementById('cPerdTenureCap').innerHTML='<b>Tempo médio até sair: '+_fmtMeses(_tw?_tm/_tw:0)+'</b> — quanto tempo de casa os alunos tinham quando saíram. As barras mostram quantos saíram em cada faixa de permanência.';
+ var _bv=[];L.forEach(function(s){var _ti=tenureInfo(s);if(_ti)_bv.push(_ti.meses);});
+ var _bm=_bv.length?_bv.reduce(function(a,b){return a+b;},0)/_bv.length:0;var _bs=_bv.slice().sort(function(a,b){return a-b;});var _bmed=_bs.length?_bs[Math.floor(_bs.length/2)]:0;
+ document.getElementById('tenureBaseCard').innerHTML='<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Tempo médio de casa · base ativa</div><div style="font-size:34px;font-weight:900;color:'+C.blue+';margin:6px 0 2px">'+_fmtMeses(_bm)+'</div><div style="font-size:13px;color:var(--muted)">mediana '+_fmtMeses(_bmed)+' · '+_bv.length+' alunos no filtro</div><p class="cap" style="margin:10px 0 0">Há quanto tempo, em média, os alunos ativos são clientes (pela data de matrícula). Compare com o tempo até sair ao lado.</p>';
  // pré-perda
  const p=ch.pre||{};
  document.getElementById('perdaPre').innerHTML='<h3 style="margin:0 0 10px">Sinal antecedente de churn '+tip('Comportamento no último mês ativo, comparando quem saiu vs quem ficou.')+'</h3>'

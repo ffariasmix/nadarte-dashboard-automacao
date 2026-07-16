@@ -189,6 +189,29 @@ def to_date(v):
         return None
     return None
 
+# Como to_date, mas PRESERVA a hora (para o bloco de Ocupação: entradas por faixa horária).
+# Retorna datetime naive em horário de Brasília (UTC-3, sem DST desde 2019).
+# .date() é idêntico ao de to_date para strings; para epoch usa BR (hora/dia local corretos).
+_BR_TZ = datetime.timezone(datetime.timedelta(hours=-3))
+def to_datetime(v):
+    if v is None:
+        return None
+    try:
+        if isinstance(v, (int, float)) or (isinstance(v, str) and str(v).isdigit()):
+            n = int(v)
+            if n > 10_000_000_000:
+                n //= 1000
+            return datetime.datetime.fromtimestamp(n, tz=_BR_TZ).replace(tzinfo=None)
+        s = str(v)[:19].replace("T", " ")
+        for f in ("%Y-%m-%d %H:%M:%S","%Y-%m-%d","%d/%m/%Y %H:%M:%S","%d/%m/%Y"):
+            try:
+                return datetime.datetime.strptime(s, f)
+            except Exception:
+                pass
+    except Exception:
+        return None
+    return None
+
 # ------------------------- COLETA -------------------------
 def roster_full(key):
     """TODOS os clientes (ativos+inativos+visitantes), dedup por codigoCliente.
@@ -321,7 +344,9 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
                 cl = gv(a, "cliente"); clcod = gv(cl, "codigo") if isinstance(cl, dict) else None
                 if clcod is not None and cc is not None and str(clcod) != str(cc):
                     continue
-                d = to_date(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
+                # PRESERVA a hora (Ocupação). build_freq usa parse_dt() que colapsa datetime->data,
+                # então a frequência não muda; build_ocupacao lê a hora para os horários ocioso/pico.
+                d = to_datetime(gv(a, "dtHrEntrada") or gv(a, "dataDeAcesso") or gv(a, "dataRegistro"))
                 if d and (d.year, d.month) in wmonths:
                     dates.append(d)
         ok = dp_ok and acc_ok and contract_ok   # qualquer chamada transitoria falhou -> re-tentar

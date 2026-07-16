@@ -21,9 +21,14 @@
 # Uso (produção):  python3 build_ocupacao.py data
 # Uso (teste local): OCUP_LOCAL_DIR="/caminho/Acessos Catraca" python3 build_ocupacao.py
 # ============================================================
-import sys, os, re, json, glob, datetime
+import sys, os, re, json, glob, io, datetime
 from collections import defaultdict
 import openpyxl
+
+# Abre .xlsx OU .bin (xlsx com extensão trocada, como o pipeline usa): via BytesIO,
+# que ignora a checagem de extensão do openpyxl. Mesmo truque do build_freq_multi.
+def _load(path):
+    return openpyxl.load_workbook(io.BytesIO(open(path, "rb").read()), read_only=True, data_only=True)
 
 DATA_DIR   = sys.argv[1] if len(sys.argv) > 1 else "data"
 WEEKS      = int(os.environ.get("OCUP_WEEKS", "8"))     # janela de semanas recentes
@@ -81,7 +86,7 @@ raw = defaultdict(list)   # unit_key -> [datetime,...]
 for uk, path in catraca.items():
     if uk not in UNIDADE_SLUG:  # Natal etc. não têm catraca/slug
         continue
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    wb = _load(path)
     for sn in wb.sheetnames:
         rows = list(wb[sn].iter_rows(values_only=True))
         hi, ci = parse_hdr(rows)
@@ -132,16 +137,18 @@ cards = []          # lista acionável (o que o motor consome)
 for slug, horas_un in HORARIOS.items():
     unidades_out[slug] = {}
     for dt, (h0, h1) in horas_un.items():
-        ndias = max(1, len(dias_obs.get((slug, dt), [])))
+        ndias_real = len(dias_obs.get((slug, dt), []))
+        ndias = max(1, ndias_real)
         perfil = []
         for h in range(h0, h1):
             media = round(cont.get((slug, dt, h), 0) / ndias, 1)
             perfil.append({'hora': h, 'media': media})
-        # status por quartis só faz sentido no perfil seg–sex (mais horas/robusto)
         medias = [p['media'] for p in perfil]
-        q1, q3 = quartis(medias)
+        # dado suficiente? unidade/dia sem entradas (ou 1 dia só) não gera classificação nem card.
+        temDado = (ndias_real >= 2) and any(m > 0 for m in medias)
+        q1, q3 = quartis([m for m in medias if m > 0]) if temDado else (0, 0)
         for p in perfil:
-            if dt == 'sem':
+            if dt == 'sem' and temDado:
                 if p['media'] <= q1:   p['status'] = 'ocioso'
                 elif p['media'] >= q3: p['status'] = 'pico'
                 else:                  p['status'] = 'normal'
@@ -149,9 +156,9 @@ for slug, horas_un in HORARIOS.items():
                 p['status'] = 'normal'
         unidades_out[slug][dt] = perfil
 
-        # cards: só seg–sex na v1 (perfil robusto). top-N ociosos (menor média) + top-N picos (maior)
-        if dt == 'sem':
-            ociosos = sorted([p for p in perfil if p['status']=='ocioso'], key=lambda x: x['media'])[:TOP_OCIOSO]
+        # cards: só seg–sex na v1 e só com dado suficiente. top-N ociosos (menor média>0) + top-N picos (maior)
+        if dt == 'sem' and temDado:
+            ociosos = sorted([p for p in perfil if p['status']=='ocioso' and p['media']>0], key=lambda x: x['media'])[:TOP_OCIOSO]
             picos   = sorted([p for p in perfil if p['status']=='pico'],   key=lambda x: -x['media'])[:TOP_PICO]
             med_un  = round(sum(medias)/len(medias), 1) if medias else 0
             for p in ociosos:
