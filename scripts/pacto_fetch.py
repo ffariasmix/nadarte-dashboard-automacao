@@ -521,19 +521,53 @@ def main():
             # [contrato-dump] Fase 1a: a API expoe DATAS por contrato e MULTIPLOS contratos por aluno?
             # PII-safe: imprime so contagem de contratos, nomes das chaves do item e as datas achadas (AAAA-MM).
             if os.environ.get("PACTO_CONTRATO_DUMP") == "1":
-                _atv = [c for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO"][:5]
-                _dk = ("inicio", "fim", "data", "venc", "vig", "dt")   # pistas de campo de data
+                _atv = [c for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO"][:3]
+                _dk = ("inicio", "fim", "data", "venc", "vig", "dt", "renov", "adesao")   # pistas de campo de data
+                def _dts(d):
+                    return {k: (to_date(d[k]).strftime("%Y-%m") if to_date(d[k]) else "?")
+                            for k in (d.keys() if isinstance(d, dict) else []) if any(p in k.lower() for p in _dk)}
                 for c in _atv:
                     M = gv(c, "matricula") or gv(c, "codigoCliente", "codigo")
+                    cc = gv(c, "codigoCliente", "codigo")
                     st3, o3 = gj(key, f"/v1/contrato/matricula/{M}")
                     its = lst(o3)
-                    print(f"[contrato] {uk}: cliente ATIVO tem {len(its)} contrato(s)", file=sys.stderr)
-                    for it in its[:4]:
+                    print(f"[contrato] {uk}: {len(its)} contrato(s) na lista", file=sys.stderr)
+                    for it in (its[:2] if isinstance(its, list) else []):
                         if not isinstance(it, dict): continue
-                        ks = sorted(it.keys())
-                        datas = {k: (to_date(it[k]).strftime("%Y-%m") if to_date(it[k]) else None)
-                                 for k in ks if any(p in k.lower() for p in _dk)}
-                        print(f"   keys={ks} | datas={datas}", file=sys.stderr)
+                        cod = gv(it, "codigo", "id")
+                        print(f"   lista: keys={sorted(it.keys())} datas={_dts(it)}", file=sys.stderr)
+                        for p in ((f"/v1/contrato/{cod}", f"/contrato/{cod}", f"/v1/contratos/{cod}") if cod is not None else ()):
+                            std, od = gj(key, p)
+                            det = unwrap(od) if isinstance(od, dict) else od
+                            if isinstance(det, dict) and det:
+                                print(f"   [detalhe {p}] st={std} keys={sorted(det.keys())[:30]} datas={_dts(det)}", file=sys.stderr); break
+                            else:
+                                print(f"   [detalhe {p}] st={std} vazio", file=sys.stderr)
+                    for p in (f"/v1/cliente/{cc}/contratos", f"/v1/matricula/{M}/contratos", f"/clientes/{M}/contratos"):
+                        sta, oa = gj(key, p); la = lst(oa)
+                        if la:
+                            print(f"   [alt {p}] st={sta} itens={len(la)} keys0={sorted(la[0].keys()) if isinstance(la[0],dict) else '?'} datas0={_dts(la[0]) if isinstance(la[0],dict) else {}}", file=sys.stderr)
+            if os.environ.get("PACTO_CONTRATO_DUMP") == "1":
+                # /movimentacao-contrato (BI): MATRICULADOS x REMATRICULADOS x CANCELADOS -> separa nova/retorno/perda NA FONTE.
+                import urllib.parse as _up, json as _j
+                _dk2 = ("inicio", "fim", "data", "venc", "vig", "dt", "renov", "adesao", "cancel", "matricul")
+                def _d2(d):
+                    return {k: (to_date(d[k]).strftime("%Y-%m-%d") if to_date(d[k]) else "?")
+                            for k in (d.keys() if isinstance(d, dict) else []) if any(p in k.lower() for p in _dk2)}
+                for ind in ("MATRICULADOS_ATE_HOJE", "REMATRICULADOS_ATE_HOJE", "CANCELADOS_ATE_HOJE"):
+                    ok = False
+                    for _emp in ("", "1"):
+                        _f = _j.dumps({**({"empresa": int(_emp)} if _emp else {}), "inicio": "2026-01-01T00:00:00.000Z", "fim": "2026-07-31T23:59:59.999Z"})
+                        stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_f)}&page=0&size=3")
+                        cont = lst(om); env = om if isinstance(om, dict) else {}
+                        k0 = sorted(cont[0].keys()) if (cont and isinstance(cont[0], dict)) else []
+                        print(f"[mov] {uk} {ind} emp={_emp or '-'}: st={stm} total={gv(env,'totalElements','total')} keys0={k0}", file=sys.stderr)
+                        if cont and isinstance(cont[0], dict):
+                            print(f"   datas0={_d2(cont[0])}", file=sys.stderr)
+                        if stm == 200:
+                            ok = True; break
+                    if not ok:
+                        print(f"[mov] {uk} {ind}: sem 200 (escopo? filtro?)", file=sys.stderr)
             dist = Counter(str(gv(c, "situacao") or "?").upper() for c in full)
             atv   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO")
             atr   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() in ("ATIVO", "TRANCADO"))
