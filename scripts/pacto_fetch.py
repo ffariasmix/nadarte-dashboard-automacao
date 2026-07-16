@@ -579,20 +579,26 @@ def main():
                 def _d2(d):
                     return {k: (to_date(d[k]).strftime("%Y-%m-%d") if to_date(d[k]) else "?")
                             for k in (d.keys() if isinstance(d, dict) else []) if any(p in k.lower() for p in _dk2)}
+                # Busca sistematica: qual empresa + formato de filtro traz DADO (>0) por indicador.
                 for ind in ("MATRICULADOS_ATE_HOJE", "REMATRICULADOS_ATE_HOJE", "CANCELADOS_ATE_HOJE"):
-                    ok = False
-                    for _emp in ("", "1"):
-                        _f = _j.dumps({**({"empresa": int(_emp)} if _emp else {}), "inicio": "2026-01-01T00:00:00.000Z", "fim": "2026-07-31T23:59:59.999Z"})
-                        stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_f)}&page=0&size=3")
-                        cont = lst(om); env = om if isinstance(om, dict) else {}
-                        k0 = sorted(cont[0].keys()) if (cont and isinstance(cont[0], dict)) else []
-                        print(f"[mov] {uk} {ind} emp={_emp or '-'}: st={stm} total={gv(env,'totalElements','total')} keys0={k0}", file=sys.stderr)
-                        if cont and isinstance(cont[0], dict):
-                            print(f"   datas0={_d2(cont[0])}", file=sys.stderr)
-                        if stm == 200:
-                            ok = True; break
-                    if not ok:
-                        print(f"[mov] {uk} {ind}: sem 200 (escopo? filtro?)", file=sys.stderr)
+                    found = False
+                    for _emp in ("", "1", "2", "3", "4", "5", "6"):
+                        for _wd in (True, False):
+                            fd = {}
+                            if _emp: fd["empresa"] = int(_emp)
+                            if _wd: fd["inicio"] = "2026-01-01T00:00:00.000Z"; fd["fim"] = "2026-07-31T23:59:59.999Z"
+                            stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_j.dumps(fd))}&page=0&size=3")
+                            env = om if isinstance(om, dict) else {}
+                            cont = lst(om); tot = gv(env, "totalElements", "total")
+                            if stm == 200 and tot and int(tot) > 0:
+                                k0 = sorted(cont[0].keys()) if (cont and isinstance(cont[0], dict)) else []
+                                print(f"[mov OK] {uk} {ind} emp={_emp or '-'} data={_wd}: total={tot} keys={k0}", file=sys.stderr)
+                                if cont and isinstance(cont[0], dict):
+                                    print(f"   datas={_d2(cont[0])}", file=sys.stderr)
+                                found = True; break
+                        if found: break
+                    if not found:
+                        print(f"[mov --] {uk} {ind}: nenhuma combinacao trouxe dado (emp 1-6 e sem, com/sem data)", file=sys.stderr)
             dist = Counter(str(gv(c, "situacao") or "?").upper() for c in full)
             atv   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO")
             atr   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() in ("ATIVO", "TRANCADO"))
