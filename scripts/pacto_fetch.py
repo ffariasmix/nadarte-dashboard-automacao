@@ -579,10 +579,16 @@ def main():
                 def _d2(d):
                     return {k: (to_date(d[k]).strftime("%Y-%m-%d") if to_date(d[k]) else "?")
                             for k in (d.keys() if isinstance(d, dict) else []) if any(p in k.lower() for p in _dk2)}
+                # descobre o codigo de empresa/unidade no cadastro (pra usar no filtro do BI)
+                _c0 = next((c for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO"), (full[0] if full else {}))
+                _empvals = {k: _c0[k] for k in (_c0.keys() if isinstance(_c0, dict) else [])
+                            if any(t in k.lower() for t in ("empresa", "unidade", "filial", "academia"))}
+                print(f"[emp] {uk}: campos empresa/unidade = {_empvals} | keys cliente = {sorted(_c0.keys()) if isinstance(_c0,dict) else '?'}", file=sys.stderr)
+                _empguess = [str(v) for v in _empvals.values() if v is not None and str(v).strip()]
                 # Busca sistematica: qual empresa + formato de filtro traz DADO (>0) por indicador.
                 for ind in ("MATRICULADOS_ATE_HOJE", "REMATRICULADOS_ATE_HOJE", "CANCELADOS_ATE_HOJE"):
                     found = False
-                    for _emp in ("", "1", "2", "3", "4", "5", "6"):
+                    for _emp in (_empguess + ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]):
                         for _wd in (True, False):
                             fd = {}
                             if _emp: fd["empresa"] = int(_emp)
