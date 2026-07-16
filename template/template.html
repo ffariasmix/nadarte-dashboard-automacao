@@ -459,6 +459,7 @@ header.top{position:static!important}
 <div class="panel"><h3>Tempo de permanência de quem saiu</h3><div class="cwrap"><canvas id="cPerdTenure"></canvas></div><p class="cap" id="cPerdTenureCap"></p></div>
 <div class="panel" id="tenureBaseCard" style="display:flex;flex-direction:column;justify-content:center"></div>
 </div>
+<div class="panel" id="perdMotivoWrap" style="margin-top:16px"><h3>Perdas por motivo de saída</h3><div class="cwrap"><canvas id="cPerdMotivo"></canvas></div><p class="cap" id="cPerdMotivoCap"></p></div>
 <h2 class="title" style="margin-top:24px">Composição da base — idade &amp; sexo</h2>
 <p class="sub">Perfil demográfico dos alunos no filtro atual (Unidade/Categoria) — personaliza a ação e ajuda a ler os clusters.</p>
 <div class="grid g2">
@@ -1306,6 +1307,17 @@ function renderPerdas(L){
  var _bv=[];L.forEach(function(s){var _ti=tenureInfo(s);if(_ti)_bv.push(_ti.meses);});
  var _bm=_bv.length?_bv.reduce(function(a,b){return a+b;},0)/_bv.length:0;var _bs=_bv.slice().sort(function(a,b){return a-b;});var _bmed=_bs.length?_bs[Math.floor(_bs.length/2)]:0;
  document.getElementById('tenureBaseCard').innerHTML='<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Tempo médio de casa · base ativa</div><div style="font-size:34px;font-weight:900;color:'+C.blue+';margin:6px 0 2px">'+_fmtMeses(_bm)+'</div><div style="font-size:13px;color:var(--muted)">mediana '+_fmtMeses(_bmed)+' · '+_bv.length+' alunos no filtro</div><p class="cap" style="margin:10px 0 0">Há quanto tempo, em média, os alunos ativos são clientes (pela data de matrícula). Compare com o tempo até sair ao lado.</p>';
+ // perdas por motivo de saída (situacaoContrato) — motivo real por aluno que saiu
+ var _mcol={'Desistência':C.red,'Cancelamento':C.orange,'Contrato vencido':C.yellow,'Trancado/vencido':C.yellow,'Trancado':C.blue,'A vencer':C.purple,'Atestado médico':C.blue,'Sem informação':C.muted};
+ var bmo=agg2('byMotivo');
+ var _mo=Object.keys(bmo).sort(function(a,b){return bmo[b]-bmo[a];});
+ var _mtot=_mo.reduce(function(a,k){return a+bmo[k];},0);
+ if(_mo.length){
+   barChart('cPerdMotivo',_mo,_mo.map(function(k){return bmo[k];}),_mo.map(function(k){return _mcol[k]||C.muted;}),false,true);
+   var _mtop=_mo.filter(function(k){return k!=='Sem informação';})[0];
+   var _mtopp=_mtop&&_mtot?Math.round(100*bmo[_mtop]/_mtot):0;
+   document.getElementById('cPerdMotivoCap').innerHTML=(_mtop?('<b>'+_mtop+'</b> é o motivo mais frequente ('+_mtopp+'% das saídas com motivo informado). '):'')+'Motivo real de cada saída, direto do cadastro da Pacto (situação do contrato). "Sem informação" = contrato sem status registrado.';
+ } else { document.getElementById('perdMotivoWrap').style.display='none'; }
  // pré-perda
  const p=ch.pre||{};
  document.getElementById('perdaPre').innerHTML='<h3 style="margin:0 0 10px">Sinal antecedente de churn '+tip('Comportamento no último mês ativo, comparando quem saiu vs quem ficou.')+'</h3>'

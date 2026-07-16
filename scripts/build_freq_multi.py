@@ -157,6 +157,16 @@ def find_col(colmap, *cands):
         for name,ci in colmap.items():
             if cu in name: return ci
     return None
+# situacaoContrato (motivo de saida) -> rotulo legivel. Vem cru da Pacto (DESISTENTE, CANCELADO...).
+MOTIVO_ROT = {
+    "DESISTENTE":"Desistência","CANCELADO":"Cancelamento","INATIVO_VENCIDO":"Contrato vencido",
+    "TRANCADO_VENCIDO":"Trancado/vencido","A_VENCER":"A vencer","ATESTADO":"Atestado médico",
+    "NORMAL":"Ativo/normal","TRANCADO":"Trancado","":"Sem informação",
+}
+def motivo_norm(v):
+    s = str(v or "").strip().upper()
+    if not s or s in ("?","NONE","NULL"): return ""
+    return MOTIVO_ROT.get(s, s.replace("_"," ").capitalize())
 def parse_dt(v):
     if isinstance(v,(datetime.datetime,datetime.date)):
         return datetime.date(v.year,v.month,v.day)
@@ -536,6 +546,14 @@ def tenure_profile(mats, unit, ref):
         if tm is None: continue
         vals.append(tm); c[_tband(tm)]+=1
     return dict(c), (round(sum(vals)/len(vals),1) if vals else 0)
+def motivo_profile(mats, unit):
+    # motivo de saida (situacaoContrato) de quem saiu. "" -> "Sem informação" (agrupado).
+    c=Counter()
+    for mat in mats:
+        a=attrs_flat.get((unit,mat))
+        mv=(a.get("motivo") if a else "") or "Sem informação"
+        c[mv]+=1
+    return dict(c)
 
 trans_pairs=[(i,i+1) for i in range(NMONTHS-1)]
 # CARENCIA: "perda" so conta apos N meses de inatividade real (1 mes de lapso e perdoado).
@@ -556,9 +574,10 @@ for unit in UNIT_KEYS:
         cC,cS,cB=profile(perdas,a,unit)
         _bref=datetime.date(ORDERED[b][0],ORDERED[b][1],1)   # mes em que saiu -> tenure = dm ate aqui
         cT,tMean=tenure_profile(perdas,unit,_bref)
+        cMo=motivo_profile(perdas,unit)
         trans.append({"de":MESES[a],"para":MESES[b],"perdas":len(perdas),"novos":len(novos),
                       "transf":0,"transfIn":0,"retidos":len(retidos),"base":len(A),
-                      "byCat":cC,"bySex":cS,"byBand":cB,"byTenure":cT,"tenureMean":tMean})
+                      "byCat":cC,"bySex":cS,"byBand":cB,"byTenure":cT,"tenureMean":tMean,"byMotivo":cMo})
         # pre-perda usa ACESSO da catraca -> cego de catraca fica de fora (nao tem sinal de acesso)
         for mat in perdas:
             if (unit,mat) not in FREQ_BLIND: ev.append(acc[(unit,a)].get(mat,0))
@@ -569,15 +588,15 @@ for unit in UNIT_KEYS:
     unit_data[unit]=(trans,ev,ret)
 rede=[]; rede_ev=[]; rede_ret=[]
 for i,(a,b) in enumerate(trans_pairs):
-    perdas=novos=retidos=base=0; cC={};cS={};cB={};cT={};_twsum=0.0
+    perdas=novos=retidos=base=0; cC={};cS={};cB={};cT={};cMo={};_twsum=0.0
     for unit in UNIT_KEYS:
         t=unit_data[unit][0][i]
         perdas+=t["perdas"]; novos+=t["novos"]; retidos+=t["retidos"]; base+=t["base"]
-        merge(cC,t["byCat"]); merge(cS,t["bySex"]); merge(cB,t["byBand"]); merge(cT,t.get("byTenure",{}))
+        merge(cC,t["byCat"]); merge(cS,t["bySex"]); merge(cB,t["byBand"]); merge(cT,t.get("byTenure",{})); merge(cMo,t.get("byMotivo",{}))
         _twsum += (t.get("tenureMean",0) or 0)*t["perdas"]
     rede.append({"de":MESES[a],"para":MESES[b],"perdas":perdas,"novos":novos,"transf":0,"transfIn":0,
                  "retidos":retidos,"base":base,"byCat":cC,"bySex":cS,"byBand":cB,
-                 "byTenure":cT,"tenureMean":round(_twsum/perdas,1) if perdas else 0})
+                 "byTenure":cT,"tenureMean":round(_twsum/perdas,1) if perdas else 0,"byMotivo":cMo})
 for unit in UNIT_KEYS: rede_ev+=unit_data[unit][1]; rede_ret+=unit_data[unit][2]
 cm,cz=pre(rede_ev); rm,rz=pre(rede_ret)
 churn["REDE"]={"trans":rede,"pre":{"churnMean":cm,"churnZeroPct":cz,"retMean":rm,"retZeroPct":rz}}
