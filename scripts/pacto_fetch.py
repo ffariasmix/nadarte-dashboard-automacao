@@ -584,14 +584,20 @@ def main():
                 _empvals = {k: _c0[k] for k in (_c0.keys() if isinstance(_c0, dict) else [])
                             if any(t in k.lower() for t in ("empresa", "unidade", "filial", "academia"))}
                 print(f"[emp] {uk}: campos empresa/unidade = {_empvals} | keys cliente = {sorted(_c0.keys()) if isinstance(_c0,dict) else '?'}", file=sys.stderr)
-                _empguess = [str(v) for v in _empvals.values() if v is not None and str(v).strip()]
+                _scC = Counter(str(gv(c, "situacaoContrato") or "?") for c in full)
+                _catC = Counter(str(gv(c, "categoria") or "?") for c in full)
+                print(f"[situC] {uk}: situacaoContrato dist = {dict(_scC.most_common(12))}", file=sys.stderr)
+                print(f"[categ] {uk}: categoria dist (top15) = {dict(_catC.most_common(15))}", file=sys.stderr)
+                _empguess = [str(v).strip() for v in _empvals.values() if v is not None and str(v).strip()]
                 # Busca sistematica: qual empresa + formato de filtro traz DADO (>0) por indicador.
                 for ind in ("MATRICULADOS_ATE_HOJE", "REMATRICULADOS_ATE_HOJE", "CANCELADOS_ATE_HOJE"):
                     found = False
                     for _emp in (_empguess + ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]):
                         for _wd in (True, False):
                             fd = {}
-                            if _emp: fd["empresa"] = int(_emp)
+                            if _emp:
+                                try: fd["empresa"] = int(_emp)
+                                except (ValueError, TypeError): fd["empresa"] = _emp
                             if _wd: fd["inicio"] = "2026-01-01T00:00:00.000Z"; fd["fim"] = "2026-07-31T23:59:59.999Z"
                             stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_j.dumps(fd))}&page=0&size=3")
                             env = om if isinstance(om, dict) else {}

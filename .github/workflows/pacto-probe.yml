@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: 'Limitar a 1 unidade (ex.: Natal). Vazio = todas as unidades.'
+        description: 'Limitar a 1 unidade (ex.: 716Norte). Vazio = todas as unidades.'
         required: false
-        default: 'Natal'
+        default: '716Norte'
 
 permissions:
   contents: write
