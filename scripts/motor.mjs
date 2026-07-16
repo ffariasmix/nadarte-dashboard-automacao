@@ -33,8 +33,8 @@ export function motor({freq=[], crm=[], aniv=[], ocup=[], cfg={}}){
   const cap=cfg.cap??120, alertaMin=cfg.alertaMin??70, reservaMin=cfg.reservaMin??70, alertaTop=cfg.alertaTop??15;
   const K=c=>`${c.unidade}|${c.matricula}`;
   const cli=new Map();
-  const get=c=>{const k=K(c); if(!cli.has(k)) cli.set(k,{unidade:c.unidade,matricula:c.matricula,nome:c.nome,cat:c.cat,foto:c.foto||'',pts:[],tipos:[],motivos:[],fontes:new Set()}); return cli.get(k);};
-  for(const s of freq){ if(!s.tipo) continue; const o=get(s); if(s.foto)o.foto=s.foto; o.cat=o.cat||s.cat;
+  const get=c=>{const k=K(c); if(!cli.has(k)) cli.set(k,{unidade:c.unidade,matricula:c.matricula,nome:c.nome,cat:c.cat,foto:c.foto||'',venc:'',pts:[],tipos:[],motivos:[],fontes:new Set()}); return cli.get(k);};
+  for(const s of freq){ if(!s.tipo) continue; const o=get(s); if(s.foto)o.foto=s.foto; if(s.venc)o.venc=s.venc; o.cat=o.cat||s.cat;
     o.pts.push(PTS[s.tipo]); o.tipos.push(s.tipo); o.fontes.add('frequencia');
     o.motivos.push(s.tipo==='em_risco'?'parou 2+ meses':s.tipo==='sumiu'?'zerou o último mês':'ritmo caiu'); }
   for(const s of crm){ const o=get(s); let u=false;
@@ -48,7 +48,7 @@ export function motor({freq=[], crm=[], aniv=[], ocup=[], cfg={}}){
   const churnKeys=new Set(cli.keys());
   const itens=[...cli.values()].map(o=>{ const s=score(o.pts);
     const tp=o.tipos.includes('em_risco')?'em_risco':o.tipos.includes('sumiu')?'sumiu':o.tipos.includes('caiu_ritmo')?'caiu_ritmo':'reengajar';
-    return {unidade:o.unidade,matricula:o.matricula,nome:o.nome,cat:o.cat,foto:o.foto,tipo:tp,titulo:TITULO[tp],
+    return {unidade:o.unidade,matricula:o.matricula,nome:o.nome,cat:o.cat,foto:o.foto,tipo:tp,titulo:TITULO[tp],venc:o.venc||'',
       score:s,faixa:faixa(s),fontePrincipal:o.fontes.has('frequencia')?'frequencia':'crm',motivos:o.motivos.join(' · ')}; });
 
   const out={alerta:[],ativa:[],reserva:[],relacionamento:[],operacional:[],descartadas:0};
@@ -89,7 +89,7 @@ export function fromFrequencia(DATA, seg, dom){
     const cat=GRUPO_CAT[s.grupo]||'outros';
     const base={unidade:slug,matricula:String(s.mat||''),nome:s.nome,cat,foto:s.foto||''};
     const tipo=medeFreq(slug,cat)?classifFreq(s.ac,cat):null;
-    freq.push({...base,tipo});
+    freq.push({...base,tipo,venc:s.venc||''});
     if(anivNaJanela(s.bd,s.bm,seg,dom)) aniv.push({unidade:slug,matricula:String(s.mat||''),nome:s.nome}); }
   return {freq,aniv};
 }

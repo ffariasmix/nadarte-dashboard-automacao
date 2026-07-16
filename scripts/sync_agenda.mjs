@@ -5,7 +5,7 @@
 // Uso:  node scripts/sync_agenda.mjs data/freq_multi.json > agenda_week.sql
 // ============================================================
 import { readFile } from 'node:fs/promises';
-import { fromFrequencia, motor } from './motor.mjs';
+import { fromFrequencia, motor, UNIDADE_SLUG } from './motor.mjs';
 
 const FILE = process.argv[2] || process.env.FREQ_LOCAL_FILE || 'data/freq_multi.json';
 const data = JSON.parse(await readFile(FILE, 'utf8'));
@@ -56,6 +56,11 @@ try {
 const r = motor({ freq, crm, aniv, ocup, cfg: { cap: Number(process.env.TETO_UNIDADE || 120) } });
 const itens = [...r.alerta, ...r.ativa, ...r.reserva, ...r.relacionamento];
 
+// F — valor em risco: venc (por aluno, do freq_multi) + valor_mensal (ticket médio da unidade).
+const TICKETS = data.tickets || {};
+const SLUG2KEY = Object.fromEntries(Object.entries(UNIDADE_SLUG).map(([k, v]) => [v, k]));
+const valorUnidade = (slug) => { const t = TICKETS[SLUG2KEY[slug]]; return (t == null || Number.isNaN(Number(t))) ? 'NULL' : Number(t); };
+
 const esc = s => String(s == null ? '' : s).replace(/'/g, "''");
 const PRIO_FAIXA = { 'Crítico': 'Alta', 'Alto': 'Alta', 'Moderado': 'Média', 'Acompanhamento': 'Baixa', 'Relacionamento': 'Baixa' };
 const TITULO_TIPO = { em_risco: 'Em risco de parar', sumiu: 'Sumiu no mês', caiu_ritmo: 'Caiu de ritmo', reengajar: 'Reengajar (app/treino)', aniversario: 'Aniversariante da semana' };
@@ -84,12 +89,12 @@ function descricaoOperacional(it) {
   return `Horário de baixa procura: ${it.hora}h ${dext} com ~${it.media} entradas/dia (média da unidade ${it.mediaUnidade}/h, ${dlab}). Oportunidade: aula experimental, ação de captação/relacionamento ou manutenção programada nesse horário. (Estimativa de fluxo pela entrada na catraca, não ocupação simultânea.)`;
 }
 
-const cols = '(id,unidade_id,categoria_id,titulo,descricao,tipo,prioridade,aluno_nome,matricula,semana_ref,prazo,origem,status,foto,score,faixa,bloco,motivos,apoio_comercial)';
+const cols = '(id,unidade_id,categoria_id,titulo,descricao,tipo,prioridade,aluno_nome,matricula,semana_ref,prazo,origem,status,foto,score,faixa,bloco,motivos,apoio_comercial,venc,valor_mensal)';
 const rows = itens.map(it => {
   const prio = PRIO_FAIXA[it.faixa] || 'Média';
   const apoio = it.faixa === 'Crítico' ? 1 : 0;
   const sc = (it.score == null ? 'NULL' : Number(it.score));
-  return `('${crypto.randomUUID()}','${esc(it.unidade)}','${esc(it.cat || 'outros')}','${esc(TITULO_TIPO[it.tipo] || it.titulo)}','${esc(descricaoHumana(it))}','${esc(it.tipo)}','${esc(prio)}','${esc(it.nome)}','${esc(it.matricula)}','${semana}','${PRAZO}','motor','pendente','${esc(it.foto || '')}',${sc},'${esc(it.faixa || '')}','${esc(it.bloco || '')}','${esc(it.motivos || '')}',${apoio})`;
+  return `('${crypto.randomUUID()}','${esc(it.unidade)}','${esc(it.cat || 'outros')}','${esc(TITULO_TIPO[it.tipo] || it.titulo)}','${esc(descricaoHumana(it))}','${esc(it.tipo)}','${esc(prio)}','${esc(it.nome)}','${esc(it.matricula)}','${semana}','${PRAZO}','motor','pendente','${esc(it.foto || '')}',${sc},'${esc(it.faixa || '')}','${esc(it.bloco || '')}','${esc(it.motivos || '')}',${apoio},'${esc(it.venc || '')}',${valorUnidade(it.unidade)})`;
 });
 
 // Linhas do bloco OPERACIONAL (Ocupação): não-nominal (sem aluno/matrícula/score/faixa).
@@ -97,7 +102,7 @@ const opRows = (r.operacional || []).map(it => {
   const pico = it.tipo === 'ocupacao_pico';
   const diaPfx = (it.dia && it.dia !== 'sem') ? (it.diaLabel || it.dia) + ' ' : '';
   const titulo = `Horário ${pico ? 'de pico' : 'ocioso'} · ${diaPfx}${it.hora}h`;
-  return `('${crypto.randomUUID()}','${esc(it.unidade)}','operacional','${esc(titulo)}','${esc(descricaoOperacional(it))}','${esc(it.tipo)}','Média','','','${semana}','${PRAZO}','motor','pendente','',NULL,'','operacional','${esc(it.motivos || '')}',0)`;
+  return `('${crypto.randomUUID()}','${esc(it.unidade)}','operacional','${esc(titulo)}','${esc(descricaoOperacional(it))}','${esc(it.tipo)}','Média','','','${semana}','${PRAZO}','motor','pendente','',NULL,'','operacional','${esc(it.motivos || '')}',0,'',NULL)`;
 });
 rows.push(...opRows);
 
