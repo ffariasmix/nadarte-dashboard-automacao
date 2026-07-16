@@ -200,6 +200,8 @@ jobs:
           node scripts/sync_agenda.mjs data/freq_multi.json > agenda_week.sql
           echo "Linhas SQL: $(wc -l < agenda_week.sql)"; head -c 300 agenda_week.sql; echo
           npx --yes wrangler@3 d1 execute nadarte_agenda --remote --file=agenda_week.sql
+          node scripts/build_resumo.mjs data/freq_multi.json > resumo.sql || echo "[resumo] build_resumo falhou; seguindo sem prontuário"
+          npx --yes wrangler@3 d1 execute nadarte_agenda --remote --file=resumo.sql || echo "[resumo] carga do prontuário 360 falhou"
 
       - name: Gerar Listagem de Alunos Ativos (.xlsx)
         if: ${{ always() }}

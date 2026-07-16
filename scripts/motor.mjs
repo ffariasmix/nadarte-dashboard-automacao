@@ -75,8 +75,8 @@ export function motor({freq=[], crm=[], aniv=[], ocup=[], cfg={}}){
 }
 
 // Adaptador: DATA da Frequência (dashboard) -> candidatos do motor
-const UNIDADE_SLUG={'716Norte':'716-norte','905Sul':'905-sul','604Norte':'604-norte','LagoNorte':'lago-norte','LagoSul':'lago-sul','Natal':'natal-rn'};
-const GRUPO_CAT={'Água':'agua','Agua':'agua','Fitness':'fitness','Luta':'lutas','Lutas':'lutas','Lutas e Outros':'lutas','Ambos':'ambos',
+export const UNIDADE_SLUG={'716Norte':'716-norte','905Sul':'905-sul','604Norte':'604-norte','LagoNorte':'lago-norte','LagoSul':'lago-sul','Natal':'natal-rn'};
+export const GRUPO_CAT={'Água':'agua','Agua':'agua','Fitness':'fitness','Luta':'lutas','Lutas':'lutas','Lutas e Outros':'lutas','Ambos':'ambos',
  'Ambos (Água + Fitness)':'ambos_af','Ambos (Agua + Fitness)':'ambos_af','Ambos (Água + Luta)':'ambos_al','Ambos (Agua + Luta)':'ambos_al',
  'Ambos (Fitness + Luta)':'ambos_fl','Ambos (Água + Fitness + Luta)':'ambos_afl','Ambos (Agua + Fitness + Luta)':'ambos_afl','Outros':'outros'};
 const SEM_CATRACA={'lago-norte':{agua:true}};   // água sem catraca -> não gera churn por frequência
