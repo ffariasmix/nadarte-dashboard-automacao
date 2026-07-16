@@ -255,6 +255,7 @@ for mk, path in alunos_files.items():
         c_venc=find_col(colmap,"VENCIMENTO","FIM CONTRATO","DATA FIM","VENC","FIM")
         c_ini=find_col(colmap,"INICIO CONTRATO","INICIO DO CONTRATO")
         c_email=find_col(colmap,"EMAIL","E-MAIL"); c_tel=find_col(colmap,"TELEFONE","CELULAR","FONE")
+        c_motivo=find_col(colmap,"MOTIVO SAIDA","SITUACAO CONTRATO","SITUACAOCONTRATO")
         for r in rows[hidx+1:]:
             if r is None: continue
             nome_v = str(r[c_nome]).strip() if (c_nome is not None and c_nome<len(r) and r[c_nome] is not None) else ""
@@ -288,6 +289,7 @@ for mk, path in alunos_files.items():
                 "venc": _venc_iso, "ini": _ini_iso, "plano": _plano_rot, "termoMeses": _plano_m,
                 "foto": _cell(c_foto), "prof": _cell(c_prof), "profRole": _cell(c_prole),
                 "email": _cell(c_email), "tel": _cell(c_tel),
+                "motivo": motivo_norm(_cell(c_motivo)),
             }
 
 # ---- parse catraca: acc[(unit,pos)][mat]; ancora; junMax (ult. data do mes-base) ----

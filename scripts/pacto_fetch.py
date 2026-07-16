@@ -332,6 +332,7 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
             "mod": mod_txt or gv(dp, "categoria") or modc,
             "dm": to_date(gv(dp, "dataMatricula")) or ini,
             "ini": ini, "fim": fim, "sit": sit,
+            "motivo": str(gv(c, "situacaoContrato") or ""),
             "foto": foto, "prof": prof, "profRole": prof_role,
             "email": (gv(dp, "email", "emailPrincipal", "eMail", "email1") or "").strip(),
             "tel": (gv(dp, "celular", "telefoneCelular", "celular1", "telefone", "fone", "telefone1") or ""),
@@ -357,7 +358,7 @@ def fetch_client_full(key, c, wmonths, prof_by_id=None, prof_by_nome=None):
         return {"ulabel": None, "mat": gv(c, "matricula"), "nome": gv(c, "nome") or "", "cpf": "",
                 "nasc": None, "sexo": "", "mod": "", "dm": None,
                 "ini": to_date(gv(c, "inicioContrato")), "fim": to_date(gv(c, "fimContrato")),
-                "sit": str(gv(c, "situacao") or "")}, [], False
+                "sit": str(gv(c, "situacao") or ""), "motivo": str(gv(c, "situacaoContrato") or "")}, [], False
 
 def coleta_unidade(unit_key, unit_label, key):
     """FULL-API com FILA DE RE-TENTATIVA: quem falha (rate-limit) volta pra fila e e
@@ -420,7 +421,7 @@ def coleta_unidade(unit_key, unit_label, key):
     return recs
 
 # ------------------------- ESCRITA (formato do motor) -------------------------
-AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO","INICIO CONTRATO","EMAIL","TELEFONE"]
+AL_HEADER = ["MATRICULA","NOME","DOCUMENTO","NASCIMENTO","SEXO","MODALIDADE","DATA MATRICULA","VENCIMENTO","FOTO","PROF NOME","PROF TIPO","INICIO CONTRATO","EMAIL","TELEFONE","MOTIVO SAIDA"]
 CT_HEADER = ["MAT. CLIENTE","NOME","CPF","DATA ENTRADA"]
 
 def write_alunos_wb(path, unit_label_to_rows):
@@ -431,7 +432,7 @@ def write_alunos_wb(path, unit_label_to_rows):
         for r in rows:
             ws.append([r["mat"], r["nome"], r["cpf"], r["nasc"], r["sexo"], r["mod"], r["dm"], r.get("fim",""),
                        r.get("foto",""), r.get("prof",""), r.get("profRole",""), r.get("ini",""),
-                       r.get("email",""), r.get("tel","")])
+                       r.get("email",""), r.get("tel",""), r.get("motivo","")])
     wb.save(path)
 
 def write_catraca_wb(path, sheets):
