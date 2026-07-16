@@ -111,11 +111,13 @@ if os.environ.get("PACTO_ENABLE_NATAL") == "1":
     UNITS.append(("Natal", "Natal (RN)", "PACTO_KEY_NATAL"))
 
 # ------------------------- HTTP -------------------------
-def http_get(key, path, timeout=30, tries=5):
+def http_get(key, path, timeout=30, tries=5, extra=None):
     for i in range(tries):
         req = urllib.request.Request(BASE + path, method="GET")
         req.add_header("Authorization", "Bearer " + key)
         req.add_header("Accept", "application/json")
+        for _hk, _hv in (extra or {}).items():
+            req.add_header(_hk, str(_hv))
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.status, r.read().decode("utf-8", "replace")
@@ -132,8 +134,8 @@ def http_get(key, path, timeout=30, tries=5):
             return -1, str(e)
     return -1, ""
 
-def gj(key, path):
-    st, b = http_get(key, path)
+def gj(key, path, extra=None):
+    st, b = http_get(key, path, extra=extra)
     try:
         return st, json.loads(b)
     except Exception:
@@ -589,28 +591,49 @@ def main():
                 print(f"[situC] {uk}: situacaoContrato dist = {dict(_scC.most_common(12))}", file=sys.stderr)
                 print(f"[categ] {uk}: categoria dist (top15) = {dict(_catC.most_common(15))}", file=sys.stderr)
                 _empguess = [str(v).strip() for v in _empvals.values() if v is not None and str(v).strip()]
-                # Busca sistematica: qual empresa + formato de filtro traz DADO (>0) por indicador.
+                # >>> DESTRAVE: /v1/empresa/resumo devolve o CODIGO NUMERICO da empresa desta chave <<<
+                _empids = []   # codigos numericos descobertos
+                for _erp in ("/v1/empresa/resumo?page=0&size=50", "/v1/empresa/resumo", "/v1/empresa?page=0&size=50", "/v1/empresa"):
+                    ste, oe = gj(key, _erp)
+                    le = lst(oe)
+                    if ste == 200 and le:
+                        _emplist = [(gv(x, "codigo", "id", "empresa"), gv(x, "nome", "descricao"), gv(x, "ativa", "ativo"))
+                                    for x in le if isinstance(x, dict)]
+                        print(f"[empresa] {uk} via {_erp}: {_emplist[:20]}", file=sys.stderr)
+                        for _cid, _cnome, _cativa in _emplist:
+                            try: _empids.append(int(_cid))
+                            except (ValueError, TypeError): pass
+                        break
+                    else:
+                        print(f"[empresa] {uk} via {_erp}: st={ste} vazio", file=sys.stderr)
+                _empids = list(dict.fromkeys(_empids))   # dedup preserva ordem
+                print(f"[empresa] {uk}: codigos numericos = {_empids}", file=sys.stderr)
+                # Candidatos de ID: os descobertos + fallback 1-10
+                _cand = _empids + [n for n in range(1, 11) if n not in _empids]
+                # Busca sistematica: empresaId como HEADER e/ou como FILTRO, qual combinacao traz DADO (>0).
                 for ind in ("MATRICULADOS_ATE_HOJE", "REMATRICULADOS_ATE_HOJE", "CANCELADOS_ATE_HOJE"):
                     found = False
-                    for _emp in (_empguess + ["", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]):
-                        for _wd in (True, False):
-                            fd = {}
-                            if _emp:
-                                try: fd["empresa"] = int(_emp)
-                                except (ValueError, TypeError): fd["empresa"] = _emp
-                            if _wd: fd["inicio"] = "2026-01-01T00:00:00.000Z"; fd["fim"] = "2026-07-31T23:59:59.999Z"
-                            stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_j.dumps(fd))}&page=0&size=3")
-                            env = om if isinstance(om, dict) else {}
-                            cont = lst(om); tot = gv(env, "totalElements", "total")
-                            if stm == 200 and tot and int(tot) > 0:
-                                k0 = sorted(cont[0].keys()) if (cont and isinstance(cont[0], dict)) else []
-                                print(f"[mov OK] {uk} {ind} emp={_emp or '-'} data={_wd}: total={tot} keys={k0}", file=sys.stderr)
-                                if cont and isinstance(cont[0], dict):
-                                    print(f"   datas={_d2(cont[0])}", file=sys.stderr)
-                                found = True; break
+                    for _eid in _cand:
+                        for _mode in ("hdr", "filtro", "hdr+filtro"):
+                            for _wd in (True, False):
+                                fd = {}
+                                hdr = None
+                                if _mode in ("filtro", "hdr+filtro"): fd["empresa"] = _eid
+                                if _mode in ("hdr", "hdr+filtro"): hdr = {"empresaId": _eid}
+                                if _wd: fd["inicio"] = "2026-01-01T00:00:00.000Z"; fd["fim"] = "2026-07-31T23:59:59.999Z"
+                                stm, om = gj(key, f"/movimentacao-contrato?indicador={ind}&filters={_up.quote(_j.dumps(fd))}&page=0&size=3", extra=hdr)
+                                env = om if isinstance(om, dict) else {}
+                                cont = lst(om); tot = gv(env, "totalElements", "total")
+                                if stm == 200 and tot and int(tot) > 0:
+                                    k0 = sorted(cont[0].keys()) if (cont and isinstance(cont[0], dict)) else []
+                                    print(f"[mov OK] {uk} {ind} emp={_eid} modo={_mode} data={_wd}: total={tot} keys={k0}", file=sys.stderr)
+                                    if cont and isinstance(cont[0], dict):
+                                        print(f"   datas={_d2(cont[0])} amostra_keys_valores={ {kk: cont[0].get(kk) for kk in k0[:12]} }", file=sys.stderr)
+                                    found = True; break
+                            if found: break
                         if found: break
                     if not found:
-                        print(f"[mov --] {uk} {ind}: nenhuma combinacao trouxe dado (emp 1-6 e sem, com/sem data)", file=sys.stderr)
+                        print(f"[mov --] {uk} {ind}: nenhuma combinacao trouxe dado (ids {_cand[:12]}, hdr/filtro/ambos, com/sem data)", file=sys.stderr)
             dist = Counter(str(gv(c, "situacao") or "?").upper() for c in full)
             atv   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() == "ATIVO")
             atr   = sum(1 for c in full if str(gv(c, "situacao") or "").upper() in ("ATIVO", "TRANCADO"))

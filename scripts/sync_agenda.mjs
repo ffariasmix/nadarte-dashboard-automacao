@@ -59,14 +59,20 @@ const itens = [...r.alerta, ...r.ativa, ...r.reserva, ...r.relacionamento];
 const esc = s => String(s == null ? '' : s).replace(/'/g, "''");
 const PRIO_FAIXA = { 'Crítico': 'Alta', 'Alto': 'Alta', 'Moderado': 'Média', 'Acompanhamento': 'Baixa', 'Relacionamento': 'Baixa' };
 const TITULO_TIPO = { em_risco: 'Em risco de parar', sumiu: 'Sumiu no mês', caiu_ritmo: 'Caiu de ritmo', reengajar: 'Reengajar (app/treino)', aniversario: 'Aniversariante da semana' };
+// 1º nome, capitalizado (nomes podem vir em CAIXA ALTA). Fallback neutro se vazio.
+function primeiroNome(nome) {
+  const p = String(nome || '').trim().split(/\s+/)[0];
+  return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : 'Este aluno';
+}
 function descricaoHumana(it) {
   const ctx = it.motivos ? ` Sinais: ${it.motivos}.` : '';
-  if (it.tipo === 'em_risco') return `O ritmo de frequência caiu bastante nas últimas semanas.${ctx} Faça um contato de cuidado para entender se ele precisa de apoio para retomar a rotina.`;
-  if (it.tipo === 'sumiu') return `Vinha treinando e parou no último mês.${ctx} Um contato acolhedor agora ajuda a evitar que ele se afaste.`;
-  if (it.tipo === 'caiu_ritmo') return `A presença diminuiu em relação ao ritmo dele.${ctx} Vale um incentivo leve para recolocar na rotina.`;
-  if (it.tipo === 'reengajar') return `Continua vindo à academia, mas largou o treino no app.${ctx} Recoloque no programa: mostrar um treino novo e o valor do acompanhamento antes que a frequência também caia.`;
-  if (it.tipo === 'aniversario') return `Aniversariante da semana — um contato positivo de relacionamento, sem venda.`;
-  return `Contato de cuidado.${ctx}`;
+  const n = primeiroNome(it.nome);
+  if (it.tipo === 'em_risco') return `${n} vinha treinando e o ritmo caiu bastante nas últimas semanas.${ctx} Faça um contato de cuidado para entender se precisa de apoio para retomar a rotina.`;
+  if (it.tipo === 'sumiu') return `${n} vinha treinando e parou no último mês.${ctx} Um contato acolhedor agora ajuda a evitar que se afaste.`;
+  if (it.tipo === 'caiu_ritmo') return `A presença de ${n} diminuiu em relação ao ritmo habitual.${ctx} Vale um incentivo leve para recolocar na rotina.`;
+  if (it.tipo === 'reengajar') return `${n} continua vindo à academia, mas largou o treino no app.${ctx} Recoloque no programa: mostrar um treino novo e o valor do acompanhamento antes que a frequência também caia.`;
+  if (it.tipo === 'aniversario') return `${n} é aniversariante da semana — um contato positivo de relacionamento, sem venda.`;
+  return `Contato de cuidado com ${n}.${ctx}`;
 }
 // Bloco operacional (Ocupação): tarefa por HORÁRIO, não por aluno.
 function descricaoOperacional(it) {
