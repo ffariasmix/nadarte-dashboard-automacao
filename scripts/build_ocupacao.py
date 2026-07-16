@@ -34,6 +34,9 @@ DATA_DIR   = sys.argv[1] if len(sys.argv) > 1 else "data"
 WEEKS      = int(os.environ.get("OCUP_WEEKS", "8"))     # janela de semanas recentes
 TOP_OCIOSO = int(os.environ.get("OCUP_TOP_OCIOSO", "3"))
 TOP_PICO   = int(os.environ.get("OCUP_TOP_PICO", "2"))
+# Fim de semana tem menos horas e menor volume → menos cards (1 ocioso + 1 pico por dia).
+TOP_FDS_OCIOSO = int(os.environ.get("OCUP_TOP_FDS_OCIOSO", "1"))
+TOP_FDS_PICO   = int(os.environ.get("OCUP_TOP_FDS_PICO", "1"))
 LOCAL_DIR  = os.environ.get("OCUP_LOCAL_DIR")           # p/ teste sem manifest
 
 UNIDADE_SLUG = {'716Norte':'716-norte','905Sul':'905-sul','604Norte':'604-norte',
@@ -148,7 +151,7 @@ for slug, horas_un in HORARIOS.items():
         temDado = (ndias_real >= 2) and any(m > 0 for m in medias)
         q1, q3 = quartis([m for m in medias if m > 0]) if temDado else (0, 0)
         for p in perfil:
-            if dt == 'sem' and temDado:
+            if temDado:
                 if p['media'] <= q1:   p['status'] = 'ocioso'
                 elif p['media'] >= q3: p['status'] = 'pico'
                 else:                  p['status'] = 'normal'
@@ -156,16 +159,17 @@ for slug, horas_un in HORARIOS.items():
                 p['status'] = 'normal'
         unidades_out[slug][dt] = perfil
 
-        # cards: só seg–sex na v1 e só com dado suficiente. top-N ociosos (menor média>0) + top-N picos (maior)
-        if dt == 'sem' and temDado:
-            ociosos = sorted([p for p in perfil if p['status']=='ocioso' and p['media']>0], key=lambda x: x['media'])[:TOP_OCIOSO]
-            picos   = sorted([p for p in perfil if p['status']=='pico'],   key=lambda x: -x['media'])[:TOP_PICO]
+        # cards por dia (seg–sex + sáb/dom). Fim de semana usa top menor. Só com dado suficiente.
+        if temDado:
+            n_oc, n_pk = (TOP_OCIOSO, TOP_PICO) if dt == 'sem' else (TOP_FDS_OCIOSO, TOP_FDS_PICO)
+            ociosos = sorted([p for p in perfil if p['status']=='ocioso' and p['media']>0], key=lambda x: x['media'])[:n_oc]
+            picos   = sorted([p for p in perfil if p['status']=='pico'],   key=lambda x: -x['media'])[:n_pk]
             med_un  = round(sum(medias)/len(medias), 1) if medias else 0
             for p in ociosos:
-                cards.append({'unidade':slug,'dia':'sem','hora':p['hora'],'media':p['media'],
+                cards.append({'unidade':slug,'dia':dt,'hora':p['hora'],'media':p['media'],
                               'media_unidade':med_un,'status':'ocioso'})
             for p in picos:
-                cards.append({'unidade':slug,'dia':'sem','hora':p['hora'],'media':p['media'],
+                cards.append({'unidade':slug,'dia':dt,'hora':p['hora'],'media':p['media'],
                               'media_unidade':med_un,'status':'pico'})
 
 out = {
@@ -181,4 +185,4 @@ out = {
 destino = os.path.join(DATA_DIR, "agenda_ocupacao.json") if not LOCAL_DIR else "agenda_ocupacao.json"
 with open(destino, "w") as f:
     json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
-print(f"[ok] agenda_ocupacao.json: {len(cards)} cards ({TOP_OCIOSO} ocioso + {TOP_PICO} pico / unidade seg–sex).", file=sys.stderr)
+print(f"[ok] agenda_ocupacao.json: {len(cards)} cards (seg–sex {TOP_OCIOSO}+{TOP_PICO}; fim de semana {TOP_FDS_OCIOSO}+{TOP_FDS_PICO}/dia por unidade).", file=sys.stderr)

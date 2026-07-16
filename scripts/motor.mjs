@@ -64,11 +64,13 @@ export function motor({freq=[], crm=[], aniv=[], ocup=[], cfg={}}){
   for(const a of aniv){ const k=`${a.unidade}|${a.matricula}`;
     if(!churnKeys.has(k)) out.relacionamento.push({unidade:a.unidade,matricula:a.matricula,nome:a.nome,tipo:'aniversario',titulo:TITULO.aniversario,bloco:'relacionamento',faixa:'Relacionamento',motivos:'aniversário na semana'}); }
   // bloco OPERACIONAL (Ocupação) — não-nominal, por horário. Não passa por dedup/score/teto.
+  const DIA_LABEL={sem:'seg–sex',sab:'sáb',dom:'dom'};
   for(const c of ocup){ if(!c || !c.unidade) continue;
     const pico = c.status==='pico'; const tp = pico?'ocupacao_pico':'ocupacao_ocioso';
+    const dia = c.dia||'sem'; const dlab = DIA_LABEL[dia]||'seg–sex';
     out.operacional.push({unidade:c.unidade,tipo:tp,titulo:TITULO[tp],bloco:'operacional',
-      hora:c.hora,media:c.media,mediaUnidade:c.media_unidade,
-      motivos:`${c.hora}h · ~${c.media} entradas/dia vs média ${c.media_unidade}/h (seg–sex)`}); }
+      hora:c.hora,media:c.media,mediaUnidade:c.media_unidade,dia,diaLabel:dlab,
+      motivos:`${c.hora}h · ~${c.media} entradas/dia vs média ${c.media_unidade}/h (${dlab})`}); }
   return out;
 }
 

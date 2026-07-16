@@ -75,10 +75,13 @@ function descricaoHumana(it) {
   return `Contato de cuidado com ${n}.${ctx}`;
 }
 // Bloco operacional (Ocupação): tarefa por HORÁRIO, não por aluno.
+const DIA_EXT = { sem: 'seg a sex', sab: 'aos sábados', dom: 'aos domingos' };
 function descricaoOperacional(it) {
+  const dlab = it.diaLabel || 'seg–sex';
+  const dext = DIA_EXT[it.dia] || 'seg a sex';
   if (it.tipo === 'ocupacao_pico')
-    return `Horário de maior fluxo: ${it.hora}h com ~${it.media} entradas/dia (média da unidade ${it.mediaUnidade}/h, seg–sex). Avaliar reforço de recepção/equipe e evitar manutenção nesse horário; fique de olho no conforto e na lotação.`;
-  return `Horário de baixa procura: ${it.hora}h com ~${it.media} entradas/dia (média da unidade ${it.mediaUnidade}/h, seg–sex). Oportunidade: aula experimental, ação de captação/relacionamento ou manutenção programada nesse horário. (Estimativa de fluxo pela entrada na catraca, não ocupação simultânea.)`;
+    return `Horário de maior fluxo: ${it.hora}h ${dext} com ~${it.media} entradas/dia (média da unidade ${it.mediaUnidade}/h, ${dlab}). Avaliar reforço de recepção/equipe e evitar manutenção nesse horário; fique de olho no conforto e na lotação.`;
+  return `Horário de baixa procura: ${it.hora}h ${dext} com ~${it.media} entradas/dia (média da unidade ${it.mediaUnidade}/h, ${dlab}). Oportunidade: aula experimental, ação de captação/relacionamento ou manutenção programada nesse horário. (Estimativa de fluxo pela entrada na catraca, não ocupação simultânea.)`;
 }
 
 const cols = '(id,unidade_id,categoria_id,titulo,descricao,tipo,prioridade,aluno_nome,matricula,semana_ref,prazo,origem,status,foto,score,faixa,bloco,motivos,apoio_comercial)';
@@ -92,7 +95,8 @@ const rows = itens.map(it => {
 // Linhas do bloco OPERACIONAL (Ocupação): não-nominal (sem aluno/matrícula/score/faixa).
 const opRows = (r.operacional || []).map(it => {
   const pico = it.tipo === 'ocupacao_pico';
-  const titulo = `Horário ${pico ? 'de pico' : 'ocioso'} · ${it.hora}h`;
+  const diaPfx = (it.dia && it.dia !== 'sem') ? (it.diaLabel || it.dia) + ' ' : '';
+  const titulo = `Horário ${pico ? 'de pico' : 'ocioso'} · ${diaPfx}${it.hora}h`;
   return `('${crypto.randomUUID()}','${esc(it.unidade)}','operacional','${esc(titulo)}','${esc(descricaoOperacional(it))}','${esc(it.tipo)}','Média','','','${semana}','${PRAZO}','motor','pendente','',NULL,'','operacional','${esc(it.motivos || '')}',0)`;
 });
 rows.push(...opRows);
