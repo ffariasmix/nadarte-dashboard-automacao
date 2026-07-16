@@ -36,14 +36,20 @@
 
 ---
 
-## ✅ Concluído nesta leva (deploys #104–#109)
+## ✅ Concluído nesta leva (deploys #104–#115)
 
 | Ação | Entrega | Status |
 |---|---|---|
 | **Movimentação — mês parcial** | Entradas reais do mês em curso (filtro cirúrgico por início de contrato) + barra parcial clareada. Matou o falso saldo (Jun→Jul −230 → −9) | ✅ no ar |
 | **Prazo de contrato + fim do ×12** | Deriva plano (mensal/bi/tri/sem/anual) por `ini`/`fim`; receita em risco vira **"comprometido em contrato"** (ticket × prazo), líder = /mês | ✅ no ar |
 | **Entradas em 2 vias** | 🆕 Nova matrícula × ↩ Recorrente (KPI **e** gráfico empilhado). Honesto | ✅ no ar |
+| **Tempo de permanência (item 6)** | Tenure de quem saiu (faixas + tempo médio até sair) + tempo médio de casa da base ativa | ✅ no ar (#112) |
+| **Perdas por motivo de saída (item 5)** | Painel novo com `situacaoContrato` real do cadastro (Desistência 69%, Cancelamento…) — sem endpoint extra. Substitui o "Outros" travado | ✅ no ar (#114) |
+| **Legendas financeiras respeitam prazo (item 3)** | "Projeção × 12" → **"Comprometido em contrato"** (ticket × prazo real do plano dos que entram/saem); nota de rodapé atualizada | ✅ no ar (#115) |
 | **Natal (RN) — Opção A** | Código pronto e **desligado por flag**. Churn desde mar/26, frequência gated (cego de catraca) até `PACTO_NATAL_FREQ`. Liga em ago/26 | 🟡 pronto (você liga em ago) |
+
+### ⏸️ Itens 1, 2, 4 — Nova × Renovação × Retomada (bloqueado na Pacto)
+Separar renovação (retenção) de retomada (reconquista) exige o endpoint `/movimentacao-contrato`, que precisa do **código numérico de empresa**. Probe #59 confirmou: `/v1/empresa/resumo` retorna **500** (a chave não tem o escopo `adm:cadastros:outros-cadastros:empresa:consultar`). **Código pronto esperando o ID.** Destrava só via **ticket à Pacto** pedindo o escopo. Sem isso, entradas seguem em 🆕 Nova × ↩ Recorrente (honesto).
 
 ---
 

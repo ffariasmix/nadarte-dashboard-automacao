@@ -1215,15 +1215,17 @@ function renderPerdas(L){
  let cp=0,nc=0;T.forEach(t=>{if(t.base){cp+=t.perdas/t.base;nc++;}});const churnAvg=nc?cp/nc:0;
  // ---- financeiro (saldo líquido, ticket por unidade) ----
  const _units=(DATA.unidades||[]).filter(u=>u.key!=='REDE');
- const lossU={},gainU={};_units.forEach(u=>{const tr=unitTrans(u.key);const tk=ticketU(u.key);lossU[u.key]=tr.reduce((a,t)=>a+t.perdas,0)*tk;gainU[u.key]=tr.reduce((a,t)=>a+t.novos,0)*tk;});
+ const lossU={},gainU={},lossCU={},gainCU={};_units.forEach(u=>{const tr=unitTrans(u.key);const tk=ticketU(u.key);lossU[u.key]=tr.reduce((a,t)=>a+t.perdas,0)*tk;gainU[u.key]=tr.reduce((a,t)=>a+t.novos,0)*tk;lossCU[u.key]=tr.reduce((a,t)=>a+(t.perdasTermo||t.perdas*12),0)*tk;gainCU[u.key]=tr.reduce((a,t)=>a+(t.novosTermo||t.novos*12),0)*tk;});
  // ---- Novo vs Retorno (via ledger perpetuo: NOVO=1a vez na rede; RETORNO=ja teve cadastro antes) ----
  const _flowRows=u=>((DATA.flow&&DATA.flow[u])||[]).slice(state.from-1,state.to-1);
  let novoT=0,recorT=0;const hasFlow=!!(DATA.flow);
  const _recf=f=>(f.recorrente!=null?f.recorrente:(f.voltou||0));
  if(hasFlow){if(isRede){_units.forEach(u=>{_flowRows(u.key).forEach(f=>{novoT+=f.novo||0;recorT+=_recf(f);});});}else{_flowRows(state.unit).forEach(f=>{novoT+=f.novo||0;recorT+=_recf(f);});}}
- let perdasRS,entradasRS,saldoRS;
- if(isRede){perdasRS=Object.values(lossU).reduce((a,b)=>a+b,0);entradasRS=Object.values(gainU).reduce((a,b)=>a+b,0);saldoRS=entradasRS-perdasRS;}
- else{const tk=ticketU(state.unit);perdasRS=perdasTot*tk;entradasRS=novosTot*tk;saldoRS=saldoTot*tk;}
+ let perdasRS,entradasRS,saldoRS,saldoCommit;
+ if(isRede){perdasRS=Object.values(lossU).reduce((a,b)=>a+b,0);entradasRS=Object.values(gainU).reduce((a,b)=>a+b,0);saldoRS=entradasRS-perdasRS;
+   saldoCommit=Object.values(gainCU).reduce((a,b)=>a+b,0)-Object.values(lossCU).reduce((a,b)=>a+b,0);}
+ else{const tk=ticketU(state.unit);perdasRS=perdasTot*tk;entradasRS=novosTot*tk;saldoRS=saldoTot*tk;
+   const nCommit=T.reduce((a,t)=>a+(t.novosTermo||t.novos*12),0),pCommit=T.reduce((a,t)=>a+(t.perdasTermo||t.perdas*12),0);saldoCommit=(nCommit-pCommit)*tk;}
  // KPI cards
  const wPerdas=arr=>arr.reduce((a,t)=>a+t.perdas,0),wNovos=arr=>arr.reduce((a,t)=>a+t.novos,0);
  const wSaldo=arr=>arr.reduce((a,t)=>a+(isRede?(t.novos-t.perdas):(t.novos-t.perdas+(t.transfIn||0)-(t.transf||0))),0);
@@ -1256,8 +1258,8 @@ function renderPerdas(L){
  const mny=(big,lab,sub,col)=>'<div class="panel" style="padding:15px 17px;border-left:4px solid '+col+'"><div style="font-size:11px;font-weight:800;color:'+col+';text-transform:uppercase;letter-spacing:.04em">'+lab+'</div><div style="font-size:27px;font-weight:900;line-height:1.05;margin:4px 0 2px;color:'+col+'">'+big+'</div><div style="font-size:12px;color:var(--muted);line-height:1.4">'+sub+'</div></div>';
  document.getElementById('perdaMoney').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
   +mny(sArr+BRL2(Math.abs(saldoRS)),'Saldo líquido do período · /mês',(saldoRS>=0?'Ganho líquido':'Perda líquida')+' de receita recorrente (entradas − perdas, pelo ticket da unidade'+(isRede?' de origem':'')+').',sCol)
-  +mny(sArr+BRL2(Math.abs(saldoRS*12)),'Projeção · por ano','Impacto anualizado (× 12) se o quadro se mantiver.',sCol)
-  +'</div><p class="cap" style="margin:9px 2px 0"><b>Considera o saldo líquido</b> (entradas − perdas), não as perdas brutas. Cálculo: alunos × <b>ticket médio da unidade</b> (Faturamento ÷ nº de alunos) — determinado <b>somente pela unidade</b>, sem relação com modalidade ou categoria.</p>';
+  +mny((saldoCommit>=0?'▲ ':'▼ ')+BRL2(Math.abs(saldoCommit)),'Comprometido em contrato',(saldoCommit>=0?'Ganho':'Perda')+' líquido no valor <b>comprometido</b> dos contratos: ticket × <b>prazo real do plano</b> (mensal conta 1 mês, anual 12). Não é × 12.',saldoCommit>=0?C.green:C.red)
+  +'</div><p class="cap" style="margin:9px 2px 0"><b>Considera o saldo líquido</b> (entradas − perdas), não as perdas brutas. <b>/mês</b> = ticket mensal; <b>comprometido em contrato</b> = ticket × prazo do plano de cada aluno que entrou/saiu (respeita a duração real, sem anualização ingênua). Cálculo por <b>ticket médio da unidade</b> (Faturamento ÷ nº de alunos) — determinado <b>somente pela unidade</b>, sem relação com modalidade ou categoria.</p>';
  destroy('cPerdMoney');
  let mLab,mDat;
  if(isRede){mLab=_units.map(u=>u.label);mDat=_units.map(u=>Math.round(lossU[u.key]));

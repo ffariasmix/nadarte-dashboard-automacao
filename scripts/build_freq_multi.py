@@ -575,9 +575,14 @@ for unit in UNIT_KEYS:
         _bref=datetime.date(ORDERED[b][0],ORDERED[b][1],1)   # mes em que saiu -> tenure = dm ate aqui
         cT,tMean=tenure_profile(perdas,unit,_bref)
         cMo=motivo_profile(perdas,unit)
+        # prazo comprometido (meses) de quem entrou/saiu: soma dos termoMeses do plano de cada aluno.
+        # Espelha o "comprometido em contrato" da aba de risco (default 12 p/ manter coerencia).
+        _sumTermo=lambda ms: sum((attrs_flat.get((unit,m),{}).get("termoMeses") or 12) for m in ms)
+        nTermo=_sumTermo(novos); pTermo=_sumTermo(perdas)
         trans.append({"de":MESES[a],"para":MESES[b],"perdas":len(perdas),"novos":len(novos),
                       "transf":0,"transfIn":0,"retidos":len(retidos),"base":len(A),
-                      "byCat":cC,"bySex":cS,"byBand":cB,"byTenure":cT,"tenureMean":tMean,"byMotivo":cMo})
+                      "byCat":cC,"bySex":cS,"byBand":cB,"byTenure":cT,"tenureMean":tMean,"byMotivo":cMo,
+                      "novosTermo":nTermo,"perdasTermo":pTermo})
         # pre-perda usa ACESSO da catraca -> cego de catraca fica de fora (nao tem sinal de acesso)
         for mat in perdas:
             if (unit,mat) not in FREQ_BLIND: ev.append(acc[(unit,a)].get(mat,0))
@@ -588,15 +593,17 @@ for unit in UNIT_KEYS:
     unit_data[unit]=(trans,ev,ret)
 rede=[]; rede_ev=[]; rede_ret=[]
 for i,(a,b) in enumerate(trans_pairs):
-    perdas=novos=retidos=base=0; cC={};cS={};cB={};cT={};cMo={};_twsum=0.0
+    perdas=novos=retidos=base=0; cC={};cS={};cB={};cT={};cMo={};_twsum=0.0; nTermoR=0; pTermoR=0
     for unit in UNIT_KEYS:
         t=unit_data[unit][0][i]
         perdas+=t["perdas"]; novos+=t["novos"]; retidos+=t["retidos"]; base+=t["base"]
         merge(cC,t["byCat"]); merge(cS,t["bySex"]); merge(cB,t["byBand"]); merge(cT,t.get("byTenure",{})); merge(cMo,t.get("byMotivo",{}))
         _twsum += (t.get("tenureMean",0) or 0)*t["perdas"]
+        nTermoR += t.get("novosTermo",0); pTermoR += t.get("perdasTermo",0)
     rede.append({"de":MESES[a],"para":MESES[b],"perdas":perdas,"novos":novos,"transf":0,"transfIn":0,
                  "retidos":retidos,"base":base,"byCat":cC,"bySex":cS,"byBand":cB,
-                 "byTenure":cT,"tenureMean":round(_twsum/perdas,1) if perdas else 0,"byMotivo":cMo})
+                 "byTenure":cT,"tenureMean":round(_twsum/perdas,1) if perdas else 0,"byMotivo":cMo,
+                 "novosTermo":nTermoR,"perdasTermo":pTermoR})
 for unit in UNIT_KEYS: rede_ev+=unit_data[unit][1]; rede_ret+=unit_data[unit][2]
 cm,cz=pre(rede_ev); rm,rz=pre(rede_ret)
 churn["REDE"]={"trans":rede,"pre":{"churnMean":cm,"churnZeroPct":cz,"retMean":rm,"retZeroPct":rz}}
