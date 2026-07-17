@@ -441,7 +441,7 @@ header.top{position:static!important}
 <div id="perdasKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
 <p class="cap" id="perdasCmpCap" style="margin:-6px 0 14px"></p>
 <div id="perdaMoney" style="margin-bottom:18px"></div>
-<div class="panel"><h3>Movimentação da base por mês</h3><div class="cwrap"><canvas id="cMov"></canvas></div><p class="cap">Entradas (novos na rede) × Saídas (perdas) a cada virada de mês. A linha é o <b>saldo líquido</b> (entradas − perdas): <span style="color:var(--green)">▲ verde</span> quando positivo, <span style="color:var(--red)">▼ vermelho</span> quando negativo. A última virada, quando <b>mais clara</b>, é o <b>mês em curso (parcial)</b> — entradas e saídas ainda vão crescer até o mês fechar, então o saldo dela é provisório.</p></div>
+<div class="panel"><h3>Movimentação da base por mês</h3><div class="cwrap"><canvas id="cMov"></canvas></div><p class="cap" id="cMovCap">Entradas (novos na rede) × Saídas (perdas) a cada virada de mês. A linha é o <b>saldo líquido</b> (entradas − perdas): <span style="color:var(--green)">▲ verde</span> quando positivo, <span style="color:var(--red)">▼ vermelho</span> quando negativo. A última virada, quando <b>mais clara</b>, é o <b>mês em curso (parcial)</b> — entradas e saídas ainda vão crescer até o mês fechar, então o saldo dela é provisório.</p></div>
 <div class="panel" style="margin-top:16px"><h3 id="cPerdMoneyH">Perda financeira por unidade (R$)</h3><div class="cwrap"><canvas id="cPerdMoney"></canvas></div><p class="cap" id="cPerdMoneyCap"></p></div>
 <div class="panel" id="perdShareWrap" style="margin-top:16px"><h3>Participação nas perdas por unidade (% do período)</h3><div class="cwrap"><canvas id="cPerdShare"></canvas></div><p class="cap">Distribuição das perdas da rede por unidade de origem — onde a evasão mais se concentra. Soma 100% das perdas Jan–Jun.</p></div>
 <div class="panel" id="perdaPre" style="margin-top:16px"></div>
@@ -1245,14 +1245,20 @@ function renderPerdas(L){
  if(_cc)_cc.innerHTML=(hasFlow?'<b>Novo × Retorno:</b> <span style="color:'+C.green+'">🆕 novo</span> = 1ª vez na rede (nunca teve cadastro) · <span style="color:'+C.blue+'">↩ retorno</span> = já teve cadastro/acesso antes e voltou. A soma = total de entradas. Base: histórico perpétuo (ledger).<br>':'')+((momT||qoqT)?('<b>Comparativos:</b> <b>MoM</b> = mesma janela 1 mês antes · <b>QoQ</b> = 3 meses antes · <span style="color:'+C.green+'">▲/▼ verde = melhora</span> · <span style="color:'+C.red+'">vermelho = piora</span>. <b>YoY suprimido</b> (sem 2025). Aparece "—" quando não há janela anterior suficiente.'+(state.to===MES.length?' A janela inclui <b>junho (parcial)</b> — perdas e entradas ficam subestimadas; para leitura limpa selecione sub-janelas fechadas (ex.: Abr+Mai) ou <b>Período → Meses fechados</b>.':'')):'');
  // movimentação — barra do mês em curso (parcial) fica mais clara
  var _pmov=(DATA.basePartial?MES[MES.length-1]:null);
- var _gcol=T.map(function(t){return t.para===_pmov?tint(C.green):C.green;});
- var _rcol=T.map(function(t){return t.para===_pmov?tint(C.red):C.red;});
+ // 1a virada da janela GLOBAL (state.from===1, Jan->Fev): perdas=0 por construcao (carencia de 2 meses
+ // -> uma saida so e confirmada no 2o mes de ausencia; nao ha mes anterior pra comparar). Nao mensuravel.
+ var _firstCar=(state.from===1);
+ var _gcol=T.map(function(t,i){return (t.para===_pmov||(_firstCar&&i===0))?tint(C.green):C.green;});
+ var _rcol=T.map(function(t,i){return (t.para===_pmov||(_firstCar&&i===0))?tint(C.red):C.red;});
  destroy('cMov');
  ch['cMov']=new Chart(document.getElementById('cMov'),{data:{labels,datasets:[
    {type:'bar',label:'Entradas',data:novos,backgroundColor:_gcol,borderRadius:5,maxBarThickness:34,order:3,_f:v=>v},
    {type:'bar',label:'Perdas',data:perdas,backgroundColor:_rcol,borderRadius:5,maxBarThickness:34,order:2,_f:v=>v},
    {type:'line',label:'Saldo líquido',data:saldo,borderColor:C.graphite,backgroundColor:C.graphite,borderWidth:2.4,tension:.3,pointRadius:5,pointBackgroundColor:C.graphite,pointBorderColor:C.graphite,order:1,_skip:true}]},
   options:bo({layout:{padding:{top:22}},plugins:{legend:{display:true,position:'bottom',labels:{usePointStyle:true,pointStyle:'rectRounded',padding:12,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{grid:{color:C.line},beginAtZero:true}}}),plugins:[VL,SaldoArrow]});
+ var _cmc=document.getElementById('cMovCap');
+ if(_cmc){var _cmBase='Entradas (novos na rede) × Saídas (perdas) a cada virada de mês. A linha é o <b>saldo líquido</b> (entradas − perdas): <span style="color:var(--green)">▲ verde</span> quando positivo, <span style="color:var(--red)">▼ vermelho</span> quando negativo. A última virada, quando <b>mais clara</b>, é o <b>mês em curso (parcial)</b> — entradas e saídas ainda vão crescer até o mês fechar, então o saldo dela é provisório.';
+   _cmc.innerHTML=_cmBase+(_firstCar?' <b>A 1ª virada ('+(T[0]?T[0].de.slice(0,3)+'→'+T[0].para.slice(0,3):'Jan→Fev')+') está clara e mostra 0 perdas por construção:</b> a carência de 2 meses só confirma uma saída no 2º mês de ausência, e não há mês anterior pra comparar. Leia como <b>“ainda não mensurável”</b>, não como mês sem evasão — o saldo dessa virada fica superestimado.':'');}
  // bloco financeiro do saldo líquido
  const sCol=saldoRS>=0?C.green:C.red,sArr=saldoRS>=0?'▲ ':'▼ ';
  const mny=(big,lab,sub,col)=>'<div class="panel" style="padding:15px 17px;border-left:4px solid '+col+'"><div style="font-size:11px;font-weight:800;color:'+col+';text-transform:uppercase;letter-spacing:.04em">'+lab+'</div><div style="font-size:27px;font-weight:900;line-height:1.05;margin:4px 0 2px;color:'+col+'">'+big+'</div><div style="font-size:12px;color:var(--muted);line-height:1.4">'+sub+'</div></div>';

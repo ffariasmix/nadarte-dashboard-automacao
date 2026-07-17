@@ -576,6 +576,27 @@ def main():
                         if la:
                             print(f"   [alt {p}] st={sta} itens={len(la)} keys0={sorted(la[0].keys()) if isinstance(la[0],dict) else '?'} datas0={_dts(la[0]) if isinstance(la[0],dict) else {}}", file=sys.stderr)
             if os.environ.get("PACTO_CONTRATO_DUMP") == "1":
+                # [MODALIDADE DE QUEM SAIU] a modalidade do churn vem vazia ("Perdas por categoria" = Outros).
+                # Testa: para alunos INATIVOS (ja sairam), o contrato ainda devolve descricao? e o dados-pessoais
+                # tem algum campo de modalidade? PII-safe: imprime so texto de modalidade + nomes de chaves.
+                _inat = [c for c in full if str(gv(c, "situacao") or "").upper() == "INATIVO"
+                         and to_date(gv(c, "fimContrato"))][:6]
+                _mk = ("modalidade", "categoria", "plano", "descricao", "contrato", "produto", "servico", "turma")
+                print(f"[modOUT] {uk}: testando {len(_inat)} INATIVOS (com fimContrato)", file=sys.stderr)
+                for c in _inat:
+                    M = gv(c, "matricula") or gv(c, "codigoCliente", "codigo")
+                    _fim = to_date(gv(c, "fimContrato"))
+                    st3, o3 = gj(key, f"/v1/contrato/matricula/{M}")
+                    _descs = [str(gv(it, "descricao") or "").strip() for it in lst(o3) if isinstance(it, dict)]
+                    _descs = [d for d in _descs if d]
+                    stdp, odp = gj(key, f"/clientes/{M}/dados-pessoais")
+                    dp = unwrap(odp) if isinstance(odp, dict) else {}
+                    _dpmod = {k: dp[k] for k in (dp.keys() if isinstance(dp, dict) else [])
+                              if any(t in k.lower() for t in _mk) and dp.get(k)}
+                    _cmod = {k: c[k] for k in (c.keys() if isinstance(c, dict) else [])
+                             if any(t in k.lower() for t in _mk) and c.get(k)}
+                    print(f"   INATIVO fim={_fim} | contrato.descricao={_descs or 'VAZIO'} | dados-pessoais(mod)={_dpmod or 'VAZIO'} | roster(mod)={_cmod or 'VAZIO'}", file=sys.stderr)
+            if os.environ.get("PACTO_CONTRATO_DUMP") == "1":
                 # /movimentacao-contrato (BI): MATRICULADOS x REMATRICULADOS x CANCELADOS -> separa nova/retorno/perda NA FONTE.
                 import urllib.parse as _up, json as _j
                 _dk2 = ("inicio", "fim", "data", "venc", "vig", "dt", "renov", "adesao", "cancel", "matricul")
