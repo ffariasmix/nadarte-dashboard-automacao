@@ -10,10 +10,10 @@ import { fromFrequencia, motor, UNIDADE_SLUG } from './motor.mjs';
 const FILE = process.argv[2] || process.env.FREQ_LOCAL_FILE || 'data/freq_multi.json';
 const data = JSON.parse(await readFile(FILE, 'utf8'));
 
-function proxSemanaMonDom(base = new Date()) {
+function semanaVigenteMonDom(base = new Date()) {
   const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
   const dow = (d.getUTCDay() + 6) % 7;
-  const seg = new Date(d); seg.setUTCDate(d.getUTCDate() - dow + 7);
+  const seg = new Date(d); seg.setUTCDate(d.getUTCDate() - dow);   // segunda-feira da semana VIGENTE (Build diário)
   const dom = new Date(seg); dom.setUTCDate(seg.getUTCDate() + 6);
   return { seg, dom };
 }
@@ -25,7 +25,7 @@ function semISO(d) {
   return `${dt.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
 }
 
-const { seg, dom } = proxSemanaMonDom();
+const { seg, dom } = semanaVigenteMonDom();
 const semana = semISO(seg);
 const PRAZO = dom.toISOString().slice(0, 10);
 
@@ -109,6 +109,9 @@ rows.push(...opRows);
 const out = [];
 out.push(`-- Motor · semana-alvo ${semana} (${seg.toISOString().slice(0,10)} a ${PRAZO}) · ${rows.length} iniciativas · ${new Date().toISOString()}`);
 out.push(`DELETE FROM iniciativas WHERE semana_ref='${semana}' AND origem IN ('motor','freq') AND status='pendente';`);
+// Housekeeping: remove cards PENDENTES do motor de outras semanas (resíduo antigo).
+// Preserva os REALIZADOS (histórico de contatos) em qualquer semana.
+out.push(`DELETE FROM iniciativas WHERE origem='motor' AND status='pendente' AND semana_ref<>'${semana}';`);
 for (let i = 0; i < rows.length; i += 50) out.push(`INSERT INTO iniciativas ${cols} VALUES\n` + rows.slice(i, i + 50).join(',\n') + ';');
 process.stdout.write(out.join('\n') + '\n');
 console.error(`[motor] semana ${semana} (prazo ${PRAZO}): ${rows.length} · alerta ${r.alerta.length} · ativa ${r.ativa.length} · reserva ${r.reserva.length} · relac ${r.relacionamento.length} · operacional ${(r.operacional||[]).length} · descartadas ${r.descartadas}`);
