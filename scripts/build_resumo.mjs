@@ -24,6 +24,18 @@ try {
   } else console.error(`[resumo] App Treino HTTP ${resp.status} — sem sinais de CRM.`);
 } catch (e) { console.error(`[resumo] App Treino indisponível (${e.message}) — sem sinais de CRM.`); }
 
+// Pedido 2 — app_status do roster completo: usaApp/treinoVencido por aluno ativo (todas as modalidades).
+const APP_STATUS_FEED = process.env.APP_STATUS_FEED || 'https://nadarte-apptreino.pages.dev/app_status.json';
+const appMap = new Map();
+try {
+  const resp2 = await fetch(APP_STATUS_FEED + '?cb=' + Date.now());
+  if (resp2.ok) {
+    const f2 = await resp2.json();
+    for (const a of (Array.isArray(f2.alunos) ? f2.alunos : [])) appMap.set(`${a.unidade}|${a.matricula}`, a);
+    console.error(`[resumo] app_status: ${appMap.size} alunos · feed ${f2.gerado || '?'}.`);
+  } else console.error(`[resumo] app_status HTTP ${resp2.status} — sem status de app do roster.`);
+} catch (e) { console.error(`[resumo] app_status indisponível (${e.message}) — sem status de app do roster.`); }
+
 const hoje = new Date();
 function mesesDesde(iso) {
   if (!iso) return null;
@@ -43,9 +55,15 @@ for (const s of students) {
   const slug = UNIDADE_SLUG[s.u]; if (!slug) continue;
   const mat = String(s.mat || ''); if (!mat) continue;
   const cat = GRUPO_CAT[s.grupo] || 'outros';
-  const crm = crmMap.get(`${slug}|${mat}`) || null;
+  const key = `${slug}|${mat}`;
+  const crm = crmMap.get(key) || null;
+  const app = appMap.get(key) || null;
+  // usaApp/treinoVencido: preferir o roster completo (app_status); fallback no feed acionável.
+  const vUsaApp = app && app.usaApp !== undefined ? app.usaApp : (crm ? crm.usaApp : undefined);
+  const vTreinoV = app && app.treinoVencido !== undefined ? app.treinoVencido : (crm ? (crm.treinoVencido || crm.avaliacaoVencida) : undefined);
+  const vAppPar = crm ? crm.appParado : undefined;
   const wk = Array.isArray(s.wk) ? JSON.stringify(s.wk) : '[]';
-  rows.push(`('${esc(slug)}','${esc(mat)}','${esc(s.nome)}','${esc(cat)}','${esc(s.foto || '')}',${num(s.score)},'${esc(s.scoreBand || '')}','${esc(s.ult || '')}','${esc(wk)}','${esc(s.dm || '')}','${esc(s.venc || '')}',${num(mesesDesde(s.dm))},${num(s.bd)},${num(s.bm)},'${esc(s.prof || '')}',${crm ? b01(crm.usaApp) : 'NULL'},${crm ? b01(crm.treinoVencido || crm.avaliacaoVencida) : 'NULL'},${crm ? b01(crm.appParado) : 'NULL'},'${esc(crm ? (crm.faixa || '') : '')}','${AT}')`);
+  rows.push(`('${esc(slug)}','${esc(mat)}','${esc(s.nome)}','${esc(cat)}','${esc(s.foto || '')}',${num(s.score)},'${esc(s.scoreBand || '')}','${esc(s.ult || '')}','${esc(wk)}','${esc(s.dm || '')}','${esc(s.venc || '')}',${num(mesesDesde(s.dm))},${num(s.bd)},${num(s.bm)},'${esc(s.prof || '')}',${b01(vUsaApp)},${b01(vTreinoV)},${b01(vAppPar)},'${esc(crm ? (crm.faixa || '') : '')}','${AT}')`);
 }
 
 const out = [];
