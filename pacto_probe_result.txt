@@ -1,4 +1,4 @@
-[roster] 19318/None clientes coletados
+[roster] 19320/None clientes coletados
 [contrato] 716Norte: 1 contrato(s) na lista
    lista: keys=['codigo', 'descricao'] datas={}
    [detalhe /v1/contrato/42372] st=404 vazio
@@ -14,9 +14,16 @@
    [detalhe /v1/contrato/42656] st=404 vazio
    [detalhe /contrato/42656] st=404 vazio
    [detalhe /v1/contratos/42656] st=404 vazio
+[modOUT] 716Norte: testando 6 INATIVOS (com fimContrato)
+   INATIVO fim=2010-10-05 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'DE'} | roster(mod)={'inicioContrato': 1254711600000, 'fimContrato': 1286247600000, 'situacaoContrato': 'DESISTENTE'}
+   INATIVO fim=2019-11-04 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'CA'} | roster(mod)={'inicioContrato': 1557457200000, 'fimContrato': 1572836400000, 'situacaoContrato': 'CANCELADO'}
+   INATIVO fim=2003-08-05 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'DE'} | roster(mod)={'inicioContrato': 1044410400000, 'fimContrato': 1060052400000, 'situacaoContrato': 'DESISTENTE'}
+   INATIVO fim=2011-03-05 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'DE'} | roster(mod)={'inicioContrato': 1267758000000, 'fimContrato': 1299294000000, 'situacaoContrato': 'DESISTENTE'}
+   INATIVO fim=2007-04-05 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'DE'} | roster(mod)={'inicioContrato': 1167962400000, 'fimContrato': 1175742000000, 'situacaoContrato': 'DESISTENTE'}
+   INATIVO fim=2006-04-05 | contrato.descricao=VAZIO | dados-pessoais(mod)={'situacaoContrato': 'DE'} | roster(mod)={'inicioContrato': 1128481200000, 'fimContrato': 1144206000000, 'situacaoContrato': 'DESISTENTE'}
 [emp] 716Norte: campos empresa/unidade = {'empresa': 'NADARTE 716 NORTE'} | keys cliente = ['categoria', 'codigoCliente', 'email', 'empresa', 'fimContrato', 'inicioContrato', 'matricula', 'nome', 'situacao', 'situacaoContrato', 'telefone', 'urlFoto']
-[situC] 716Norte: situacaoContrato dist = {'DESISTENTE': 10741, '?': 5667, 'CANCELADO': 1953, 'NORMAL': 852, 'A_VENCER': 72, 'INATIVO_VENCIDO': 25, 'ATESTADO': 8}
-[categ] 716Norte: categoria dist (top15) = {'?': 19317, 'TESTE PACTO': 1}
+[situC] 716Norte: situacaoContrato dist = {'DESISTENTE': 10741, '?': 5671, 'CANCELADO': 1953, 'NORMAL': 850, 'A_VENCER': 72, 'INATIVO_VENCIDO': 25, 'ATESTADO': 8}
+[categ] 716Norte: categoria dist (top15) = {'?': 19319, 'TESTE PACTO': 1}
 [empresa] 716Norte via /v1/empresa/resumo?page=0&size=50: st=500 vazio
 [empresa] 716Norte via /v1/empresa/resumo: st=500 vazio
 [empresa] 716Norte via /v1/empresa?page=0&size=50: st=500 vazio
@@ -25,12 +32,12 @@
 [mov --] 716Norte MATRICULADOS_ATE_HOJE: nenhuma combinacao trouxe dado (ids [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], hdr/filtro/ambos, com/sem data)
 [mov --] 716Norte REMATRICULADOS_ATE_HOJE: nenhuma combinacao trouxe dado (ids [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], hdr/filtro/ambos, com/sem data)
 [mov --] 716Norte CANCELADOS_ATE_HOJE: nenhuma combinacao trouxe dado (ids [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], hdr/filtro/ambos, com/sem data)
-[sit] 716Norte: total=19318 dist={'VISITANTE': 5646, 'INATIVO': 12720, 'ATIVO': 932, 'TRANCADO': 20} | ATIVO=932 ATIVO+TRANC=952 contrato=988 ATIVO|contrato=988
+[sit] 716Norte: total=19320 dist={'VISITANTE': 5648, 'INATIVO': 12720, 'ATIVO': 930, 'TRANCADO': 22} | ATIVO=930 ATIVO+TRANC=952 contrato=988 ATIVO|contrato=988
 [sitM] 716Norte: ativo/mes=[812, 829, 897, 920, 968, 1000, 988] (meses ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
 [sitS] 716Norte: fim-de-contrato caindo no mes=[75, 50, 50, 34, 46, 51, 98] (fonte do churn)
-[sitF] 716Norte: fim-ano dos NAO-ativos = {2002: 937, 2003: 871, 2004: 516, 2005: 669, 2006: 639, 2007: 476, 2008: 370, 2009: 439, 2010: 557, 2011: 478, 2012: 504, 2013: 435, 2014: 403, 2015: 444, 2016: 411, 2017: 389, 2018: 403, 2019: 444, 2020: 338, 2021: 316, 2022: 533, 2023: 568, 2024: 562, 2025: 676, 2026: 351, 2027: 11, 'sem-fim': 5646}
+[sitF] 716Norte: fim-ano dos NAO-ativos = {2002: 937, 2003: 871, 2004: 516, 2005: 669, 2006: 639, 2007: 476, 2008: 370, 2009: 439, 2010: 557, 2011: 478, 2012: 504, 2013: 435, 2014: 403, 2015: 444, 2016: 411, 2017: 389, 2018: 403, 2019: 444, 2020: 338, 2021: 316, 2022: 533, 2023: 568, 2024: 562, 2025: 676, 2026: 352, 2027: 12, 'sem-fim': 5648}
 [sitC] 716Norte: perdas/mes=[75, 50, 50, 34, 46, 51] base/mes=[812, 829, 897, 920, 968, 1000] churn%=[9.2, 6.0, 5.6, 3.7, 4.8, 5.1]
-[REDE ATIVO] = 932  (alvo Drive Jun/26 = 3956)
+[REDE ATIVO] = 930  (alvo Drive Jun/26 = 3956)
 [REDE ATIVO+TRANC] = 952  (alvo Drive Jun/26 = 3956)
 [REDE contrato(cobre Jun)] = 988  (alvo Drive Jun/26 = 3956)
 [REDE ATIVO|contrato] = 988  (alvo Drive Jun/26 = 3956)
